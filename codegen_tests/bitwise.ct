@@ -1,0 +1,1 @@
+var a = 0xFF; var b = 0x0F; var c; c = a & b; c = a | b; c = a ^ b; c = a << 2; c = a >> 4

@@ -1,0 +1,40 @@
+=== codegen_tests/assign_compound.ct (44 bytes) ===
+
+=== AST ===
+CODEBLOCK [5]
+  ASSIGN =
+    VAR var
+      IDENTIFIER x
+    NUMBER 100
+  ASSIGN_SUB -=
+    IDENTIFIER x
+    NUMBER 10
+  ASSIGN_MUL *=
+    IDENTIFIER x
+    NUMBER 3
+  ASSIGN_DIV /=
+    IDENTIFIER x
+    NUMBER 2
+  ASSIGN_MOD %=
+    IDENTIFIER x
+    NUMBER 7
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (5 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 100
+  [  1] SUB        R(0), R(0), I(10)
+  [  2] MUL        R(0), R(0), I(3)
+  [  3] DIV        R(0), R(0), I(2)
+  [  4] MOD        R(0), R(0), I(7)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (5 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 100
+  [  1] SUB        R(0), 10
+  [  2] MUL        R(0), 3
+  [  3] DIV        R(0), 2
+  [  4] MOD        R(0), 7

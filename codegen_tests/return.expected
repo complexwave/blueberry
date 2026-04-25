@@ -1,0 +1,24 @@
+=== codegen_tests/return.ct (19 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  ASSIGN =
+    VAR var
+      IDENTIFIER x
+    NUMBER 5
+  RETURN return
+    IDENTIFIER x
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 5
+  [  1] RETURN     [ R(0) ]
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 5
+  [  1] RETURN     [ R(0) ]

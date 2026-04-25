@@ -1,0 +1,70 @@
+=== functions.ct (74 bytes) ===
+  [  0] L1    FUNCTION           "fun"
+  [  1] L1    IDENTIFIER         "add"
+  [  2] L1    PAREN_OPEN         "("
+  [  3] L1    IDENTIFIER         "a"
+  [  4] L1    COMMA              ","
+  [  5] L1    IDENTIFIER         "b"
+  [  6] L1    PAREN_CLOSE        ")"
+  [  7] L1    CURLY_OPEN         "{"
+  [  8] L1    IDENTIFIER         "a"
+  [  9] L1    ADD                "+"
+  [ 10] L1    IDENTIFIER         "b"
+  [ 11] L1    CURLY_CLOSE        "}"
+  [ 12] L1    SEMICOLON          ";"
+  [ 13] L2    FUNCTION           "fun"
+  [ 14] L2    IDENTIFIER         "greet"
+  [ 15] L2    PAREN_OPEN         "("
+  [ 16] L2    PAREN_CLOSE        ")"
+  [ 17] L2    CURLY_OPEN         "{"
+  [ 18] L2    STRING             "\"hello\""
+  [ 19] L2    CURLY_CLOSE        "}"
+  [ 20] L2    SEMICOLON          ";"
+  [ 21] L3    FUNCTION           "fun"
+  [ 22] L3    IDENTIFIER         "foo"
+  [ 23] L3    HASH_ACCESS        "."
+  [ 24] L3    IDENTIFIER         "bar"
+  [ 25] L3    PAREN_OPEN         "("
+  [ 26] L3    IDENTIFIER         "x"
+  [ 27] L3    PAREN_CLOSE        ")"
+  [ 28] L3    CURLY_OPEN         "{"
+  [ 29] L3    IDENTIFIER         "x"
+  [ 30] L3    MUL                "*"
+  [ 31] L3    INT                "2"
+  [ 32] L3    CURLY_CLOSE        "}"
+33 tokens
+
+=== AST ===
+CODEBLOCK [3]
+  FUNCTION fun
+    name: 
+      IDENTIFIER add
+    args: 
+      EXPRLIST , [2]
+        IDENTIFIER a
+        IDENTIFIER b
+    body: 
+      CODEBLOCK [1]
+        ADD +
+          IDENTIFIER a
+          IDENTIFIER b
+  FUNCTION fun
+    name: 
+      IDENTIFIER greet
+    args: 
+      EXPRLIST ( [0]
+    body: 
+      CODEBLOCK [1]
+        STRING "hello"
+  FUNCTION fun
+    name: 
+      HASHACCESS . [2]
+        IDENTIFIER foo
+        STRING bar
+    args: 
+      IDENTIFIER x
+    body: 
+      CODEBLOCK [1]
+        MUL *
+          IDENTIFIER x
+          NUMBER 2

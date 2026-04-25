@@ -1,0 +1,42 @@
+=== codegen_tests/logic.ct (51 bytes) ===
+
+=== AST ===
+CODEBLOCK [5]
+  ASSIGN =
+    VAR var
+      IDENTIFIER a
+    NUMBER 1
+  ASSIGN =
+    VAR var
+      IDENTIFIER b
+    NUMBER 0
+  VAR var
+    IDENTIFIER c
+  ASSIGN =
+    IDENTIFIER c
+    AND &&
+      IDENTIFIER a
+      IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER c
+    OR ||
+      IDENTIFIER a
+      IDENTIFIER b
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (4 opcodes) ---
+  locals: a=R(0), b=R(2), c=R(3)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADINT    R(2), 0
+  [  2] AND        R(3), R(0), R(2)
+  [  3] OR         R(3), R(0), R(2)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (4 opcodes) ---
+  locals: a=R(0), b=R(2), c=R(3)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADINT    R(2), 0
+  [  2] AND        R(3), R(0), R(2)
+  [  3] OR         R(3), R(0), R(2)

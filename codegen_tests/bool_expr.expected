@@ -1,0 +1,46 @@
+=== codegen_tests/bool_expr.ct (62 bytes) ===
+
+=== AST ===
+CODEBLOCK [5]
+  ASSIGN =
+    VAR var
+      IDENTIFIER a
+    NUMBER 1
+  VAR var
+    IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER b
+    EQ ==
+      IDENTIFIER a
+      TRUE true
+  ASSIGN =
+    IDENTIFIER b
+    EQ ==
+      IDENTIFIER a
+      FALSE false
+  ASSIGN =
+    IDENTIFIER b
+    NEQ !=
+      IDENTIFIER a
+      NULL_LIT null
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (4 opcodes) ---
+  locals: a=R(0), b=R(2)
+  [  0] LOADINT    R(0), 1
+  [  1] EQ         R(2), R(0), B(TRUE)
+  [  2] EQ         R(2), R(0), B(FALSE)
+  [  3] NEQ        R(2), R(0), B(NULL)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (7 opcodes) ---
+  locals: a=R(0), b=R(2)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADTRUE   T(1)
+  [  2] EQ         R(2), R(0), T(1)
+  [  3] LOADFALSE  T(3)
+  [  4] EQ         R(2), R(0), T(3)
+  [  5] LOADNULL   T(4)
+  [  6] NEQ        R(2), R(0), T(4)

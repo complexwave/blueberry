@@ -1,0 +1,27 @@
+=== codegen_tests/return_multi.ct (14 bytes) ===
+
+=== AST ===
+CODEBLOCK [1]
+  RETURN return
+    EXPRLIST [3]
+      NUMBER 1
+      NUMBER 2
+      NUMBER 3
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (4 opcodes) ---
+  locals: (none)
+  [  0] LOADINT    T(0), 1
+  [  1] LOADINT    T(1), 2
+  [  2] LOADINT    T(2), 3
+  [  3] RETURN     [ T(0), T(1), T(2) ]
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (4 opcodes) ---
+  locals: (none)
+  [  0] LOADINT    T(0), 1
+  [  1] LOADINT    T(1), 2
+  [  2] LOADINT    T(2), 3
+  [  3] RETURN     [ T(0), T(1), T(2) ]

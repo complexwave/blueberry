@@ -1,0 +1,32 @@
+=== codegen_tests/bool_null.ct (41 bytes) ===
+
+=== AST ===
+CODEBLOCK [3]
+  ASSIGN =
+    VAR var
+      IDENTIFIER a
+    TRUE true
+  ASSIGN =
+    VAR var
+      IDENTIFIER b
+    FALSE false
+  ASSIGN =
+    VAR var
+      IDENTIFIER c
+    NULL_LIT null
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (3 opcodes) ---
+  locals: a=R(0), b=R(2), c=R(3)
+  [  0] LOADTRUE   R(0)
+  [  1] LOADFALSE  R(2)
+  [  2] LOADNULL   R(3)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (3 opcodes) ---
+  locals: a=R(0), b=R(2), c=R(3)
+  [  0] LOADTRUE   R(0)
+  [  1] LOADFALSE  R(2)
+  [  2] LOADNULL   R(3)

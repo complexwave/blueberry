@@ -1,0 +1,63 @@
+=== access.ct (47 bytes) ===
+  [  0] L1    IDENTIFIER         "a"
+  [  1] L1    HASH_ACCESS        "."
+  [  2] L1    IDENTIFIER         "b"
+  [  3] L1    SEMICOLON          ";"
+  [  4] L2    IDENTIFIER         "a"
+  [  5] L2    HASH_ACCESS        "."
+  [  6] L2    IDENTIFIER         "b"
+  [  7] L2    HASH_ACCESS        "."
+  [  8] L2    IDENTIFIER         "c"
+  [  9] L2    SEMICOLON          ";"
+  [ 10] L3    IDENTIFIER         "x"
+  [ 11] L3    BRACKET_OPEN       "["
+  [ 12] L3    INT                "0"
+  [ 13] L3    BRACKET_CLOSE      "]"
+  [ 14] L3    SEMICOLON          ";"
+  [ 15] L4    IDENTIFIER         "x"
+  [ 16] L4    BRACKET_OPEN       "["
+  [ 17] L4    IDENTIFIER         "i"
+  [ 18] L4    ADD                "+"
+  [ 19] L4    INT                "1"
+  [ 20] L4    BRACKET_CLOSE      "]"
+  [ 21] L4    SEMICOLON          ";"
+  [ 22] L5    IDENTIFIER         "foo"
+  [ 23] L5    PAREN_OPEN         "("
+  [ 24] L5    INT                "1"
+  [ 25] L5    COMMA              ","
+  [ 26] L5    INT                "2"
+  [ 27] L5    COMMA              ","
+  [ 28] L5    INT                "3"
+  [ 29] L5    PAREN_CLOSE        ")"
+  [ 30] L5    SEMICOLON          ";"
+  [ 31] L6    IDENTIFIER         "foo"
+  [ 32] L6    PAREN_OPEN         "("
+  [ 33] L6    PAREN_CLOSE        ")"
+34 tokens
+
+=== AST ===
+CODEBLOCK [6]
+  HASHACCESS . [2]
+    IDENTIFIER a
+    STRING b
+  HASHACCESS . [3]
+    IDENTIFIER a
+    STRING b
+    STRING c
+  ARRACCESS [
+    IDENTIFIER x
+    NUMBER 0
+  ARRACCESS [
+    IDENTIFIER x
+    ADD +
+      IDENTIFIER i
+      NUMBER 1
+  CALL (
+    IDENTIFIER foo
+    EXPRLIST , [3]
+      NUMBER 1
+      NUMBER 2
+      NUMBER 3
+  CALL (
+    IDENTIFIER foo
+    (null)

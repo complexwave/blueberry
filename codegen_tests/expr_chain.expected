@@ -1,0 +1,38 @@
+=== codegen_tests/expr_chain.ct (29 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  VAR var
+    EXPRLIST [3]
+      IDENTIFIER a
+      IDENTIFIER b
+      IDENTIFIER c
+  ASSIGN =
+    EXPRLIST [3]
+      IDENTIFIER a
+      IDENTIFIER b
+      IDENTIFIER c
+    EXPRLIST [3]
+      NUMBER 1
+      ADD +
+        IDENTIFIER a
+        NUMBER 1
+      ADD +
+        IDENTIFIER a
+        IDENTIFIER b
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (3 opcodes) ---
+  locals: a=R(0), b=R(1), c=R(2)
+  [  0] LOADINT    R(0), 1
+  [  1] ADD        R(1), R(0), I(1)
+  [  2] ADD        R(2), R(0), R(1)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (3 opcodes) ---
+  locals: a=R(0), b=R(1), c=R(2)
+  [  0] LOADINT    R(0), 1
+  [  1] ADD        R(1), R(0), 1
+  [  2] ADD        R(2), R(0), R(1)

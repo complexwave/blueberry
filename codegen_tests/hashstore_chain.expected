@@ -1,0 +1,32 @@
+=== codegen_tests/hashstore_chain.ct (33 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  ASSIGN =
+    VAR var
+      IDENTIFIER hash
+    NUMBER 1
+  ASSIGN =
+    HASHACCESS . [3]
+      IDENTIFIER hash
+      STRING access
+      STRING more
+    NUMBER 2
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (4 opcodes) ---
+  locals: hash=R(0)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADINT    T(2), 2
+  [  2] HASHACCESS [ T(1), R(0), S("access") ]
+  [  3] HASHSTORE  [ T(1), S("more"), T(2) ]
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (4 opcodes) ---
+  locals: hash=R(0)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADINT    T(2), 2
+  [  2] HASHACCESS [ T(1), R(0), S("access") ]
+  [  3] HASHSTORE  [ T(1), S("more"), T(2) ]

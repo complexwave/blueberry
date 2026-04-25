@@ -1,0 +1,21 @@
+=== codegen_tests/var_single.ct (11 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  VAR var
+    IDENTIFIER a
+  ASSIGN =
+    IDENTIFIER a
+    NUMBER 1
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (1 opcodes) ---
+  locals: a=R(0)
+  [  0] LOADINT    R(0), 1
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (1 opcodes) ---
+  locals: a=R(0)
+  [  0] LOADINT    R(0), 1

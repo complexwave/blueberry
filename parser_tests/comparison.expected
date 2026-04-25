@@ -1,0 +1,57 @@
+=== comparison.ct (56 bytes) ===
+  [  0] L1    IDENTIFIER         "a"
+  [  1] L1    EQ                 "=="
+  [  2] L1    IDENTIFIER         "b"
+  [  3] L1    SEMICOLON          ";"
+  [  4] L2    IDENTIFIER         "a"
+  [  5] L2    NEQ                "!="
+  [  6] L2    IDENTIFIER         "b"
+  [  7] L2    SEMICOLON          ";"
+  [  8] L3    IDENTIFIER         "a"
+  [  9] L3    GT                 ">"
+  [ 10] L3    IDENTIFIER         "b"
+  [ 11] L3    SEMICOLON          ";"
+  [ 12] L4    IDENTIFIER         "a"
+  [ 13] L4    LT                 "<"
+  [ 14] L4    IDENTIFIER         "b"
+  [ 15] L4    SEMICOLON          ";"
+  [ 16] L5    IDENTIFIER         "a"
+  [ 17] L5    GT_EQ              ">="
+  [ 18] L5    IDENTIFIER         "b"
+  [ 19] L5    SEMICOLON          ";"
+  [ 20] L6    IDENTIFIER         "a"
+  [ 21] L6    LT_EQ              "<="
+  [ 22] L6    IDENTIFIER         "b"
+  [ 23] L6    SEMICOLON          ";"
+  [ 24] L7    INT                "1"
+  [ 25] L7    ADD                "+"
+  [ 26] L7    INT                "2"
+  [ 27] L7    EQ                 "=="
+  [ 28] L7    INT                "3"
+29 tokens
+
+=== AST ===
+CODEBLOCK [7]
+  EQ ==
+    IDENTIFIER a
+    IDENTIFIER b
+  NEQ !=
+    IDENTIFIER a
+    IDENTIFIER b
+  GT >
+    IDENTIFIER a
+    IDENTIFIER b
+  LT <
+    IDENTIFIER a
+    IDENTIFIER b
+  GT_EQ >=
+    IDENTIFIER a
+    IDENTIFIER b
+  LT_EQ <=
+    IDENTIFIER a
+    IDENTIFIER b
+  EQ ==
+    ADD +
+      NUMBER 1
+      NUMBER 2
+    NUMBER 3

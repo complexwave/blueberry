@@ -1,0 +1,29 @@
+=== codegen_tests/hashstore.ct (28 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  ASSIGN =
+    VAR var
+      IDENTIFIER hash
+    NUMBER 1
+  ASSIGN =
+    HASHACCESS . [2]
+      IDENTIFIER hash
+      STRING access
+    NUMBER 1
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (3 opcodes) ---
+  locals: hash=R(0)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADINT    T(2), 1
+  [  2] HASHSTORE  [ R(0), S("access"), T(2) ]
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (3 opcodes) ---
+  locals: hash=R(0)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADINT    T(2), 1
+  [  2] HASHSTORE  [ R(0), S("access"), T(2) ]

@@ -1,0 +1,28 @@
+=== codegen_tests/inc_dec.ct (19 bytes) ===
+
+=== AST ===
+CODEBLOCK [3]
+  ASSIGN =
+    VAR var
+      IDENTIFIER x
+    NUMBER 5
+  INC ++
+    IDENTIFIER x
+  DEC --
+    IDENTIFIER x
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (3 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 5
+  [  1] ADD        R(0), R(0), I(1)
+  [  2] SUB        R(0), R(0), I(1)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (3 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 5
+  [  1] ADD        R(0), 1
+  [  2] SUB        R(0), 1

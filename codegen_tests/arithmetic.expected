@@ -1,0 +1,24 @@
+=== codegen_tests/arithmetic.ct (15 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  VAR var
+    IDENTIFIER a
+  ASSIGN =
+    IDENTIFIER a
+    ADD +
+      NUMBER 1
+      NUMBER 2
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (1 opcodes) ---
+  locals: a=R(0)
+  [  0] ADD        R(0), I(1), I(2)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: a=R(0)
+  [  0] LOADINT    T(1), 1
+  [  1] ADD        R(0), T(1), 2

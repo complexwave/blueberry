@@ -1,0 +1,38 @@
+=== codegen_tests/post_inc_dec.ct (34 bytes) ===
+
+=== AST ===
+CODEBLOCK [4]
+  ASSIGN =
+    VAR var
+      IDENTIFIER x
+    NUMBER 5
+  VAR var
+    IDENTIFIER y
+  ASSIGN =
+    IDENTIFIER y
+    POST_INC ++
+      IDENTIFIER x
+  ASSIGN =
+    IDENTIFIER y
+    POST_DEC --
+      IDENTIFIER x
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (5 opcodes) ---
+  locals: x=R(0), y=R(2)
+  [  0] LOADINT    R(0), 5
+  [  1] MOVE       R(2), R(0)
+  [  2] ADD        R(0), R(0), I(1)
+  [  3] MOVE       R(2), R(0)
+  [  4] SUB        R(0), R(0), I(1)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (5 opcodes) ---
+  locals: x=R(0), y=R(2)
+  [  0] LOADINT    R(0), 5
+  [  1] MOVE       R(2), R(0)
+  [  2] ADD        R(0), 1
+  [  3] MOVE       R(2), R(0)
+  [  4] SUB        R(0), 1

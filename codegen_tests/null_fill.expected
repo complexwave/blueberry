@@ -1,0 +1,25 @@
+=== codegen_tests/null_fill.ct (13 bytes) ===
+
+=== AST ===
+CODEBLOCK [1]
+  ASSIGN =
+    VAR var
+      EXPRLIST [3]
+        IDENTIFIER a
+        IDENTIFIER b
+        IDENTIFIER c
+    NUMBER 1
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: a=R(0), b=R(1), c=R(2)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADNULL   [ R(1), R(2) ]
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: a=R(0), b=R(1), c=R(2)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADNULL   [ R(1), R(2) ]

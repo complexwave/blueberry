@@ -1,0 +1,72 @@
+=== codegen_tests/if_elseif.ct (69 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  ASSIGN =
+    VAR var
+      IDENTIFIER x
+    NUMBER 5
+  IF if
+    cond: 
+      GT >
+        IDENTIFIER x
+        NUMBER 10
+    body: 
+      CODEBLOCK [1]
+        ASSIGN =
+          IDENTIFIER x
+          NUMBER 3
+    else: 
+      IF if
+        cond: 
+          GT >
+            IDENTIFIER x
+            NUMBER 3
+        body: 
+          CODEBLOCK [1]
+            ASSIGN =
+              IDENTIFIER x
+              NUMBER 2
+        else: 
+          CODEBLOCK [1]
+            ASSIGN =
+              IDENTIFIER x
+              NUMBER 1
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (14 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 5
+  [  1] GT         T(1), R(0), I(10)
+  [  2] JMPF       T(1), L("_else_0")
+  [  3] LOADINT    R(0), 3
+  [  4] JMP        L("_endif_1")
+  [  5] LABEL      L("_else_0")
+  [  6] GT         T(1), R(0), I(3)
+  [  7] JMPF       T(1), L("_else_2")
+  [  8] LOADINT    R(0), 2
+  [  9] JMP        L("_endif_3")
+  [ 10] LABEL      L("_else_2")
+  [ 11] LOADINT    R(0), 1
+  [ 12] LABEL      L("_endif_3")
+  [ 13] LABEL      L("_endif_1")
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (14 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 5
+  [  1] GT         T(1), R(0), 10
+  [  2] JMPF       T(1), L("_else_0")
+  [  3] LOADINT    R(0), 3
+  [  4] JMP        L("_endif_1")
+  [  5] LABEL      L("_else_0")
+  [  6] GT         T(1), R(0), 3
+  [  7] JMPF       T(1), L("_else_2")
+  [  8] LOADINT    R(0), 2
+  [  9] JMP        L("_endif_3")
+  [ 10] LABEL      L("_else_2")
+  [ 11] LOADINT    R(0), 1
+  [ 12] LABEL      L("_endif_3")
+  [ 13] LABEL      L("_endif_1")

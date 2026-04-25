@@ -1,0 +1,65 @@
+=== bitwise.ct (62 bytes) ===
+  [  0] L1    IDENTIFIER         "a"
+  [  1] L1    BIN_AND            "&"
+  [  2] L1    IDENTIFIER         "b"
+  [  3] L1    SEMICOLON          ";"
+  [  4] L2    IDENTIFIER         "a"
+  [  5] L2    BIN_OR             "|"
+  [  6] L2    IDENTIFIER         "b"
+  [  7] L2    SEMICOLON          ";"
+  [  8] L3    IDENTIFIER         "a"
+  [  9] L3    BIN_XOR            "^"
+  [ 10] L3    IDENTIFIER         "b"
+  [ 11] L3    SEMICOLON          ";"
+  [ 12] L4    IDENTIFIER         "a"
+  [ 13] L4    BIN_LSHIFT         "<<"
+  [ 14] L4    INT                "2"
+  [ 15] L4    SEMICOLON          ";"
+  [ 16] L5    IDENTIFIER         "a"
+  [ 17] L5    BIN_RSHIFT         ">>"
+  [ 18] L5    INT                "3"
+  [ 19] L5    SEMICOLON          ";"
+  [ 20] L6    IDENTIFIER         "a"
+  [ 21] L6    BIN_AND            "&"
+  [ 22] L6    IDENTIFIER         "b"
+  [ 23] L6    BIN_OR             "|"
+  [ 24] L6    IDENTIFIER         "c"
+  [ 25] L6    BIN_XOR            "^"
+  [ 26] L6    IDENTIFIER         "d"
+  [ 27] L6    SEMICOLON          ";"
+  [ 28] L7    IDENTIFIER         "x"
+  [ 29] L7    BIN_LSHIFT         "<<"
+  [ 30] L7    INT                "1"
+  [ 31] L7    ADD                "+"
+  [ 32] L7    INT                "2"
+33 tokens
+
+=== AST ===
+CODEBLOCK [7]
+  BIN_AND &
+    IDENTIFIER a
+    IDENTIFIER b
+  BIN_OR |
+    IDENTIFIER a
+    IDENTIFIER b
+  BIN_XOR ^
+    IDENTIFIER a
+    IDENTIFIER b
+  BIN_LSHIFT <<
+    IDENTIFIER a
+    NUMBER 2
+  BIN_RSHIFT >>
+    IDENTIFIER a
+    NUMBER 3
+  BIN_OR |
+    BIN_AND &
+      IDENTIFIER a
+      IDENTIFIER b
+    BIN_XOR ^
+      IDENTIFIER c
+      IDENTIFIER d
+  BIN_LSHIFT <<
+    IDENTIFIER x
+    ADD +
+      NUMBER 1
+      NUMBER 2

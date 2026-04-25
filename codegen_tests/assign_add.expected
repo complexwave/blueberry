@@ -1,0 +1,25 @@
+=== codegen_tests/assign_add.ct (18 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  ASSIGN =
+    VAR var
+      IDENTIFIER x
+    NUMBER 10
+  ASSIGN_ADD +=
+    IDENTIFIER x
+    NUMBER 5
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 10
+  [  1] ADD        R(0), R(0), I(5)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 10
+  [  1] ADD        R(0), 5

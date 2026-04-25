@@ -1,0 +1,49 @@
+=== codegen_tests/call.ct (35 bytes) ===
+
+=== AST ===
+CODEBLOCK [4]
+  ASSIGN =
+    VAR var
+      IDENTIFIER f
+    NUMBER 0
+  CALL (
+    IDENTIFIER f
+    EXPRLIST [3]
+      NUMBER 1
+      NUMBER 2
+      NUMBER 3
+  CALL (
+    IDENTIFIER f
+    (null)
+  ASSIGN =
+    VAR var
+      IDENTIFIER a
+    CALL (
+      IDENTIFIER f
+      NUMBER 1
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (8 opcodes) ---
+  locals: f=R(0), a=R(5)
+  [  0] LOADINT    R(0), 0
+  [  1] LOADINT    T(2), 1
+  [  2] LOADINT    T(3), 2
+  [  3] LOADINT    T(4), 3
+  [  4] CALL       [ T(1), R(0), T(2), T(3), T(4) ]
+  [  5] CALL       [ T(1), R(0) ]
+  [  6] LOADINT    T(4), 1
+  [  7] CALL       [ T(1), R(0), T(4) ] -> [ R(5) ]
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (8 opcodes) ---
+  locals: f=R(0), a=R(5)
+  [  0] LOADINT    R(0), 0
+  [  1] LOADINT    T(2), 1
+  [  2] LOADINT    T(3), 2
+  [  3] LOADINT    T(4), 3
+  [  4] CALL       [ T(1), R(0), T(2), T(3), T(4) ]
+  [  5] CALL       [ T(1), R(0) ]
+  [  6] LOADINT    T(4), 1
+  [  7] CALL       [ T(1), R(0), T(4) ] -> [ R(5) ]

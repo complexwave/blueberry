@@ -1,0 +1,45 @@
+=== codegen_tests/assign_bitwise.ct (65 bytes) ===
+
+=== AST ===
+CODEBLOCK [6]
+  ASSIGN =
+    VAR var
+      IDENTIFIER x
+    NUMBER 0xff
+  ASSIGN_BIN_OR |=
+    IDENTIFIER x
+    NUMBER 0x100
+  ASSIGN_BIN_AND &=
+    IDENTIFIER x
+    NUMBER 0x1ff
+  ASSIGN_BIN_XOR ^=
+    IDENTIFIER x
+    NUMBER 0xf
+  ASSIGN_LSHIFT <<=
+    IDENTIFIER x
+    NUMBER 1
+  ASSIGN_RSHIFT >>=
+    IDENTIFIER x
+    NUMBER 2
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (6 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 255
+  [  1] BIN_OR     R(0), R(0), I(256)
+  [  2] BIN_AND    R(0), R(0), I(511)
+  [  3] BIN_XOR    R(0), R(0), I(15)
+  [  4] BIN_LSHIFT R(0), R(0), I(1)
+  [  5] BIN_RSHIFT R(0), R(0), I(2)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (6 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 255
+  [  1] BIN_OR     R(0), 256
+  [  2] BIN_AND    R(0), 511
+  [  3] BIN_XOR    R(0), 15
+  [  4] BIN_LSHIFT R(0), 1
+  [  5] BIN_RSHIFT R(0), 2

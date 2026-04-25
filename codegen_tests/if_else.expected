@@ -1,0 +1,49 @@
+=== codegen_tests/if_else.ct (44 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  ASSIGN =
+    VAR var
+      IDENTIFIER x
+    NUMBER 5
+  IF if
+    cond: 
+      GT >
+        IDENTIFIER x
+        NUMBER 3
+    body: 
+      CODEBLOCK [1]
+        ASSIGN =
+          IDENTIFIER x
+          NUMBER 1
+    else: 
+      CODEBLOCK [1]
+        ASSIGN =
+          IDENTIFIER x
+          NUMBER 0
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (8 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 5
+  [  1] GT         T(1), R(0), I(3)
+  [  2] JMPF       T(1), L("_else_0")
+  [  3] LOADINT    R(0), 1
+  [  4] JMP        L("_endif_1")
+  [  5] LABEL      L("_else_0")
+  [  6] LOADINT    R(0), 0
+  [  7] LABEL      L("_endif_1")
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (8 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 5
+  [  1] GT         T(1), R(0), 3
+  [  2] JMPF       T(1), L("_else_0")
+  [  3] LOADINT    R(0), 1
+  [  4] JMP        L("_endif_1")
+  [  5] LABEL      L("_else_0")
+  [  6] LOADINT    R(0), 0
+  [  7] LABEL      L("_endif_1")

@@ -1,0 +1,36 @@
+=== codegen_tests/rename.ct (31 bytes) ===
+
+=== AST ===
+CODEBLOCK [4]
+  VAR var
+    EXPRLIST [3]
+      IDENTIFIER a
+      IDENTIFIER b
+      IDENTIFIER c
+  ASSIGN =
+    IDENTIFIER a
+    NUMBER 1
+  ASSIGN =
+    IDENTIFIER b
+    NUMBER 2
+  ASSIGN =
+    IDENTIFIER c
+    ADD +
+      IDENTIFIER a
+      IDENTIFIER b
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (3 opcodes) ---
+  locals: a=R(0), b=R(1), c=R(2)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADINT    R(1), 2
+  [  2] ADD        R(2), R(0), R(1)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (3 opcodes) ---
+  locals: a=R(0), b=R(1), c=R(2)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADINT    R(1), 2
+  [  2] ADD        R(2), R(0), R(1)

@@ -1,0 +1,63 @@
+=== logical.ct (67 bytes) ===
+  [  0] L1    IDENTIFIER         "a"
+  [  1] L1    AND                "&&"
+  [  2] L1    IDENTIFIER         "b"
+  [  3] L1    SEMICOLON          ";"
+  [  4] L2    IDENTIFIER         "a"
+  [  5] L2    OR                 "||"
+  [  6] L2    IDENTIFIER         "b"
+  [  7] L2    SEMICOLON          ";"
+  [  8] L3    IDENTIFIER         "a"
+  [  9] L3    AND                "&&"
+  [ 10] L3    IDENTIFIER         "b"
+  [ 11] L3    OR                 "||"
+  [ 12] L3    IDENTIFIER         "c"
+  [ 13] L3    SEMICOLON          ";"
+  [ 14] L4    IDENTIFIER         "a"
+  [ 15] L4    OR                 "||"
+  [ 16] L4    IDENTIFIER         "b"
+  [ 17] L4    AND                "&&"
+  [ 18] L4    IDENTIFIER         "c"
+  [ 19] L4    SEMICOLON          ";"
+  [ 20] L5    IDENTIFIER         "x"
+  [ 21] L5    GT                 ">"
+  [ 22] L5    INT                "1"
+  [ 23] L5    AND                "&&"
+  [ 24] L5    IDENTIFIER         "y"
+  [ 25] L5    LT                 "<"
+  [ 26] L5    INT                "10"
+  [ 27] L5    OR                 "||"
+  [ 28] L5    IDENTIFIER         "z"
+  [ 29] L5    EQ                 "=="
+  [ 30] L5    INT                "0"
+31 tokens
+
+=== AST ===
+CODEBLOCK [5]
+  AND &&
+    IDENTIFIER a
+    IDENTIFIER b
+  OR ||
+    IDENTIFIER a
+    IDENTIFIER b
+  OR ||
+    AND &&
+      IDENTIFIER a
+      IDENTIFIER b
+    IDENTIFIER c
+  OR ||
+    IDENTIFIER a
+    AND &&
+      IDENTIFIER b
+      IDENTIFIER c
+  OR ||
+    AND &&
+      GT >
+        IDENTIFIER x
+        NUMBER 1
+      LT <
+        IDENTIFIER y
+        NUMBER 10
+    EQ ==
+      IDENTIFIER z
+      NUMBER 0

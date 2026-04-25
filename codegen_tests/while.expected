@@ -1,0 +1,44 @@
+=== codegen_tests/while.ct (34 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  ASSIGN =
+    VAR var
+      IDENTIFIER x
+    NUMBER 0
+  LOOP while
+    init: (null)
+    cond: 
+      LT <
+        IDENTIFIER x
+        NUMBER 10
+    step: (null)
+    body: 
+      CODEBLOCK [1]
+        ASSIGN_ADD +=
+          IDENTIFIER x
+          NUMBER 1
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (7 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 0
+  [  1] JMP        L("_wcond_0")
+  [  2] LABEL      L("_wbody_1")
+  [  3] ADD        R(0), R(0), I(1)
+  [  4] LABEL      L("_wcond_0")
+  [  5] LT         T(1), R(0), I(10)
+  [  6] JMPT       T(1), L("_wbody_1")
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (7 opcodes) ---
+  locals: x=R(0)
+  [  0] LOADINT    R(0), 0
+  [  1] JMP        L("_wcond_0")
+  [  2] LABEL      L("_wbody_1")
+  [  3] ADD        R(0), 1
+  [  4] LABEL      L("_wcond_0")
+  [  5] LT         T(1), R(0), 10
+  [  6] JMPT       T(1), L("_wbody_1")

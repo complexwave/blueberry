@@ -1,0 +1,44 @@
+=== arithmetic.ct (40 bytes) ===
+  [  0] L1    INT                "1"
+  [  1] L1    ADD                "+"
+  [  2] L1    INT                "2"
+  [  3] L1    MUL                "*"
+  [  4] L1    INT                "3"
+  [  5] L1    SEMICOLON          ";"
+  [  6] L2    INT                "10"
+  [  7] L2    SUB                "-"
+  [  8] L2    INT                "4"
+  [  9] L2    DIV                "/"
+  [ 10] L2    INT                "2"
+  [ 11] L2    SEMICOLON          ";"
+  [ 12] L3    INT                "10"
+  [ 13] L3    MOD                "%"
+  [ 14] L3    INT                "3"
+  [ 15] L3    SEMICOLON          ";"
+  [ 16] L4    IDENTIFIER         "a"
+  [ 17] L4    ADD                "+"
+  [ 18] L4    IDENTIFIER         "b"
+  [ 19] L4    ADD                "+"
+  [ 20] L4    IDENTIFIER         "c"
+21 tokens
+
+=== AST ===
+CODEBLOCK [4]
+  ADD +
+    NUMBER 1
+    MUL *
+      NUMBER 2
+      NUMBER 3
+  SUB -
+    NUMBER 10
+    DIV /
+      NUMBER 4
+      NUMBER 2
+  MOD %
+    NUMBER 10
+    NUMBER 3
+  ADD +
+    ADD +
+      IDENTIFIER a
+      IDENTIFIER b
+    IDENTIFIER c

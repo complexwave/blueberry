@@ -1,0 +1,53 @@
+=== literals.ct (42 bytes) ===
+  [  0] L1    BRACKET_OPEN       "["
+  [  1] L1    INT                "1"
+  [  2] L1    COMMA              ","
+  [  3] L1    INT                "2"
+  [  4] L1    COMMA              ","
+  [  5] L1    INT                "3"
+  [  6] L1    BRACKET_CLOSE      "]"
+  [  7] L1    SEMICOLON          ";"
+  [  8] L2    BRACKET_OPEN       "["
+  [  9] L2    BRACKET_CLOSE      "]"
+  [ 10] L2    SEMICOLON          ";"
+  [ 11] L3    IDENTIFIER         "x"
+  [ 12] L3    BRACKET_OPEN       "["
+  [ 13] L3    INT                "0"
+  [ 14] L3    BRACKET_CLOSE      "]"
+  [ 15] L3    SEMICOLON          ";"
+  [ 16] L4    IDENTIFIER         "foo"
+  [ 17] L4    PAREN_OPEN         "("
+  [ 18] L4    INT                "1"
+  [ 19] L4    COMMA              ","
+  [ 20] L4    INT                "2"
+  [ 21] L4    PAREN_CLOSE        ")"
+  [ 22] L4    SEMICOLON          ";"
+  [ 23] L5    IDENTIFIER         "foo"
+  [ 24] L5    PAREN_OPEN         "("
+  [ 25] L5    PAREN_CLOSE        ")"
+  [ 26] L5    SEMICOLON          ";"
+  [ 27] L6    CURLY_OPEN         "{"
+  [ 28] L6    IDENTIFIER         "a"
+  [ 29] L6    CURLY_CLOSE        "}"
+30 tokens
+
+=== AST ===
+CODEBLOCK [6]
+  ARRAY_INIT [ [3]
+    NUMBER 1
+    NUMBER 2
+    NUMBER 3
+  ARRAY_INIT [ [0]
+  ARRACCESS [
+    IDENTIFIER x
+    NUMBER 0
+  CALL (
+    IDENTIFIER foo
+    EXPRLIST , [2]
+      NUMBER 1
+      NUMBER 2
+  CALL (
+    IDENTIFIER foo
+    (null)
+  MAP_INIT { [1]
+    IDENTIFIER a

@@ -1,0 +1,70 @@
+=== codegen_tests/compare.ct (97 bytes) ===
+
+=== AST ===
+CODEBLOCK [9]
+  ASSIGN =
+    VAR var
+      IDENTIFIER a
+    NUMBER 1
+  ASSIGN =
+    VAR var
+      IDENTIFIER b
+    NUMBER 2
+  VAR var
+    IDENTIFIER c
+  ASSIGN =
+    IDENTIFIER c
+    EQ ==
+      IDENTIFIER a
+      IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER c
+    NEQ !=
+      IDENTIFIER a
+      IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER c
+    GT >
+      IDENTIFIER a
+      IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER c
+    LT <
+      IDENTIFIER a
+      IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER c
+    GT_EQ >=
+      IDENTIFIER a
+      IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER c
+    LT_EQ <=
+      IDENTIFIER a
+      IDENTIFIER b
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (8 opcodes) ---
+  locals: a=R(0), b=R(2), c=R(3)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADINT    R(2), 2
+  [  2] EQ         R(3), R(0), R(2)
+  [  3] NEQ        R(3), R(0), R(2)
+  [  4] GT         R(3), R(0), R(2)
+  [  5] LT         R(3), R(0), R(2)
+  [  6] GT_EQ      R(3), R(0), R(2)
+  [  7] LT_EQ      R(3), R(0), R(2)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (8 opcodes) ---
+  locals: a=R(0), b=R(2), c=R(3)
+  [  0] LOADINT    R(0), 1
+  [  1] LOADINT    R(2), 2
+  [  2] EQ         R(3), R(0), R(2)
+  [  3] NEQ        R(3), R(0), R(2)
+  [  4] GT         R(3), R(0), R(2)
+  [  5] LT         R(3), R(0), R(2)
+  [  6] GT_EQ      R(3), R(0), R(2)
+  [  7] LT_EQ      R(3), R(0), R(2)

@@ -1,0 +1,109 @@
+=== statements.ct (115 bytes) ===
+  [  0] L1    IF                 "if"
+  [  1] L1    IDENTIFIER         "x"
+  [  2] L1    GT                 ">"
+  [  3] L1    INT                "0"
+  [  4] L1    CURLY_OPEN         "{"
+  [  5] L1    IDENTIFIER         "y"
+  [  6] L1    ASSIGNMENT         "="
+  [  7] L1    INT                "1"
+  [  8] L1    CURLY_CLOSE        "}"
+  [  9] L1    SEMICOLON          ";"
+  [ 10] L2    IF                 "if"
+  [ 11] L2    IDENTIFIER         "a"
+  [ 12] L2    EQ                 "=="
+  [ 13] L2    IDENTIFIER         "b"
+  [ 14] L2    CURLY_OPEN         "{"
+  [ 15] L2    IDENTIFIER         "x"
+  [ 16] L2    ASSIGNMENT         "="
+  [ 17] L2    INT                "1"
+  [ 18] L2    CURLY_CLOSE        "}"
+  [ 19] L2    ELSE               "else"
+  [ 20] L2    CURLY_OPEN         "{"
+  [ 21] L2    IDENTIFIER         "x"
+  [ 22] L2    ASSIGNMENT         "="
+  [ 23] L2    INT                "2"
+  [ 24] L2    CURLY_CLOSE        "}"
+  [ 25] L2    SEMICOLON          ";"
+  [ 26] L3    WHILE              "while"
+  [ 27] L3    IDENTIFIER         "i"
+  [ 28] L3    LT                 "<"
+  [ 29] L3    INT                "10"
+  [ 30] L3    CURLY_OPEN         "{"
+  [ 31] L3    IDENTIFIER         "i"
+  [ 32] L3    ASSIGNMENT         "="
+  [ 33] L3    IDENTIFIER         "i"
+  [ 34] L3    ADD                "+"
+  [ 35] L3    INT                "1"
+  [ 36] L3    CURLY_CLOSE        "}"
+  [ 37] L3    SEMICOLON          ";"
+  [ 38] L4    DO                 "do"
+  [ 39] L4    CURLY_OPEN         "{"
+  [ 40] L4    IDENTIFIER         "x"
+  [ 41] L4    ASSIGNMENT         "="
+  [ 42] L4    IDENTIFIER         "x"
+  [ 43] L4    ADD                "+"
+  [ 44] L4    INT                "1"
+  [ 45] L4    CURLY_CLOSE        "}"
+  [ 46] L4    WHILE              "while"
+  [ 47] L4    IDENTIFIER         "x"
+  [ 48] L4    LT                 "<"
+  [ 49] L4    INT                "100"
+50 tokens
+
+=== AST ===
+CODEBLOCK [4]
+  IF if
+    cond: 
+      GT >
+        IDENTIFIER x
+        NUMBER 0
+    body: 
+      CODEBLOCK [1]
+        ASSIGN =
+          IDENTIFIER y
+          NUMBER 1
+    else: (null)
+  IF if
+    cond: 
+      EQ ==
+        IDENTIFIER a
+        IDENTIFIER b
+    body: 
+      CODEBLOCK [1]
+        ASSIGN =
+          IDENTIFIER x
+          NUMBER 1
+    else: 
+      CODEBLOCK [1]
+        ASSIGN =
+          IDENTIFIER x
+          NUMBER 2
+  LOOP while
+    init: (null)
+    cond: 
+      LT <
+        IDENTIFIER i
+        NUMBER 10
+    step: (null)
+    body: 
+      CODEBLOCK [1]
+        ASSIGN =
+          IDENTIFIER i
+          ADD +
+            IDENTIFIER i
+            NUMBER 1
+  LOOP do
+    init: (null)
+    cond: 
+      LT <
+        IDENTIFIER x
+        NUMBER 100
+    step: (null)
+    body: 
+      CODEBLOCK [1]
+        ASSIGN =
+          IDENTIFIER x
+          ADD +
+            IDENTIFIER x
+            NUMBER 1

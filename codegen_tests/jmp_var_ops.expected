@@ -1,0 +1,26 @@
+=== Decoded ===
+magic=CIBC version=1 strings=1 functions=1
+
+--- strings (1) ---
+  [0] "main"
+
+--- fn[0] 'main'  args=0 regs=12 ops=19 ---
+  [  0] LOADINT     1, [0]
+  [  1] LOADINT     3, [0]
+  [  2] LOADINT     4, [0]
+  [  3] LOADINT     5, [0]
+  [  4] GT          2, 4, [0]
+  [  5] JMPF        2, 18 [+13]
+  [  6] LOADINT     7, [1]
+  [  7] LOADINT     8, [2]
+  [  8] LOADINT     9, [3]
+  [  9] LOADINT     10, [4]
+  [ 10] LOADINT     11, [5]
+  [ 11] CALL        6, [3],
+  [ 12]           ( 1, 5, 1, 7, 
+  [ 13]             8, 9, 10, 11, 
+  [ 14]             5, 0, 0, 0 )
+  [ 15] CALL        6, [2],
+  [ 16]           ( 3, 3, 1, 5, 
+  [ 17]             5, 5, 5, 0 )
+  [ 18] LOADINT     4, [1]

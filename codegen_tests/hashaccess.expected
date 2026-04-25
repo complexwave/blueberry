@@ -1,0 +1,27 @@
+=== codegen_tests/hashaccess.ct (35 bytes) ===
+
+=== AST ===
+CODEBLOCK [2]
+  ASSIGN =
+    VAR var
+      IDENTIFIER hash
+    NUMBER 1
+  HASHACCESS . [4]
+    IDENTIFIER hash
+    STRING access
+    STRING deep
+    STRING chain
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: hash=R(0)
+  [  0] LOADINT    R(0), 1
+  [  1] HASHACCESS [ T(1), R(0), S("access"), S("deep"), S("chain") ]
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: hash=R(0)
+  [  0] LOADINT    R(0), 1
+  [  1] HASHACCESS [ T(1), R(0), S("access"), S("deep"), S("chain") ]

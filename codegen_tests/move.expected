@@ -1,0 +1,28 @@
+=== codegen_tests/move.ct (19 bytes) ===
+
+=== AST ===
+CODEBLOCK [3]
+  VAR var
+    EXPRLIST [2]
+      IDENTIFIER a
+      IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER a
+    NUMBER 1
+  ASSIGN =
+    IDENTIFIER b
+    IDENTIFIER a
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: a=R(0), b=R(1)
+  [  0] LOADINT    R(0), 1
+  [  1] MOVE       R(1), R(0)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (2 opcodes) ---
+  locals: a=R(0), b=R(1)
+  [  0] LOADINT    R(0), 1
+  [  1] MOVE       R(1), R(0)

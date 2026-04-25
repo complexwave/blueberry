@@ -1,0 +1,63 @@
+=== codegen_tests/bitwise.ct (90 bytes) ===
+
+=== AST ===
+CODEBLOCK [8]
+  ASSIGN =
+    VAR var
+      IDENTIFIER a
+    NUMBER 0xff
+  ASSIGN =
+    VAR var
+      IDENTIFIER b
+    NUMBER 0xf
+  VAR var
+    IDENTIFIER c
+  ASSIGN =
+    IDENTIFIER c
+    BIN_AND &
+      IDENTIFIER a
+      IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER c
+    BIN_OR |
+      IDENTIFIER a
+      IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER c
+    BIN_XOR ^
+      IDENTIFIER a
+      IDENTIFIER b
+  ASSIGN =
+    IDENTIFIER c
+    BIN_LSHIFT <<
+      IDENTIFIER a
+      NUMBER 2
+  ASSIGN =
+    IDENTIFIER c
+    BIN_RSHIFT >>
+      IDENTIFIER a
+      NUMBER 4
+
+=== Pre-encode (1 functions) ===
+
+--- [0] main (7 opcodes) ---
+  locals: a=R(0), b=R(2), c=R(3)
+  [  0] LOADINT    R(0), 255
+  [  1] LOADINT    R(2), 15
+  [  2] BIN_AND    R(3), R(0), R(2)
+  [  3] BIN_OR     R(3), R(0), R(2)
+  [  4] BIN_XOR    R(3), R(0), R(2)
+  [  5] BIN_LSHIFT R(3), R(0), I(2)
+  [  6] BIN_RSHIFT R(3), R(0), I(4)
+
+=== Bytecode (1 functions) ===
+
+--- [0] main (7 opcodes) ---
+  locals: a=R(0), b=R(2), c=R(3)
+  [  0] LOADINT    R(0), 255
+  [  1] LOADINT    R(2), 15
+  [  2] BIN_AND    R(3), R(0), R(2)
+  [  3] BIN_OR     R(3), R(0), R(2)
+  [  4] BIN_XOR    R(3), R(0), R(2)
+  [  5] BIN_LSHIFT R(3), R(0), 2
+  [  6] BIN_RSHIFT R(3), R(0), 4
