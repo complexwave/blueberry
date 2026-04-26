@@ -95,7 +95,7 @@ struct bb_frame {
 
 #define CI_BB_VM        ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 0) | CI_OBJECT | CI_REFCOUNTABLE))  /* 0x0005 */
 #define CI_BB_CORO      ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 1) | CI_OBJECT | CI_REFCOUNTABLE))  /* 0x000D */
-#define CI_BB_CLOSURE   ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 2) | CI_OBJECT))                    /* 0x0015 */
+#define CI_BB_CLOSURE   ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 2) | CI_OBJECT | CI_REFCOUNTABLE))  /* 0x0015 */
 #define CI_BB_FFISTRUCT ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 3) | CI_OBJECT))                    /* 0x001D */
 
 #define CI_IS_VM_FAMILY(ptr)  CI_CHECK_MASK_FAMILY(ptr, CI_VM_FAMILY | CI_OBJECT, CI_VM_FAMILY)
@@ -239,6 +239,11 @@ static ci_ptr bb_vm_istring(bb_vm *vm, const char *s, uint32_t len) {
 	ci_nocnt(tmp);
 	return tmp;
 }
+
+
+// calude: refactor this to
+// *bb_vm_native_function(vm, name, cfn, flags)
+// annd then those 2 variants are static inline calls to it
 
 static bb_closure *bb_vm_native(bb_vm *vm, const char *name, bb_cfn cfn) {
 	bb_function *fn = b_malloc(sizeof(bb_function));
@@ -396,7 +401,7 @@ static bb_coro *bb_coro_new(bb_vm *vm, bb_function *fn) {
 	c->flags = 0;
 	c->pc    = 0;
 
-	c->stack = ci_arr_new(256);
+	c->stack = ci_arr_new(256*3);
 
 	c->fstack_cap = 32;
 	c->fstack_pos = 0;
@@ -414,70 +419,8 @@ static bb_coro *bb_coro_new(bb_vm *vm, bb_function *fn) {
 #include "blueberry_vm/proto_array.c"
 #include "blueberry_vm/proto_string.c"
 #include "blueberry_vm/opcodes.c"
-#include "blueberry_vm/advanced_opcodes.c"
 
 
-/* ================================================================
- *  Dispatch tables
- * ================================================================ */
-
-static bb_op_fn   bb_rrr_ops[B_OP_COUNT];
-static bb_ri16_fn bb_ri16_ops[B_OP_COUNT];
-static bb_var_fn  bb_var_ops[B_OP_COUNT];
-
-static void bb_tables_init(void) {
-	memset(bb_rrr_ops,  0, sizeof(bb_rrr_ops));
-	memset(bb_ri16_ops, 0, sizeof(bb_ri16_ops));
-	memset(bb_var_ops,  0, sizeof(bb_var_ops));
-
-	/* rrr: opcodes.c */
-	bb_rrr_ops[B_ADD]        = bb_op_add;
-	bb_rrr_ops[B_SUB]        = bb_op_sub;
-	bb_rrr_ops[B_MUL]        = bb_op_mul;
-	bb_rrr_ops[B_DIV]        = bb_op_div;
-	bb_rrr_ops[B_MOD]        = bb_op_mod;
-	bb_rrr_ops[B_POW]        = bb_op_pow;
-	bb_rrr_ops[B_NEG]        = bb_op_neg;
-	bb_rrr_ops[B_NOT]        = bb_op_not;
-	bb_rrr_ops[B_BIN_INV]    = bb_op_bin_inv;
-	bb_rrr_ops[B_BIN_OR]     = bb_op_bin_or;
-	bb_rrr_ops[B_BIN_AND]    = bb_op_bin_and;
-	bb_rrr_ops[B_BIN_XOR]    = bb_op_bin_xor;
-	bb_rrr_ops[B_BIN_LSHIFT] = bb_op_bin_lshift;
-	bb_rrr_ops[B_BIN_RSHIFT] = bb_op_bin_rshift;
-	bb_rrr_ops[B_EQ]         = bb_op_eq;
-	bb_rrr_ops[B_NEQ]        = bb_op_neq;
-	bb_rrr_ops[B_GT]         = bb_op_gt;
-	bb_rrr_ops[B_LT]         = bb_op_lt;
-	bb_rrr_ops[B_GT_EQ]      = bb_op_gt_eq;
-	bb_rrr_ops[B_LT_EQ]      = bb_op_lt_eq;
-	bb_rrr_ops[B_NOTNULL]    = bb_op_notnull;
-
-	/* rrr: advanced_opcodes.c */
-	bb_rrr_ops[B_MOVE]       = bb_op_move;
-	bb_rrr_ops[B_HASHACCESS] = bb_op_hashaccess_rrr;
-	bb_rrr_ops[B_MAPACCESS]  = bb_op_mapaccess;
-	bb_rrr_ops[B_ARRACCESS]  = bb_op_arraccess;
-	bb_rrr_ops[B_METHODBIND] = bb_op_methodbind;
-	bb_rrr_ops[B_LOADTRUE]   = bb_op_loadtrue;
-	bb_rrr_ops[B_LOADFALSE]  = bb_op_loadfalse;
-
-	/* ri16 */
-	bb_ri16_ops[B_LOADINT]   = bb_op_loadint_ri16;
-	bb_ri16_ops[B_LOADSTR]   = bb_op_loadstr_ri16;
-	bb_ri16_ops[B_LOADFN]    = bb_op_loadfn_ri16;
-	bb_ri16_ops[B_JMP]       = bb_op_jmp_ri16;
-	bb_ri16_ops[B_JMPF]      = bb_op_jmpf_ri16;
-	bb_ri16_ops[B_JMPT]      = bb_op_jmpt_ri16;
-
-	/* var */
-	bb_var_ops[B_NEWMAP]      = bb_op_newmap_var;
-	bb_var_ops[B_NEWARRAY]    = bb_op_newarray_var;
-	bb_var_ops[B_HASHACCESS]  = bb_op_hashaccess_var;
-	bb_var_ops[B_LOADNULL]    = bb_op_loadnull_var;
-	bb_var_ops[B_RETURN]      = bb_op_return_var;
-	bb_var_ops[B_CALL]        = bb_op_call_var;
-}
 
 
 
@@ -507,6 +450,8 @@ struct bb_cached_op {
 	vm_dipatch_arg c;
 };
 
+#include "blueberry_vm/advanced_opcodes.c"
+
 /*
  * ctx layout (b0 stripped — fnptr already knows the op):
  *   RRR:  [d:8][a:8][b:8][0:8]
@@ -528,8 +473,8 @@ struct bb_cached_op {
 
 
 #define BB_ST_RRR  (0 << 6)
-#define BB_ST_RRI8 (1 << 6)
-#define BB_ST_RI16 (2 << 6)
+#define BB_ST_RRI  (1 << 6)
+#define BB_ST_RRS  (2 << 6)
 #define BB_ST_VAR  (3 << 6)
 
 #define VM_FAST_RRR(label, impl) \
@@ -543,54 +488,78 @@ VM_OP static void __vmop_##label##_rrr(bb_coro *c, vm_dipatch_arg a, vm_dipatch_
 	BB_DISPATCH_NEXT(c);\
 }
 
-#define VM_FAST_RI(label, impl) \
-VM_OP static void __vmop_##label##_ri(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) { \
+#define VM_FAST_RRI(label, impl) \
+VM_OP static void __vmop_##label##_rri(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) { \
 	VM_OP_ACCESS_STACK; \
 	ci_ptr arg_b = VM_OP_STACK(b); \
-	ci_ptr arg_imm = CI_PACKINT(_c); \
+	ci_ptr arg_imm = CI_PACKINT((int32_t)_c); \
 	ci_ptr r = impl(c, arg_b, arg_imm); \
 	ci_inc(r); \
 	VM_OP_SET_STACK(a, r); \
 	BB_DISPATCH_NEXT(c);\
 }
 
-VM_FAST_RRR(add, bb_op_add)       VM_FAST_RI(add, bb_op_add)
-VM_FAST_RRR(sub, bb_op_sub)       VM_FAST_RI(sub, bb_op_sub)
-VM_FAST_RRR(mul, bb_op_mul)       VM_FAST_RI(mul, bb_op_mul)
-VM_FAST_RRR(div, bb_op_div)       VM_FAST_RI(div, bb_op_div)
-VM_FAST_RRR(mod, bb_op_mod)       VM_FAST_RI(mod, bb_op_mod)
-VM_FAST_RRR(pow, bb_op_pow)       VM_FAST_RI(pow, bb_op_pow)
+#define VM_FAST_RRS(label, impl) \
+VM_OP static void __vmop_##label##_rrs(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) { \
+	VM_OP_ACCESS_STACK; \
+	ci_ptr arg_b = VM_OP_STACK(b); \
+	bb_function *fn = c->fstack[c->fstack_pos - 1].function; \
+	ci_ptr arg_key = fn->unit->str2intern[_c]; \
+	ci_ptr r = impl(c, arg_b, arg_key); \
+	ci_inc(r); \
+	VM_OP_SET_STACK(a, r); \
+	BB_DISPATCH_NEXT(c);\
+}
+
+#define VM_FAST_VAR(label, impl) \
+VM_OP static void __vmop_##label##_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) { \
+	impl(c, a, b, (uint8_t *)_c); \
+	BB_DISPATCH_NEXT(c);\
+}
+
+VM_FAST_RRR(add, bb_op_add)       VM_FAST_RRI(add, bb_op_add)
+VM_FAST_RRR(sub, bb_op_sub)       VM_FAST_RRI(sub, bb_op_sub)
+VM_FAST_RRR(mul, bb_op_mul)       VM_FAST_RRI(mul, bb_op_mul)
+VM_FAST_RRR(div, bb_op_div)       VM_FAST_RRI(div, bb_op_div)
+VM_FAST_RRR(mod, bb_op_mod)       VM_FAST_RRI(mod, bb_op_mod)
+VM_FAST_RRR(pow, bb_op_pow)       VM_FAST_RRI(pow, bb_op_pow)
 VM_FAST_RRR(neg, bb_op_neg)
 VM_FAST_RRR(op_not, bb_op_not)
 VM_FAST_RRR(bin_inv, bb_op_bin_inv)
-VM_FAST_RRR(bin_or, bb_op_bin_or)       VM_FAST_RI(bin_or, bb_op_bin_or)
-VM_FAST_RRR(bin_and, bb_op_bin_and)     VM_FAST_RI(bin_and, bb_op_bin_and)
-VM_FAST_RRR(bin_xor, bb_op_bin_xor)     VM_FAST_RI(bin_xor, bb_op_bin_xor)
-VM_FAST_RRR(bin_lshift, bb_op_bin_lshift) VM_FAST_RI(bin_lshift, bb_op_bin_lshift)
-VM_FAST_RRR(bin_rshift, bb_op_bin_rshift) VM_FAST_RI(bin_rshift, bb_op_bin_rshift)
-VM_FAST_RRR(eq, bb_op_eq)         VM_FAST_RI(eq, bb_op_eq)
-VM_FAST_RRR(neq, bb_op_neq)       VM_FAST_RI(neq, bb_op_neq)
-VM_FAST_RRR(gt, bb_op_gt)         VM_FAST_RI(gt, bb_op_gt)
-VM_FAST_RRR(lt, bb_op_lt)         VM_FAST_RI(lt, bb_op_lt)
-VM_FAST_RRR(gt_eq, bb_op_gt_eq)   VM_FAST_RI(gt_eq, bb_op_gt_eq)
-VM_FAST_RRR(lt_eq, bb_op_lt_eq)   VM_FAST_RI(lt_eq, bb_op_lt_eq)
+VM_FAST_RRR(bin_or, bb_op_bin_or)       VM_FAST_RRI(bin_or, bb_op_bin_or)
+VM_FAST_RRR(bin_and, bb_op_bin_and)     VM_FAST_RRI(bin_and, bb_op_bin_and)
+VM_FAST_RRR(bin_xor, bb_op_bin_xor)     VM_FAST_RRI(bin_xor, bb_op_bin_xor)
+VM_FAST_RRR(bin_lshift, bb_op_bin_lshift) VM_FAST_RRI(bin_lshift, bb_op_bin_lshift)
+VM_FAST_RRR(bin_rshift, bb_op_bin_rshift) VM_FAST_RRI(bin_rshift, bb_op_bin_rshift)
+VM_FAST_RRR(eq, bb_op_eq)         VM_FAST_RRI(eq, bb_op_eq)
+VM_FAST_RRR(neq, bb_op_neq)       VM_FAST_RRI(neq, bb_op_neq)
+VM_FAST_RRR(gt, bb_op_gt)         VM_FAST_RRI(gt, bb_op_gt)
+VM_FAST_RRR(lt, bb_op_lt)         VM_FAST_RRI(lt, bb_op_lt)
+VM_FAST_RRR(gt_eq, bb_op_gt_eq)   VM_FAST_RRI(gt_eq, bb_op_gt_eq)
+VM_FAST_RRR(lt_eq, bb_op_lt_eq)   VM_FAST_RRI(lt_eq, bb_op_lt_eq)
 VM_FAST_RRR(notnull, bb_op_notnull)
 VM_FAST_RRR(move, bb_op_move)
-VM_FAST_RRR(hashaccess, bb_op_hashaccess_rrr)
+VM_FAST_RRR(hashaccess, bb_op_hashaccess_rrr)  VM_FAST_RRS(hashaccess, bb_op_hashaccess_rrr)
 VM_FAST_RRR(mapaccess, bb_op_mapaccess)
 VM_FAST_RRR(arraccess, bb_op_arraccess)
 VM_FAST_RRR(methodbind, bb_op_methodbind)
 VM_FAST_RRR(loadtrue, bb_op_loadtrue)
 VM_FAST_RRR(loadfalse, bb_op_loadfalse)
 
-/* --- RI16 wrappers --- */
+/* --- VAR ops --- */
+VM_FAST_VAR(newmap,     bb_op_newmap_var)
+VM_FAST_VAR(newarray,   bb_op_newarray_var)
+VM_FAST_VAR(hashaccess, bb_op_hashaccess_var)
+VM_FAST_VAR(loadnull,   bb_op_loadnull_var)
+VM_FAST_VAR(vmreturn,   bb_op_return_var)
+VM_FAST_VAR(call,       bb_op_call_var)
 
-/* RI16-only ops: ctx = [d:8][d:8][imm16:16] (a slot duplicates d) */
+/* --- RRI-only ops (no src reg, just dst + imm32) --- */
 
 VM_OP static void __vmop_loadint(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	(void)b;
 	VM_OP_ACCESS_STACK;
-	VM_OP_SET_STACK(a, CI_PACKINT((int16_t)_c));
+	VM_OP_SET_STACK(a, CI_PACKINT((int32_t)_c));
 
 	BB_DISPATCH_NEXT(c);
 }
@@ -657,6 +626,15 @@ VM_OP static void __vmop_hashstore(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg 
 	BB_DISPATCH_NEXT(c);
 }
 
+VM_OP static void __vmop_hashstore_rrs(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
+	VM_OP_ACCESS_STACK;
+	bb_function *fn = c->fstack[c->fstack_pos - 1].function;
+	ci_ptr key = fn->unit->str2intern[_c];
+	bb_op_hashstore(c->vm, VM_OP_STACK(a), key, VM_OP_STACK(b));
+
+	BB_DISPATCH_NEXT(c);
+}
+
 VM_OP static void __vmop_nop(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	(void)a; (void)b; (void)_c;
 
@@ -676,105 +654,128 @@ static bb_fast_fn bb_fast_table[256];
 static void bb_fast_table_init(void) {
 	memset(bb_fast_table, 0, sizeof(bb_fast_table));
 
-	#define FT_RRR(op, label) bb_fast_table[BB_ST_RRR  | (op)] = __vmop_##label##_rrr
-	#define FT_RI(op, label)  bb_fast_table[BB_ST_RRI8 | (op)] = __vmop_##label##_ri; \
-	                          bb_fast_table[BB_ST_RI16 | (op)] = __vmop_##label##_ri
-	#define FT_RI16(op, label) bb_fast_table[BB_ST_RI16 | (op)] = __vmop_##label
+	#define FT_RRR(op, label) bb_fast_table[BB_ST_RRR | (op)] = __vmop_##label##_rrr
+	#define FT_RRI(op, label) bb_fast_table[BB_ST_RRI | (op)] = __vmop_##label##_rri
+	#define FT_RRS(op, label) bb_fast_table[BB_ST_RRS | (op)] = __vmop_##label##_rrs
+	#define FT_RRI_ONLY(op, label) bb_fast_table[BB_ST_RRI | (op)] = __vmop_##label
+	#define FT_VAR(op, label) bb_fast_table[BB_ST_VAR | (op)] = __vmop_##label##_var
 
-	FT_RRR(B_ADD, add);       FT_RI(B_ADD, add);
-	FT_RRR(B_SUB, sub);       FT_RI(B_SUB, sub);
-	FT_RRR(B_MUL, mul);       FT_RI(B_MUL, mul);
-	FT_RRR(B_DIV, div);       FT_RI(B_DIV, div);
-	FT_RRR(B_MOD, mod);       FT_RI(B_MOD, mod);
-	FT_RRR(B_POW, pow);       FT_RI(B_POW, pow);
+	FT_RRR(B_ADD, add);       FT_RRI(B_ADD, add);
+	FT_RRR(B_SUB, sub);       FT_RRI(B_SUB, sub);
+	FT_RRR(B_MUL, mul);       FT_RRI(B_MUL, mul);
+	FT_RRR(B_DIV, div);       FT_RRI(B_DIV, div);
+	FT_RRR(B_MOD, mod);       FT_RRI(B_MOD, mod);
+	FT_RRR(B_POW, pow);       FT_RRI(B_POW, pow);
 	FT_RRR(B_NEG, neg);
 	FT_RRR(B_NOT, op_not);
 	FT_RRR(B_BIN_INV, bin_inv);
-	FT_RRR(B_BIN_OR, bin_or);       FT_RI(B_BIN_OR, bin_or);
-	FT_RRR(B_BIN_AND, bin_and);     FT_RI(B_BIN_AND, bin_and);
-	FT_RRR(B_BIN_XOR, bin_xor);     FT_RI(B_BIN_XOR, bin_xor);
-	FT_RRR(B_BIN_LSHIFT, bin_lshift); FT_RI(B_BIN_LSHIFT, bin_lshift);
-	FT_RRR(B_BIN_RSHIFT, bin_rshift); FT_RI(B_BIN_RSHIFT, bin_rshift);
-	FT_RRR(B_EQ, eq);         FT_RI(B_EQ, eq);
-	FT_RRR(B_NEQ, neq);       FT_RI(B_NEQ, neq);
-	FT_RRR(B_GT, gt);         FT_RI(B_GT, gt);
-	FT_RRR(B_LT, lt);         FT_RI(B_LT, lt);
-	FT_RRR(B_GT_EQ, gt_eq);   FT_RI(B_GT_EQ, gt_eq);
-	FT_RRR(B_LT_EQ, lt_eq);  FT_RI(B_LT_EQ, lt_eq);
+	FT_RRR(B_BIN_OR, bin_or);       FT_RRI(B_BIN_OR, bin_or);
+	FT_RRR(B_BIN_AND, bin_and);     FT_RRI(B_BIN_AND, bin_and);
+	FT_RRR(B_BIN_XOR, bin_xor);     FT_RRI(B_BIN_XOR, bin_xor);
+	FT_RRR(B_BIN_LSHIFT, bin_lshift); FT_RRI(B_BIN_LSHIFT, bin_lshift);
+	FT_RRR(B_BIN_RSHIFT, bin_rshift); FT_RRI(B_BIN_RSHIFT, bin_rshift);
+	FT_RRR(B_EQ, eq);         FT_RRI(B_EQ, eq);
+	FT_RRR(B_NEQ, neq);       FT_RRI(B_NEQ, neq);
+	FT_RRR(B_GT, gt);         FT_RRI(B_GT, gt);
+	FT_RRR(B_LT, lt);         FT_RRI(B_LT, lt);
+	FT_RRR(B_GT_EQ, gt_eq);   FT_RRI(B_GT_EQ, gt_eq);
+	FT_RRR(B_LT_EQ, lt_eq);   FT_RRI(B_LT_EQ, lt_eq);
 	FT_RRR(B_NOTNULL, notnull);
 	FT_RRR(B_MOVE, move);
-	FT_RRR(B_HASHACCESS, hashaccess);
+	FT_RRR(B_HASHACCESS, hashaccess);  FT_RRS(B_HASHACCESS, hashaccess);
 	FT_RRR(B_MAPACCESS, mapaccess);
 	FT_RRR(B_ARRACCESS, arraccess);
 	FT_RRR(B_METHODBIND, methodbind);
 	FT_RRR(B_LOADTRUE, loadtrue);
 	FT_RRR(B_LOADFALSE, loadfalse);
 
-	FT_RI16(B_LOADINT, loadint);
-	FT_RI16(B_LOADSTR, loadstr);
-	FT_RI16(B_LOADFN, loadfn);
-	FT_RI16(B_JMP, jmp);
-	FT_RI16(B_JMPF, jmpf);
-	FT_RI16(B_JMPT, jmpt);
+	FT_RRI_ONLY(B_LOADINT, loadint);
+	FT_RRI_ONLY(B_LOADSTR, loadstr);
+	FT_RRI_ONLY(B_LOADFN, loadfn);
+	FT_RRI_ONLY(B_JMP, jmp);
+	FT_RRI_ONLY(B_JMPF, jmpf);
+	FT_RRI_ONLY(B_JMPT, jmpt);
 
-	bb_fast_table[BB_ST_RRR  | B_ARRAYSTORE] = __vmop_arraystore;
-	bb_fast_table[BB_ST_RRI8 | B_ARRAYSTORE] = __vmop_arraystore;
-	bb_fast_table[BB_ST_RRR  | B_HASHSTORE]  = __vmop_hashstore;
-	bb_fast_table[BB_ST_RRI8 | B_HASHSTORE]  = __vmop_hashstore;
+	bb_fast_table[BB_ST_RRR | B_ARRAYSTORE] = __vmop_arraystore;
+	bb_fast_table[BB_ST_RRI | B_ARRAYSTORE] = __vmop_arraystore;
+	bb_fast_table[BB_ST_RRR | B_HASHSTORE]  = __vmop_hashstore;
+	bb_fast_table[BB_ST_RRI | B_HASHSTORE]  = __vmop_hashstore;
+	bb_fast_table[BB_ST_RRS | B_HASHSTORE]  = __vmop_hashstore_rrs;
+
+	FT_VAR(B_NEWMAP,      newmap);
+	FT_VAR(B_NEWARRAY,    newarray);
+	FT_VAR(B_HASHACCESS,  hashaccess);
+	FT_VAR(B_LOADNULL,    loadnull);
+	FT_VAR(B_RETURN,      vmreturn);
+	FT_VAR(B_CALL,        call);
 
 	#undef FT_RRR
-	#undef FT_RI
-	#undef FT_RI16
+	#undef FT_RRI
+	#undef FT_RRS
+	#undef FT_RRI_ONLY
+	#undef FT_VAR
 }
 
 /* --- build cached ops from bytecode --- */
 
 static bb_cached_op *bb_build_cached(bb_function *fn) {
-	uint32_t n = fn->code_length;
-	bb_cached_op *ops = b_malloc((n + 1) * sizeof(bb_cached_op));
+	/* one cached_op per instruction; instructions are at least 8 bytes */
+	uint32_t max_wc = fn->code_length / 8 + 1;
+	bb_cached_op *ops = b_malloc((max_wc + 1) * sizeof(bb_cached_op));
 
-	for (uint32_t i = 0; i < n; i++) {
-		uint32_t off = i * 4;
-		uint8_t b0 = fn->code[off];
-		uint8_t b1 = fn->code[off + 1];
-		uint8_t b2 = fn->code[off + 2];
-		uint8_t b3 = fn->code[off + 3];
-		uint8_t subtype = b0 >> 6;
+	uint32_t bi = 0;   /* byte cursor into fn->code */
+	uint32_t wi = 0;   /* word index into ops[]     */
 
-		bb_fast_fn f = bb_fast_table[b0];
-		ops[i].fn = f ? f : __vmop_nop;
+	while (bi < fn->code_length) {
+		uint8_t  b0      = fn->code[bi];
+		uint8_t  b1      = fn->code[bi + 1];
+		uint8_t  b2      = fn->code[bi + 2];
+		uint8_t  b3      = fn->code[bi + 3];
+		uint32_t imm     = (uint32_t)fn->code[bi+4]
+		                 | ((uint32_t)fn->code[bi+5] << 8)
+		                 | ((uint32_t)fn->code[bi+6] << 16)
+		                 | ((uint32_t)fn->code[bi+7] << 24);
+		uint8_t  subtype = b0 >> 6;
+
+		bb_fast_fn f  = bb_fast_table[b0];
+		if(!f){
+			bb_error("error endoing opcode - fn not found");
+		}
+		ops[wi].fn    = f ? f : __vmop_nop;
 
 		switch (subtype) {
-		case 0: /* RRR: a=dst, b=src1, c=src2 */
-			ops[i].a = b1;
-			ops[i].b = b2;
-			ops[i].c = b3;
+		case 0: /* RRR: a=r1, b=r2, c=r3 */
+			ops[wi].a = b1;
+			ops[wi].b = b2;
+			ops[wi].c = b3;
+			bi += 8; wi++;
 			break;
-		case 1: /* RRI8: a=dst, b=src, c=imm8 */
-			ops[i].a = b1;
-			ops[i].b = b2;
-			ops[i].c = b3;
+		case 1: /* RRI: a=r1, b=r2, c=imm32 */
+			ops[wi].a = b1;
+			ops[wi].b = b2;
+			ops[wi].c = imm;
+			bi += 8; wi++;
 			break;
-		case 2: /* RI16: a=dst, b=dst, c=imm16 */
-			ops[i].a = b1;
-			ops[i].b = b1;
-			ops[i].c = (size_t)b2 | ((size_t)b3 << 8);
+		case 2: /* RRS: a=r1, b=r2, c=sid (imm) */
+			ops[wi].a = b1;
+			ops[wi].b = b2;
+			ops[wi].c = imm;
+			bi += 8; wi++;
 			break;
-		case 3: /* VAR: nop for now, pad extra words */
-			ops[i].a = 0;
-			ops[i].b = 0;
-			ops[i].c = 0;
-			for (uint8_t j = 0; j < b2; j++) {
-				i++;
-				ops[i].fn = __vmop_nop;
-				ops[i].a = ops[i].b = ops[i].c = 0;
-			}
+		case 3: { /* VAR: a=r1, b=r2, c=ptr to payload (first word after header) */
+			uint8_t nwords = b3;
+			ops[wi].a = b1;
+			ops[wi].b = b2;
+			ops[wi].c = (vm_dipatch_arg)(fn->code + bi + 8);
+			bi += 8 + nwords * 4;
+			wi++;
 			break;
+		}
 		}
 	}
 
-	ops[n].fn = __vmop_exit;
-	ops[n].a = ops[n].b = ops[n].c = 0;
+	ops[wi].fn = __vmop_exit;
+	ops[wi].a = ops[wi].b = ops[wi].c = 0;
 	return ops;
 }
 	
@@ -796,10 +797,9 @@ static void bb_vm_execute(bb_coro *c) {
 	c->ops_base = ops;
 	c->ops_pc   = ops;
 
-	while (1) {
-		bb_cached_op *op = c->ops_pc++;
-		op->fn(c, op->a, op->b, op->c);
-	}
+	bb_cached_op *op = c->ops_pc++;
+	
+	op->fn(c, op->a, op->b, op->c);
 }
 
 static void bb_coro_resume(bb_coro *c) {
@@ -844,7 +844,6 @@ int main(int argc, char **argv) {
 	ci_arr_register();
 	ci_map_register();
 	bb_vm_types_register();
-	bb_tables_init();
 	bb_fast_table_init();
 
 	for (int i = file_start; i < argc; i++) {

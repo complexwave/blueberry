@@ -34,9 +34,10 @@ static uint8_t *bb_compile_ci_file(const char *ci_path, uint32_t *out_len) {
 	/* binary encode */
 	bc_buf *binary = be_encode_unit(unit);
 
-	uint8_t *result = b_malloc(binary->len);
-	memcpy(result, binary->data, binary->len);
-	*out_len = binary->len;
+	uint32_t blen = bc_buf_len(binary);
+	uint8_t *result = b_malloc(blen);
+	memcpy(result, bc_buf_data(binary), blen);
+	*out_len = blen;
 
 	/* cleanup */
 	ast_node_free(block);

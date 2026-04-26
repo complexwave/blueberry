@@ -1,138 +1,163 @@
 /*
-* encoder.c — Citrin binary bytecode encoder + decoder
+* encoder.c — Citrin bytecode encoder v2 + decoder
 *
-* Build:
-*   make encoder
+* New wire format (version 2):
 *
-* Usage:
-*   ./encoder [-d] <source-file>...
+*   Every instruction is 8 bytes:
+*     [op:u8] [r1:u8] [r2:u8] [r3:u8] [imm:i32-LE]
 *
-* Writes <source-file>.cbc and dumps a decoded listing for verification.
+*   Top 2 bits of op byte = subtype:
+*     00  RRR  r1,r2,r3 are register numbers; imm = 0
+*     01  RRI  r1,r2,r3 are register numbers; imm = signed integer
+*     10  RRS  r1,r2,r3 are register numbers; imm = string table id (u32)
+*     11  VAR  r1,r2 as noted per-op; r3 = payload word count;
+*              imm = per-op; followed by r3*4 bytes of payload
 *
-* File format:
-*   "CIBC"              4 B  magic
-*   version             u16  = 1
-*   string_count        u16
-*   function_count      u16
-*   --- string table ---
-*   [len u16][bytes]  × string_count          (no null terminator)
-*   --- functions ---
-*   [name_idx u16][arg_count u8][reg_count u8]
-*   [local_count u16]                          (0 for now — placeholder)
-*   [op_count u16]
-*   [...binary opcodes...]
+*   Register byte conventions (common):
+*     r1 = dst
+*     r2 = src1 / obj / fn
+*     r3 = src2 / key / nwords (VAR)
 *
-* Opcode wire format — first byte: [subtype:2][opnum:6]
+*   Jump targets are absolute word indices (4-byte words) stored in imm (i32).
+*   r1 = cond reg for JMPF/JMPT (0 = unused for JMP).
 *
-*   subtype 00  RRR / R / R0   [op][dst][src1][src2]   4 B, unused bytes = 0
-*   subtype 01  RRU8           [op][dst][src1][imm8]   4 B
-*   subtype 10  RU16           [op][dst][imm_lo][imm_hi] 4 B (LE)
-*   subtype 11  VAR            [op][b1][extra_words][0]
-*                              + extra_words × 4 B payload
+*   VAR payload layouts:
 *
-* JMP  → subtype 10: dst=0,       imm=target opcode index
-* JMPF → subtype 10: dst=cond_reg, imm=target opcode index
-* JMPT → subtype 10: dst=cond_reg, imm=target opcode index
+*     CALL    r1=nargs r2=nrets r3=nwords  imm=fn_reg
+*             payload: [self:u8][a0:u8]...[r0:u8]...  (padded to 4-byte words)
 *
-* RETURN / LOADNULL use the reglist encoding (be_emit_reglist):
-*   count  subtype  bytes
-*     0      00     [00|op][0][0][0]
-*     1      10     [10|op][r0][0][0]         imm=0 ignored
-*     2      01     [01|op][r0][r1][0]        imm8=0 ignored
-*     3      00     [00|op][r0][r1][r2]
-*    >3      11     [11|op][count][extra][0] + regs padded to words
+*     RETURN  r1=nrets r2=0 r3=nwords
+*             payload: [r0:u8][r1:u8]...
 *
-*   R(0) is the "no value" sentinel for RETURN slots.
-*   self will be made read-only in codegen so it never appears as a return.
+*     LOADNULL r1=nregs r2=0 r3=nwords
+*             payload: [d0:u8][d1:u8]...
 *
-* CALL → subtype 11:
-*   word 0:   [11|CALL][fn_reg][extra_words][self]
-*   payload:  [nargs][nrets][arg0][arg1]...[ret0][ret1]... (padded)
+*     NEWARRAY r1=dst r2=nelem r3=nwords
+*             payload: [e0:u8][e1:u8]...
 *
-* LOADINT → subtype 10 for i16 (current codegen limit).
-*   TODO: subtype 11 with extra_words=1 for i32, extra_words=2 for i64.
+*     NEWMAP  r1=dst r2=npairs r3=nwords
+*             payload: per pair: [type:u8][val:u8][key_lo:u8][key_hi:u8]
+*               type 0 = key is strid (u16 in key_lo/key_hi)
+*               type 1 = key is register (key_lo = reg, key_hi = 0)
+*
+*     HASHACCESS r1=dst r2=src r3=nwords
+*             payload: [strid_lo:u8][strid_hi:u8] per key, padded to 4-byte words
+*             nwords = ceil(nkeys / 2)
+*
+*   File format:
+*     "CIBC"           4 B  magic
+*     version          u16  = 2
+*     string_count     u16
+*     function_count   u16
+*     --- string table ---
+*     [len:u16][bytes]  x string_count   (no null terminator)
+*     --- functions ---
+*     [name_idx:u16][arg_count:u8][reg_count:u8]
+*     [local_count:u16]
+*     [code_bytes:u32]
+*     [...binary instructions, each 8 bytes...]
 */
 
 #define BYTECODE_NO_MAIN
 #include "bytecode.c"
 
 /* ================================================================
-*  Output buffer
-* ================================================================ */
+ *  Output buffer  (backed by ci_str internally)
+ * ================================================================ */
 
 typedef struct {
-	uint8_t  *data;
-	uint32_t  len;
-	uint32_t  cap;
+	ci_str *s;
 } bc_buf;
 
 static bc_buf *bc_buf_new(void) {
 	bc_buf *b = b_malloc(sizeof(bc_buf));
-	b->data = b_malloc(64);
-	b->len  = 0;
-	b->cap  = 64;
+	b->s = ci_str_new(256);
 	return b;
 }
 
-static void bc_buf_grow(bc_buf *b, uint32_t need) {
-	if (b->len + need <= b->cap) return;
-	while (b->cap < b->len + need) b->cap *= 2;
-	b->data = realloc(b->data, b->cap);
-	if (!b->data) { fprintf(stderr, "out of memory\n"); exit(1); }
+static void bc_buf_free(bc_buf *b) {
+	ci_free(b->s);
+	free(b);
+}
+
+static uint8_t *bc_buf_data(bc_buf *b) {
+	return ci_str_head(b->s);
+}
+
+static uint32_t bc_buf_len(bc_buf *b) {
+	return (uint32_t)ci_str_len(b->s);
 }
 
 static void bc_buf_u8(bc_buf *b, uint8_t v) {
-	bc_buf_grow(b, 1);
-	b->data[b->len++] = v;
+	ci_str_append(b->s, &v, 1);
 }
 
 static void bc_buf_u16(bc_buf *b, uint16_t v) {
-	bc_buf_grow(b, 2);
-	b->data[b->len++] = (uint8_t)v;
-	b->data[b->len++] = (uint8_t)(v >> 8);
+	uint8_t tmp[2] = { (uint8_t)v, (uint8_t)(v >> 8) };
+	ci_str_append(b->s, tmp, 2);
 }
 
-/* --- Wire subtype prefixes (upper 2 bits of first byte) --- */
-#define BC_SUB_RRR   (0u << 6)   /* 00: dst, src1, src2 */
-#define BC_SUB_RRU8  (1u << 6)   /* 01: dst, src1, imm8 */
-#define BC_SUB_RU16  (2u << 6)   /* 10: dst, imm16      */
-#define BC_SUB_VAR   (3u << 6)   /* 11: variable-length  */
-
-/* --- VAR encoding helpers ---
- * VAR opcodes: w0 = [BC_SUB_VAR | opnum][b1][extra_words][b3]
- * followed by extra_words × 4 bytes of payload, padded to 4-byte boundary.
- */
-
-/* ceil(n / 4) — payload bytes → extra 32-bit words needed */
-#define BC_CEIL4(n) (((n) + 3u) / 4u)
-
-/* wire size of an interned string ID (u16) */
-#define BC_STRID_SIZE 2
-
-/* emit the 4-byte VAR header: [0xC0|op][b1][extra][b3] */
-static void bc_buf_var_header(bc_buf *out, uint8_t op, uint8_t b1, uint8_t extra, uint8_t b3) {
-	bc_buf_u8(out, BC_SUB_VAR | op);
-	bc_buf_u8(out, b1);
-	bc_buf_u8(out, extra);
-	bc_buf_u8(out, b3);
-}
-
-/* pad output to next 4-byte boundary relative to pbytes actually written */
-static void bc_buf_pad4(bc_buf *out, uint32_t extra_words, uint32_t pbytes) {
-	uint32_t total = extra_words * 4;
-	for (uint32_t i = pbytes; i < total; i++)
-		bc_buf_u8(out, 0);
+static void bc_buf_u32(bc_buf *b, uint32_t v) {
+	uint8_t tmp[4] = {
+		(uint8_t)v, (uint8_t)(v >> 8),
+		(uint8_t)(v >> 16), (uint8_t)(v >> 24)
+	};
+	ci_str_append(b->s, tmp, 4);
 }
 
 static void bc_buf_bytes(bc_buf *b, const void *src, uint32_t n) {
-	bc_buf_grow(b, n);
-	memcpy(b->data + b->len, src, n);
-	b->len += n;
+	ci_str_append(b->s, src, n);
+}
+
+/* write LE u32 at a specific byte offset (for backpatching) */
+static void bc_buf_patch_u32(bc_buf *b, uint32_t offset, uint32_t v) {
+	uint8_t *p = ci_str_head(b->s) + offset;
+	p[0] = (uint8_t)v;
+	p[1] = (uint8_t)(v >> 8);
+	p[2] = (uint8_t)(v >> 16);
+	p[3] = (uint8_t)(v >> 24);
+}
+
+/* pad to next 4-byte boundary after having written pbytes of payload */
+static void bc_buf_pad4(bc_buf *b, uint32_t nwords, uint32_t pbytes) {
+	uint32_t total = nwords * 4;
+	for (uint32_t i = pbytes; i < total; i++)
+		bc_buf_u8(b, 0);
 }
 
 /* ================================================================
-*  String table
-* ================================================================ */
+ *  Wire subtype constants
+ * ================================================================ */
+
+#define BC_SUB_RRR  (0u << 6)
+#define BC_SUB_RRI  (1u << 6)
+#define BC_SUB_RRS  (2u << 6)
+#define BC_SUB_VAR  (3u << 6)
+
+/* emit a full 8-byte fixed instruction */
+static void bc_emit_fixed(bc_buf *out, uint8_t subtype, uint8_t opnum,
+                          uint8_t r1, uint8_t r2, uint8_t r3, uint32_t imm) {
+	bc_buf_u8(out, subtype | opnum);
+	bc_buf_u8(out, r1);
+	bc_buf_u8(out, r2);
+	bc_buf_u8(out, r3);
+	bc_buf_u32(out, imm);
+}
+
+/* emit VAR header (8 bytes); caller appends nwords*4 bytes of payload */
+static void bc_emit_var_header(bc_buf *out, uint8_t opnum,
+                               uint8_t r1, uint8_t r2, uint8_t nwords,
+                               uint32_t imm) {
+	bc_buf_u8(out, BC_SUB_VAR | opnum);
+	bc_buf_u8(out, r1);
+	bc_buf_u8(out, r2);
+	bc_buf_u8(out, nwords);
+	bc_buf_u32(out, imm);
+}
+
+/* ================================================================
+ *  String table
+ * ================================================================ */
 
 typedef struct {
 	char     **strs;
@@ -169,401 +194,225 @@ static uint16_t bc_strtab_intern(bc_strtab *t, const char *s, uint32_t len) {
 	return (uint16_t)(t->count++);
 }
 
-/* label map: ci_map from label name → (opcode_index + 1) as ci_ptr.
-* +1 so idx=0 is distinct from "not found" (ci_map returns 0 for missing). */
+/* ================================================================
+ *  Label map: label name -> absolute word index (4-byte words)
+ * ================================================================ */
 
-static void bc_label_set(ci_map *m, char *name, uint16_t idx) {
-	ci_map_set_str(m, name, (ci_ptr)(uintptr_t)(idx + 1));
+static void bc_label_set(ci_map *m, char *name, uint32_t word_idx) {
+	ci_map_set_str(m, name, (ci_ptr)(uintptr_t)(word_idx + 1));
 }
 
-static uint16_t bc_label_get(ci_map *m, const char *name) {
+static uint32_t bc_label_get(ci_map *m, const char *name) {
 	ci_ptr v = ci_map_get_str(m, name);
 	if (!v) b_error("encoder: undefined label '%s'", name);
-	return (uint16_t)(uintptr_t)(v - 1);
+	return (uint32_t)(uintptr_t)(v - 1);
 }
 
 /* ================================================================
-*  Reglist encoder — shared by RETURN and LOADNULL
-*
-*  Always VAR subtype:  [11|op][count][extra_words][first_reg]
-*
-*  count  extra  layout
-*    0      0    [11|op][0][0][0]
-*    1      0    [11|op][1][0][r0]          — first reg in header word
-*   >1      N    [11|op][N][extra][r0] + [r1..rN-1] zero-padded to words
-*                extra = ceil((count-1) / 4)
-* ================================================================ */
+ *  Function encoder (single emit pass + label backpatch)
+ * ================================================================ */
 
-static void be_emit_reglist(bc_buf *out, uint8_t opnum,
-							uint8_t *regs, uint32_t count) {
-	if (count <= 1) {
-		bc_buf_u8(out, BC_SUB_VAR | opnum);
-		bc_buf_u8(out, (uint8_t)count);
-		bc_buf_u8(out, 0);
-		bc_buf_u8(out, count == 1 ? regs[0] : 0);
-		return;
-	}
-	if (count > 255) b_error("reglist: count > 255");
-	uint32_t remaining = count - 1;
-	uint32_t extra = BC_CEIL4(remaining);
-	if (extra > 255) b_error("reglist: payload overflow");
-	bc_buf_u8(out, BC_SUB_VAR | opnum);
-	bc_buf_u8(out, (uint8_t)count);
-	bc_buf_u8(out, (uint8_t)extra);
-	bc_buf_u8(out, regs[0]);
-	for (uint32_t i = 1; i < count; i++) bc_buf_u8(out, regs[i]);
-	bc_buf_pad4(out, extra, remaining);
-}
-
-/* ================================================================
-*  Function binary encoder
-* ================================================================ */
-
-typedef struct {
-	bc_buf   *code;
-	uint16_t  op_count;
-} bc_fn_code;
-
-/* word count an IR op will encode to (1 for all fixed ops, 1+extra for VAR) */
-static uint32_t b_op_word_count(b_opcode *op) {
-	if (op->enc != B_ENC_VAR && op->enc != B_ENC_VAR_STRID) return 1;
-
-	uint32_t vcnt   = ci_arr_len(op->var.regs);
-
-	if (op->op == B_RETURN || op->op == B_LOADNULL) {
-		if (vcnt <= 1) return 1;
-		return 1 + BC_CEIL4(vcnt - 1);
-	}
-	if (op->op == B_CALL) {
-		uint32_t nrets = op->var.rets ? ci_arr_len(op->var.rets) : 0;
-		uint32_t pbytes = 2 + (vcnt - 2) + nrets;
-		return 1 + BC_CEIL4(pbytes);
-	}
-	if (op->op == B_NEWMAP) {
-		if (vcnt < 1) return 1;
-		uint32_t pair_count = (vcnt - 1) / 2;
-		uint32_t pbytes = 0;
-
-		if (op->enc == B_ENC_VAR_STRID) {
-			/* VAR_STRID: [u8 val][u16 strid] per pair */
-			pbytes = pair_count * (1 + BC_STRID_SIZE);
-		} else {
-			/* VAR: [u8 type][u8 val][key] per pair */
-			for (uint32_t i = 0; i < pair_count; i++) {
-				b_reg key = (b_reg)ci_arr_index(op->var.regs, 1 + (i * 2) + 1);
-				pbytes += 2;  /* type (u8) + value (u8) */
-				pbytes += (key->type == B_REG_STRING) ? BC_STRID_SIZE : 1;  /* key: strid or reg (u8) */
-			}
-		}
-		return 1 + BC_CEIL4(pbytes);  /* +3 aligns to 4-byte words */
-	}
-	if (op->op == B_NEWARRAY) {
-		if (vcnt < 1) return 1;
-		uint32_t elem_count = vcnt - 1;
-		uint32_t pbytes = elem_count;  /* [u8 reg] per element */
-		return 1 + BC_CEIL4(pbytes);  /* +3 aligns to 4-byte words */
-	}
-	if (op->op == B_HASHACCESS) {
-		if (vcnt < 2) return 1;
-		uint32_t string_count = vcnt - 2;
-		uint32_t pbytes = 1 + string_count * BC_STRID_SIZE;  /* 1 byte src_reg + strid per key */
-		return 1 + BC_CEIL4(pbytes);  /* +3 aligns to 4-byte words */
-	}
-	return 1;
-}
-
-static bc_fn_code be_encode_function(b_function *f) {
-
+static bc_buf *be_encode_function(b_function *f) {
 	bc_buf  *out    = bc_buf_new();
 	ci_map  *labels = ci_map_new(16);
 	uint32_t total  = ci_arr_len(f->bytecode);
-	uint16_t word_pos = 0;
 
-	/* pass 1: map label names to their absolute word position */
+	/* emit pass: encode all instructions, record labels, mark jumps */
 	for (uint32_t i = 0; i < total; i++) {
 		b_opcode *op = (b_opcode *)ci_arr_index(f->bytecode, i);
-		if (op->op == B_LABEL)
-			bc_label_set(labels, op->r.dst->value.label, word_pos);
-		else
-			word_pos += (uint16_t)b_op_word_count(op);
-	}
-	uint16_t op_count = word_pos;
 
-	/* pass 2: emit binary */
-	for (uint32_t i = 0; i < total; i++) {
-		b_opcode *op = (b_opcode *)ci_arr_index(f->bytecode, i);
-		if (op->op == B_LABEL) continue;
+		if (op->op == B_LABEL) {
+			bc_label_set(labels, op->r.dst->value.label,
+			             bc_buf_len(out) / 4);
+			continue;
+		}
 
+		/* --- fixed encodings --- */
 
-		switch (op->enc) {
+		if (op->enc == B_ENC_RRR) {
+			bc_emit_fixed(out, BC_SUB_RRR, op->op,
+				op->rrr.dst->number,
+				op->rrr.src1->number,
+				op->rrr.src2->number, 0);
+			continue;
+		}
 
-		case B_ENC_RRR:
-			bc_buf_u8(out, BC_SUB_RRR | op->op);
-			bc_buf_u8(out, op->rrr.dst->number);
-			bc_buf_u8(out, op->rrr.src1->number);
-			bc_buf_u8(out, op->rrr.src2->number);
-			break;
+		if (op->enc == B_ENC_RRI) {
+			bc_emit_fixed(out, BC_SUB_RRI, op->op,
+				op->rri32.dst->number,
+				op->rri32.src1->number,
+				0, op->rri32.imm);
+			continue;
+		}
 
-		case B_ENC_RRU8:
-			bc_buf_u8(out, BC_SUB_RRU8 | op->op);
-			bc_buf_u8(out, op->rru8.dst->number);
-			bc_buf_u8(out, op->rru8.src1->number);
-			bc_buf_u8(out, op->rru8.imm);
-			break;
+		if (op->enc == B_ENC_RI) {
+			bc_emit_fixed(out, BC_SUB_RRI, op->op,
+				op->rri32.dst->number,
+				op->rri32.dst->number,
+				0, op->rri32.imm);
+			continue;
+		}
 
-		case B_ENC_RU16:
-			/* LOADINT, LOADFN, LOADSTR, and DECIDE-resolved ops */
-			bc_buf_u8(out, BC_SUB_RU16 | op->op);
-			bc_buf_u8(out, op->ru16.dst->number);
-			bc_buf_u8(out, (uint8_t)(op->ru16.imm));
-			bc_buf_u8(out, (uint8_t)(op->ru16.imm >> 8));
-			break;
-
-		case B_ENC_R:
+		if (op->enc == B_ENC_R) {
 			if (op->op == B_JMPF || op->op == B_JMPT) {
-				/* dst = cond reg, src = label */
-				uint16_t target = bc_label_get(labels, op->r.src->value.label);
-				bc_buf_u8(out, BC_SUB_RU16 | op->op);
-				bc_buf_u8(out, op->r.dst->number);
-				bc_buf_u8(out, (uint8_t)target);
-				bc_buf_u8(out, (uint8_t)(target >> 8));
+				/* emit with placeholder imm=0, record patch offset */
+				uint32_t imm_off = bc_buf_len(out) + 4;
+				bc_emit_fixed(out, BC_SUB_RRI, op->op,
+					op->r.dst->number, 0, 0, 0);
+				op->r.src->label_patch_addr = (uint8_t *)(uintptr_t)imm_off;
 			} else {
-				/* MOVE, NEG, NOT, BIN_INV */
-				bc_buf_u8(out, BC_SUB_RRR | op->op);
-				bc_buf_u8(out, op->r.dst->number);
-				bc_buf_u8(out, op->r.src->number);
-				bc_buf_u8(out, 0);
+				bc_emit_fixed(out, BC_SUB_RRR, op->op,
+					op->r.dst->number, op->r.src->number, 0, 0);
 			}
-			break;
+			continue;
+		}
 
-		case B_ENC_R0:
+		if (op->enc == B_ENC_R0) {
 			if (op->op == B_JMP) {
-				/* dst holds label, no cond register */
-				uint16_t target = bc_label_get(labels, op->r.dst->value.label);
-				bc_buf_u8(out, BC_SUB_RU16 | op->op);
-				bc_buf_u8(out, 0);
-				bc_buf_u8(out, (uint8_t)target);
-				bc_buf_u8(out, (uint8_t)(target >> 8));
-			} else if (op->op == B_LOADNULL) {
-				/* single-target LOADNULL — always VAR reglist encoding */
-				uint8_t reg = op->r.dst->number;
-				be_emit_reglist(out, op->op, &reg, 1);
+				uint32_t imm_off = bc_buf_len(out) + 4;
+				bc_emit_fixed(out, BC_SUB_RRI, op->op, 0, 0, 0, 0);
+				op->r.dst->label_patch_addr = (uint8_t *)(uintptr_t)imm_off;
 			} else {
-				/* LOADTRUE, LOADFALSE */
-				bc_buf_u8(out, BC_SUB_RRR | op->op);
-				bc_buf_u8(out, op->r.dst->number);
-				bc_buf_u8(out, 0);
-				bc_buf_u8(out, 0);
+				bc_emit_fixed(out, BC_SUB_RRR, op->op,
+					op->r.dst->number, 0, 0, 0);
 			}
-			break;
+			continue;
+		}
 
-		case B_ENC_VAR: {
-			uint32_t vcnt   = ci_arr_len(op->var.regs);
-			uint32_t rcount = op->var.rets ? ci_arr_len(op->var.rets) : 0;
+		if (op->enc == B_ENC_DECIDE)
+			b_error("encoder: unresolved DECIDE for '%s'", b_op_names[op->op]);
 
-			if (op->op == B_NEWMAP) {
-				/* NEWMAP dst, pairs of [type, value, key]
-				* w0: [11|NEWMAP][dst][extra_words][0]
-				* payload: [type1][val1][key1] [type2][val2][key2]...
-				* type=1: key is u8 register
-				* type=0: key is u16 string ID */
-				if (vcnt < 1)
-					b_error("NEWMAP: need at least dst register");
-				if ((vcnt - 1) % 2 != 0)
-					b_error("NEWMAP: need pairs of [value, key]");
+		/* --- VAR encodings --- */
 
-				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
-				uint32_t pair_count = (vcnt - 1) / 2;
+		if (op->enc == B_ENC_VAR || op->enc == B_ENC_VAR_STRID) {
+			uint32_t vcnt = ci_arr_len(op->var.regs);
 
-				/* calculate payload size */
-				uint32_t pbytes = 0;
-				for (uint32_t i = 0; i < pair_count; i++) {
-					b_reg key = (b_reg)ci_arr_index(op->var.regs, 1 + (i * 2) + 1);
-					pbytes += 2; /* type + value */
-					pbytes += (key->type == B_REG_STRING) ? 2 : 1; /* key */
-				}
-
-				uint32_t extra = BC_CEIL4(pbytes);
-				if (extra > 255)
-					b_error("NEWMAP: too many pairs");
-
-				bc_buf_var_header(out, op->op, dst->number, (uint8_t)extra, 0);
-
-				for (uint32_t i = 0; i < pair_count; i++) {
-					b_reg val = (b_reg)ci_arr_index(op->var.regs, 1 + (i * 2));
-					b_reg key = (b_reg)ci_arr_index(op->var.regs, 1 + (i * 2) + 1);
-
-					if (key->type == B_REG_STRING) {
-						bc_buf_u8(out, 0); /* type=0: strid */
-						bc_buf_u8(out, val->number);
-						uint16_t strid = key->interned_string_id;
-						bc_buf_u8(out, (uint8_t)strid);
-						bc_buf_u8(out, (uint8_t)(strid >> 8));
-					} else {
-						bc_buf_u8(out, 1); /* type=1: register */
-						bc_buf_u8(out, val->number);
-						bc_buf_u8(out, key->number);
-					}
-				}
-
-				bc_buf_pad4(out, extra, pbytes);
-
-			} else if (op->op == B_NEWARRAY) {
-				/* NEWARRAY dst, [r0, r1, ..., rN]
-				* w0: [11|NEWARRAY][dst][extra_words][regct]
-				* payload: [r0][r1]...[rN] [padding] */
-				if (vcnt < 1)
-					b_error("NEWARRAY: need at least dst register");
-
-				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
-				uint32_t elem_count = vcnt - 1;
-
-				uint32_t pbytes = elem_count;  /* [u8 reg] per element */
-				uint32_t extra = BC_CEIL4(pbytes);
-				if (extra > 255)
-					b_error("NEWARRAY: too many elements");
-
-				bc_buf_var_header(out, op->op, dst->number, (uint8_t)extra, (uint8_t)elem_count);
-
-				for (uint32_t i = 1; i < vcnt; i++) {
-					b_reg elem = (b_reg)ci_arr_index(op->var.regs, i);
-					bc_buf_u8(out, elem->number);
-				}
-
-				bc_buf_pad4(out, extra, pbytes);
-
-			} else if (op->op == B_RETURN) {
-				if (vcnt > 3) b_error("RETURN: >3 values not yet supported");
-				uint8_t regs[3];
+			if (op->op == B_RETURN || op->op == B_LOADNULL) {
+				uint32_t nwords = (vcnt + 3) / 4;
+				if (nwords > 255) b_error("%s: too many registers", b_op_names[op->op]);
+				bc_emit_var_header(out, op->op, (uint8_t)vcnt, 0, (uint8_t)nwords, 0);
 				for (uint32_t v = 0; v < vcnt; v++)
-					regs[v] = ((b_reg)ci_arr_index(op->var.regs, v))->number;
-				be_emit_reglist(out, op->op, regs, vcnt);
+					bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.regs, v))->number);
+				bc_buf_pad4(out, nwords, vcnt);
+				continue;
+			}
 
-			} else if (op->op == B_LOADNULL) {
-				/* multi-target LOADNULL */
-				uint8_t regs[256];
-				for (uint32_t v = 0; v < vcnt; v++)
-					regs[v] = ((b_reg)ci_arr_index(op->var.regs, v))->number;
-				be_emit_reglist(out, op->op, regs, vcnt);
-
-			} else if (op->op == B_CALL) {
-				if (vcnt < 2) b_error("CALL: malformed var (need fn + self)");
+			if (op->op == B_CALL) {
+				if (vcnt < 2) b_error("CALL: need fn + self in regs");
 				b_reg fn   = (b_reg)ci_arr_index(op->var.regs, 0);
 				b_reg self = (b_reg)ci_arr_index(op->var.regs, 1);
 				uint32_t nargs = vcnt - 2;
 				uint32_t nrets = op->var.rets ? ci_arr_len(op->var.rets) : 0;
-
-				/* payload: [nargs:u8][nrets:u8][arg_regs...][ret_regs...] */
-				uint32_t pbytes = 2 + nargs + nrets;
-				uint32_t extra  = BC_CEIL4(pbytes);
-				if (extra > 255) b_error("CALL: too many args/rets");
-
-				bc_buf_var_header(out, op->op, fn->number, (uint8_t)extra, self->number);
-
-				bc_buf_u8(out, (uint8_t)nargs);
-				bc_buf_u8(out, (uint8_t)nrets);
+				uint32_t pbytes = 1 + nargs + nrets;
+				uint32_t nwords = (pbytes + 3) / 4;
+				if (nwords > 255) b_error("CALL: too many args/rets");
+				bc_emit_var_header(out, op->op,
+					(uint8_t)nargs, (uint8_t)nrets, (uint8_t)nwords,
+					(uint32_t)fn->number);
+				bc_buf_u8(out, self->number);
 				for (uint32_t v = 2; v < vcnt; v++)
 					bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.regs, v))->number);
 				if (op->var.rets) {
 					for (uint32_t v = 0; v < nrets; v++)
 						bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.rets, v))->number);
 				}
-				bc_buf_pad4(out, extra, pbytes);
-
-			} else {
-				b_error("encoder: unhandled VAR op '%s'", b_op_names[op->op]);
+				bc_buf_pad4(out, nwords, pbytes);
+				continue;
 			}
-			break;
-		}
 
-		case B_ENC_VAR_STRID: {
-			/* B_ENC_VAR_STRID for HASHACCESS or NEWMAP with string keys
-			* HASHACCESS: w0: [op][dst][extra_words][string_count]
-			*             w1-wN: [u16 strid]... (2 IDs per word, padded)
-			* NEWMAP: w0: [op][dst][extra_words][pair_count]
-			*         w1-wN: [u8 val_reg][u16 strid_key]... pairs, padded */
-			uint32_t vcnt = ci_arr_len(op->var.regs);
-			if (op->op != B_HASHACCESS && op->op != B_NEWMAP)
-				b_error("VAR_STRID: only HASHACCESS and NEWMAP supported");
+			if (op->op == B_NEWARRAY) {
+				if (vcnt < 1) b_error("NEWARRAY: missing dst");
+				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
+				uint32_t nelem = vcnt - 1;
+				uint32_t nwords = (nelem + 3) / 4;
+				if (nwords > 255) b_error("NEWARRAY: too many elements");
+				bc_emit_var_header(out, op->op,
+					dst->number, (uint8_t)nelem, (uint8_t)nwords, 0);
+				for (uint32_t v = 1; v < vcnt; v++)
+					bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.regs, v))->number);
+				bc_buf_pad4(out, nwords, nelem);
+				continue;
+			}
 
 			if (op->op == B_NEWMAP) {
-				/* NEWMAP [ dst, val1, key1, val2, key2, ... ] */
-				uint32_t pair_count = (vcnt - 1) / 2;
-				uint32_t pbytes = pair_count * (1 + BC_STRID_SIZE);  /* [u8 val][u16 strid] per pair */
-				uint32_t extra = BC_CEIL4(pbytes);
-				if (extra > 255)
-					b_error("NEWMAP VAR_STRID: too many pairs");
-
+				if (vcnt < 1) b_error("NEWMAP: missing dst");
 				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
-				bc_buf_var_header(out, op->op, dst->number, (uint8_t)extra, (uint8_t)pair_count);
-
-				for (uint32_t i = 0; i < pair_count; i++) {
-					b_reg val = (b_reg)ci_arr_index(op->var.regs, 1 + (i * 2));
-					b_reg key = (b_reg)ci_arr_index(op->var.regs, 1 + (i * 2) + 1);
-					if (key->type != B_REG_STRING)
-						b_error("NEWMAP VAR_STRID: key must be string, got type %u", key->type);
-					bc_buf_u8(out, val->number);
-					uint16_t strid = key->interned_string_id;
-					bc_buf_u8(out, (uint8_t)strid);
-					bc_buf_u8(out, (uint8_t)(strid >> 8));
+				if ((vcnt - 1) % 2 != 0) b_error("NEWMAP: need pairs of [val, key]");
+				uint32_t npairs = (vcnt - 1) / 2;
+				if (npairs > 255) b_error("NEWMAP: too many pairs");
+				bc_emit_var_header(out, op->op,
+					dst->number, (uint8_t)npairs, (uint8_t)npairs, 0);
+				for (uint32_t p = 0; p < npairs; p++) {
+					b_reg val = (b_reg)ci_arr_index(op->var.regs, 1 + p * 2);
+					b_reg key = (b_reg)ci_arr_index(op->var.regs, 1 + p * 2 + 1);
+					if (key->type == B_REG_STRING) {
+						bc_buf_u8(out, 0);
+						bc_buf_u8(out, val->number);
+						bc_buf_u16(out, (uint16_t)key->interned_string_id);
+					} else {
+						bc_buf_u8(out, 1);
+						bc_buf_u8(out, val->number);
+						bc_buf_u8(out, key->number);
+						bc_buf_u8(out, 0);
+					}
 				}
-				bc_buf_pad4(out, extra, pbytes);
-				break;
+				continue;
 			}
 
-			if (vcnt < 2)
-				b_error("HASHACCESS VAR_STRID: need dst + source");
-
-			b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
-			b_reg src = (b_reg)ci_arr_index(op->var.regs, 1);
-			uint32_t string_count = vcnt - 2;
-
-			/* payload: [u8 src_reg][u16 strid per key...] */
-			uint32_t pbytes = 1 + string_count * BC_STRID_SIZE;
-			uint32_t extra = BC_CEIL4(pbytes);
-			if (extra > 255)
-				b_error("HASHACCESS: too many string keys");
-
-			bc_buf_var_header(out, op->op, dst->number, (uint8_t)extra, (uint8_t)string_count);
-
-			bc_buf_u8(out, src->number);
-			for (uint32_t v = 2; v < vcnt; v++) {
-				b_reg r = (b_reg)ci_arr_index(op->var.regs, v);
-				if (r->type != B_REG_STRING)
-					b_error("HASHACCESS VAR_STRID: key must be string, got type %u", r->type);
-				uint16_t strid = r->interned_string_id;
-				bc_buf_u8(out, (uint8_t)strid);
-				bc_buf_u8(out, (uint8_t)(strid >> 8));
+			if (op->op == B_HASHACCESS) {
+				if (vcnt < 2) b_error("HASHACCESS: need dst + src");
+				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
+				b_reg src = (b_reg)ci_arr_index(op->var.regs, 1);
+				uint32_t nkeys = vcnt - 2;
+				uint32_t nwords = (nkeys + 1) / 2;
+				if (nwords > 255) b_error("HASHACCESS: too many keys");
+				bc_emit_var_header(out, op->op,
+					dst->number, src->number, (uint8_t)nwords, 0);
+				for (uint32_t k = 0; k < nkeys; k++) {
+					b_reg key = (b_reg)ci_arr_index(op->var.regs, 2 + k);
+					if (key->type != B_REG_STRING)
+						b_error("HASHACCESS: key must be a string id");
+					bc_buf_u16(out, (uint16_t)key->interned_string_id);
+				}
+				if (nkeys % 2 != 0) bc_buf_u16(out, 0);
+				continue;
 			}
-			bc_buf_pad4(out, extra, pbytes);
-			break;
+
+			b_error("encoder: unhandled VAR op '%s'", b_op_names[op->op]);
 		}
 
-		case B_ENC_DECIDE:
-			b_error("encoder: unresolved DECIDE for '%s' — run b_encode first",
-					b_op_names[op->op]);
-			break;
+		b_error("encoder: unknown enc %u for '%s'", op->enc, b_op_names[op->op]);
+	}
 
-		default:
-			b_error("encoder: unknown enc %u for '%s'", op->enc, b_op_names[op->op]);
+	/* backpatch pass: resolve jump targets from actual label positions */
+	for (uint32_t i = 0; i < total; i++) {
+		b_opcode *op = (b_opcode *)ci_arr_index(f->bytecode, i);
+		b_reg label_reg = NULL;
+
+		if (op->op == B_JMP && op->enc == B_ENC_R0)
+			label_reg = op->r.dst;
+		else if ((op->op == B_JMPF || op->op == B_JMPT) && op->enc == B_ENC_R)
+			label_reg = op->r.src;
+
+		if (label_reg && label_reg->label_patch_addr) {
+			uint32_t imm_off = (uint32_t)(uintptr_t)label_reg->label_patch_addr;
+			uint32_t target = bc_label_get(labels, label_reg->value.label);
+			bc_buf_patch_u32(out, imm_off, target);
+			label_reg->label_patch_addr = NULL;
 		}
 	}
 
-	bc_fn_code result;
-	result.code     = out;
-	result.op_count = op_count;
-	return result;
+	return out;
 }
 
 /* ================================================================
-*  Unit binary writer
-* ================================================================ */
+ *  Unit binary writer
+ * ================================================================ */
 
 static bc_buf *be_encode_unit(b_unit *unit) {
 	uint32_t fcnt = ci_arr_len(unit->functions);
 
-	/* string table: code strings first (indices must match LOADSTR immediates),
-	* then function names */
+	/* string table: code strings first, then function names */
 	bc_strtab *strtab = bc_strtab_new();
 	uint32_t str_cnt = ci_arr_len(unit->str_pool);
 	for (uint32_t i = 0; i < str_cnt; i++) {
@@ -578,7 +427,7 @@ static bc_buf *be_encode_unit(b_unit *unit) {
 	}
 
 	/* encode all function bodies */
-	bc_fn_code *fn_codes = b_malloc(fcnt * sizeof(bc_fn_code));
+	bc_buf **fn_codes = b_malloc(fcnt * sizeof(bc_buf *));
 	for (uint32_t i = 0; i < fcnt; i++) {
 		b_function *f = (b_function *)ci_arr_index(unit->functions, i);
 		fn_codes[i] = be_encode_function(f);
@@ -586,9 +435,9 @@ static bc_buf *be_encode_unit(b_unit *unit) {
 
 	bc_buf *out = bc_buf_new();
 
-	/* header */
+	/* file header */
 	bc_buf_bytes(out, "CIBC", 4);
-	bc_buf_u16(out, 1);                        /* version */
+	bc_buf_u16(out, 2);                        /* version 2 */
 	bc_buf_u16(out, (uint16_t)strtab->count);
 	bc_buf_u16(out, (uint16_t)fcnt);
 
@@ -600,28 +449,28 @@ static bc_buf *be_encode_unit(b_unit *unit) {
 
 	/* functions */
 	for (uint32_t i = 0; i < fcnt; i++) {
-		b_function *f  = (b_function *)ci_arr_index(unit->functions, i);
-		bc_fn_code *fc = &fn_codes[i];
-
+		b_function  *f  = (b_function *)ci_arr_index(unit->functions, i);
+		bc_buf      *fc = fn_codes[i];
 		uint16_t name_idx  = bc_strtab_intern(strtab, f->name, (uint32_t)strlen(f->name));
 		uint8_t  reg_count = f->cb ? f->cb->reg_next : 0;
 
 		bc_buf_u16(out, name_idx);
-		bc_buf_u8 (out, 0);           /* arg_count — TODO: track in b_function */
+		bc_buf_u8 (out, 0);          /* arg_count — TODO: track in b_function */
 		bc_buf_u8 (out, reg_count);
-		bc_buf_u16(out, 0);           /* local_count = 0 (placeholder for debug info) */
-		/* no locals written — local_count is 0 */
-		bc_buf_u16(out, fc->op_count);
-		bc_buf_bytes(out, fc->code->data, fc->code->len);
+		bc_buf_u16(out, 0);          /* local_count placeholder */
+		bc_buf_u32(out, bc_buf_len(fc));   /* code_bytes */
+		bc_buf_bytes(out, bc_buf_data(fc), bc_buf_len(fc));
 	}
 
+	for (uint32_t i = 0; i < fcnt; i++)
+		bc_buf_free(fn_codes[i]);
 	free(fn_codes);
 	return out;
 }
 
 /* ================================================================
-*  Decoder / dump
-* ================================================================ */
+ *  Decoder / dump
+ * ================================================================ */
 
 typedef struct {
 	const uint8_t *data;
@@ -630,37 +479,52 @@ typedef struct {
 } bc_reader;
 
 static uint8_t  bcr_u8 (bc_reader *r) {
-	if (r->pos + 1 > r->len) b_error("decode: unexpected end of file");
+	if (r->pos + 1 > r->len) b_error("decode: unexpected end");
 	return r->data[r->pos++];
 }
 static uint16_t bcr_u16(bc_reader *r) {
-	uint16_t v = bcr_u8(r);
-	return v | ((uint16_t)bcr_u8(r) << 8);
+	uint16_t v = bcr_u8(r); return v | ((uint16_t)bcr_u8(r) << 8);
+}
+static uint32_t bcr_u32(bc_reader *r) {
+	uint32_t v = bcr_u16(r); return v | ((uint32_t)bcr_u16(r) << 16);
+}
+static void bcr_skip(bc_reader *r, uint32_t n) {
+	if (r->pos + n > r->len) b_error("decode: unexpected end");
+	r->pos += n;
 }
 
-static void bc_dump(const uint8_t *data, uint32_t len) {
+static void bc_dump(const uint8_t *data, uint32_t len,
+                    char **strs, uint16_t str_cnt) {
 	bc_reader rr = { data, 0, len };
 	bc_reader *r = &rr;
 
-	/* header */
+	/* file header */
 	char magic[5] = {0};
 	for (int i = 0; i < 4; i++) magic[i] = (char)bcr_u8(r);
-	uint16_t version = bcr_u16(r);
-	uint16_t str_cnt = bcr_u16(r);
-	uint16_t fn_cnt  = bcr_u16(r);
+	uint16_t version  = bcr_u16(r);
+	uint16_t sc       = bcr_u16(r);
+	uint16_t fn_cnt   = bcr_u16(r);
 
-	printf("magic=%.4s version=%u strings=%u functions=%u\n",
-		magic, version, str_cnt, fn_cnt);
+	printf("magic=%.4s  version=%u  strings=%u  functions=%u\n",
+	       magic, version, sc, fn_cnt);
 
 	/* string table */
-	char **strs = b_malloc(str_cnt * sizeof(char *));
-	printf("\n--- strings (%u) ---\n", str_cnt);
-	for (uint16_t i = 0; i < str_cnt; i++) {
-		uint16_t slen = bcr_u16(r);
-		strs[i] = b_malloc((uint32_t)slen + 1);
-		for (uint16_t c = 0; c < slen; c++) strs[i][c] = (char)bcr_u8(r);
-		strs[i][slen] = '\0';
-		printf("  [%u] \"%s\"\n", i, strs[i]);
+	if (!strs) {
+		strs = b_malloc(sc * sizeof(char *));
+		str_cnt = sc;
+		printf("\n--- strings (%u) ---\n", sc);
+		for (uint16_t i = 0; i < sc; i++) {
+			uint16_t slen = bcr_u16(r);
+			strs[i] = b_malloc((uint32_t)slen + 1);
+			for (uint16_t c = 0; c < slen; c++) strs[i][c] = (char)bcr_u8(r);
+			strs[i][slen] = '\0';
+			printf("  s%-3u  \"%s\"\n", i, strs[i]);
+		}
+	} else {
+		for (uint16_t i = 0; i < sc; i++) {
+			uint16_t slen = bcr_u16(r);
+			bcr_skip(r, slen);
+		}
 	}
 
 	/* functions */
@@ -669,64 +533,121 @@ static void bc_dump(const uint8_t *data, uint32_t len) {
 		uint8_t  arg_count = bcr_u8(r);
 		uint8_t  reg_count = bcr_u8(r);
 		uint16_t loc_count = bcr_u16(r);
-		for (uint16_t li = 0; li < loc_count; li++) { bcr_u16(r); bcr_u8(r); }
-		uint16_t op_count  = bcr_u16(r);
+		uint32_t code_bytes = bcr_u32(r);
+
+		(void)arg_count;
+		(void)loc_count;
 
 		const char *fname = (name_idx < str_cnt) ? strs[name_idx] : "?";
-		printf("\n--- fn[%u] '%s'  args=%u regs=%u ops=%u ---\n",
-			fi, fname, arg_count, reg_count, op_count);
+		printf("\n--- fn[%u] \"%s\"  args=%u  regs=%u  bytes=%u ---\n",
+		       fi, fname, arg_count, reg_count, code_bytes);
 
-		uint32_t word_idx = 0;
-		for (uint16_t oi = 0; oi < op_count; oi++) {
-			uint8_t     b0      = bcr_u8(r);
-			uint8_t     subtype = b0 >> 6;
-			uint8_t     opnum   = b0 & 0x3F;
-			const char *oname   = (opnum < B_OP_COUNT) ? b_op_names[opnum] : "???";
+		uint32_t bytes_read = 0;
+		while (bytes_read < code_bytes) {
+			uint8_t  b0      = bcr_u8(r);
+			uint8_t  sub     = b0 >> 6;
+			uint8_t  opnum   = b0 & 0x3F;
+			uint8_t  r1      = bcr_u8(r);
+			uint8_t  r2      = bcr_u8(r);
+			uint8_t  r3      = bcr_u8(r);
+			uint32_t imm     = bcr_u32(r);
+			bytes_read += 8;
 
-			printf("  [%3u] %-12s", word_idx++, oname);
+			uint32_t word_pos = (bytes_read - 8) / 4;
+			const char *oname = (opnum < B_OP_COUNT) ? b_op_names[opnum] : "???";
+			const char *sub_names[] = { "RRR", "RRI", "RRS", "VAR" };
 
-			switch (subtype) {
-			case 0: {
-				uint8_t b1 = bcr_u8(r), b2 = bcr_u8(r), b3 = bcr_u8(r);
-				printf("%u, %u, %u", b1, b2, b3);
+			printf("  [%3u] %-12s %-3s  ", word_pos, oname, sub_names[sub]);
+
+			switch (sub) {
+			case 0: /* RRR */
+				printf("r%u, r%u, r%u", r1, r2, r3);
 				break;
-			}
-			case 1: {
-				uint8_t b1 = bcr_u8(r), b2 = bcr_u8(r), imm = bcr_u8(r);
-				printf("%u, %u, [%u]", b1, b2, imm);
-				break;
-			}
-			case 2: {
-				uint8_t  b1  = bcr_u8(r);
-				uint16_t imm = bcr_u8(r);
-				imm |= (uint16_t)bcr_u8(r) << 8;
-				if (opnum == B_JMP || opnum == B_JMPF || opnum == B_JMPT) {
-					int32_t rel = (int32_t)imm - (int32_t)(word_idx - 1);
-					printf("%u, %u [%+d]", b1, imm, rel);
+			case 1: /* RRI */
+				if (opnum == B_JMP) {
+					printf("[%u]", imm);
+				} else if (opnum == B_JMPF || opnum == B_JMPT) {
+					printf("r%u, [%u]", r1, imm);
 				} else {
-					printf("%u, [%u]", b1, imm);
+					printf("r%u, %d", r1, (int32_t)imm);
 				}
 				break;
-			}
-			case 3: {
-				uint8_t  b1    = bcr_u8(r);
-				uint8_t  extra = bcr_u8(r);
-				uint8_t  b3    = bcr_u8(r);
-				uint8_t  payload[256];
-				uint32_t pbytes = (uint32_t)extra * 4;
-				for (uint32_t k = 0; k < pbytes; k++) payload[k] = bcr_u8(r);
+			case 2: /* RRS */
+				if (imm < str_cnt)
+					printf("r%u, s%u  // \"%s\"", r1, imm, strs[imm]);
+				else
+					printf("r%u, s%u", r1, imm);
+				break;
+			case 3: { /* VAR */
+				uint8_t  payload[1024];
+				uint32_t nwords = r3;
+				uint32_t pb     = nwords * 4;
+				for (uint32_t k = 0; k < pb; k++) payload[k] = bcr_u8(r);
+				bytes_read += pb;
 
-				printf("%u, [%u], %u", b1, extra, b3);
-				for (uint8_t w = 0; w < extra; w++) {
-					uint32_t base = (uint32_t)w * 4;
-					if (w == 0)
-						printf("\n  [%3u]           ( ", word_idx);
-					else
-						printf("\n  [%3u]             ", word_idx);
-					word_idx++;
-					for (int k = 0; k < 4; k++) {
-						int last = (w == extra - 1) && (k == 3);
-						printf("%u%s", payload[base + k], last ? " )" : ", ");
+				if (opnum == B_CALL) {
+					uint32_t nargs = r1, nrets = r2, fn = imm;
+					uint32_t self = pb > 0 ? payload[0] : 0;
+					printf("r%u, %u, %u  // fn, nargs, nrets", fn, nargs, nrets);
+					printf("  ;  self=r%u", self);
+					if (nargs) {
+						printf(" [");
+						for (uint32_t a = 0; a < nargs; a++)
+							printf("%sr%u", a ? "," : "", payload[1 + a]);
+						printf("]");
+					}
+					if (nrets) {
+						printf(" -> [");
+						for (uint32_t a = 0; a < nrets; a++)
+							printf("%sr%u", a ? "," : "", payload[1 + nargs + a]);
+						printf("]");
+					}
+				} else if (opnum == B_RETURN || opnum == B_LOADNULL) {
+					uint32_t nregs = r1;
+					printf("[");
+					for (uint32_t k = 0; k < nregs; k++)
+						printf("%sr%u", k ? "," : "", payload[k]);
+					printf("]  // %s", b_op_names[opnum]);
+				} else if (opnum == B_NEWARRAY) {
+					uint32_t dst = r1, nelem = r2;
+					printf("r%u = [", dst);
+					for (uint32_t k = 0; k < nelem; k++)
+						printf("%sr%u", k ? "," : "", payload[k]);
+					printf("]");
+				} else if (opnum == B_NEWMAP) {
+					uint32_t dst = r1, npairs = r2;
+					printf("r%u = {", dst);
+					for (uint32_t p = 0; p < npairs; p++) {
+						uint8_t  type = payload[p * 4 + 0];
+						uint8_t  val  = payload[p * 4 + 1];
+						uint16_t key  = (uint16_t)payload[p * 4 + 2]
+						              | ((uint16_t)payload[p * 4 + 3] << 8);
+						printf("%s", p ? ", " : "");
+						if (type == 0) {
+							const char *ks = (key < str_cnt) ? strs[key] : "?";
+							printf("\"%s\": r%u", ks, val);
+						} else {
+							printf("r%u: r%u", key, val);
+						}
+					}
+					printf("}");
+				} else if (opnum == B_HASHACCESS) {
+					uint32_t dst = r1, src = r2;
+					uint32_t nkeys = nwords * 2;
+					printf("r%u = r%u", dst, src);
+					for (uint32_t k = 0; k < nkeys; k++) {
+						uint16_t sid = (uint16_t)payload[k * 2]
+						             | ((uint16_t)payload[k * 2 + 1] << 8);
+						if (sid == 0) break;
+						const char *ks = (sid < str_cnt) ? strs[sid] : "?";
+						printf("[\"%s\"]", ks);
+					}
+				} else {
+					printf("r%u, r%u  // +%u words", r1, r2, nwords);
+					for (uint32_t w = 0; w < nwords; w += 2) {
+						uint32_t a = ((uint32_t)payload[w*4+0]) | ((uint32_t)payload[w*4+1]<<8)
+						           | ((uint32_t)payload[w*4+2]<<16) | ((uint32_t)payload[w*4+3]<<24);
+						printf("  %08x", a);
 					}
 				}
 				break;
@@ -734,16 +655,12 @@ static void bc_dump(const uint8_t *data, uint32_t len) {
 			}
 			printf("\n");
 		}
-
 	}
-
-	for (uint16_t i = 0; i < str_cnt; i++) free(strs[i]);
-	free(strs);
 }
 
 /* ================================================================
-*  Main
-* ================================================================ */
+ *  Main
+ * ================================================================ */
 
 #ifndef ENCODER_NO_MAIN
 int main(int argc, char **argv) {
@@ -783,7 +700,6 @@ int main(int argc, char **argv) {
 			continue;
 		}
 
-		/* codegen */
 		b_unit *unit = b_unit_new();
 		char *main_name = b_malloc(5);
 		memcpy(main_name, "main", 5);
@@ -803,24 +719,25 @@ int main(int argc, char **argv) {
 
 		/* binary encode */
 		bc_buf *binary = be_encode_unit(unit);
-		printf("\n=== Binary (%u bytes) ===\n", binary->len);
+		printf("\n=== Binary (%u bytes) ===\n", bc_buf_len(binary));
 
 		/* write .cbc */
 		char outpath[4096];
 		snprintf(outpath, sizeof(outpath), "%s.cbc", argv[i]);
 		FILE *fp = fopen(outpath, "wb");
 		if (fp) {
-			fwrite(binary->data, 1, binary->len, fp);
+			fwrite(bc_buf_data(binary), 1, bc_buf_len(binary), fp);
 			fclose(fp);
 			printf("written: %s\n", outpath);
 		} else {
 			fprintf(stderr, "warning: cannot write '%s'\n", outpath);
 		}
 
-		/* decode + dump for verification */
+		/* dump decoded listing */
 		printf("\n=== Decoded ===\n");
-		bc_dump(binary->data, binary->len);
+		bc_dump(bc_buf_data(binary), bc_buf_len(binary), NULL, 0);
 
+		bc_buf_free(binary);
 		ast_node_free(block);
 		ast_free(a);
 		b_parser_free(p);
