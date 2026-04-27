@@ -81,11 +81,55 @@ static void bb_dump_unit(bb_unit *unit) {
 	}
 }
 
+static void bb_dump_frame(bb_coro *c, uint32_t depth, bb_frame *frame, int dumpregs) {
+	bb_function *fn = frame->function;
+	uint32_t base  = frame->stack_base;
+	uint32_t nregs = fn->regs;
+
+	/* Calculate PC offset relative to function's ops */
+	uint32_t pc_offset = 0;
+	if (frame->pc) {
+		bb_cached_op *ops = bb_function_ops(fn);
+		if (ops)
+			pc_offset = (uint32_t)(frame->pc - ops);
+	}
+
+	/* Function name and metadata */
+	printf("  [%u] ", depth);
+	if (fn->name && CI_IS_ANY_STR(fn->name)) {
+		printf("fn '%.*s'", (int)ci_str_len(fn->name), (char *)ci_str_head(fn->name));
+	} else {
+		printf("fn <unnamed>");
+	}
+	printf("  pc=[%u]  regs=%u\n", pc_offset, nregs);
+
+	if (!dumpregs)
+		return;
+
+	/* Register values */
+	for (uint32_t i = 0; i < nregs; i++) {
+		ci_ptr val = c->stack->data[base + i];
+		printf("      R(%u) = ", i);
+		if (!val) {
+			printf("null");
+		} else if (CI_IS_INT(val)) {
+			printf("%ld", (long)CI_INT(val));
+		} else if (CI_IS_BOOL(val)) {
+			printf("%s", val == CI_BOOL(1) ? "true" : "false");
+		} else if (CI_IS_ANY_STR(val)) {
+			printf("\"%.*s\"", (int)ci_str_len(val), (char *)ci_str_head(val));
+		} else {
+			printf("<%p>", (void *)val);
+		}
+		printf("\n");
+	}
+}
+
 static void bb_dump_regs(bb_coro *c) {
 	if (c->fstack_pos == 0)
 		return;
 
-	bb_frame *frame = &c->fstack[c->fstack_pos - 1];
+	bb_frame *frame = bb_coro_frame_top(c);
 	uint32_t base  = frame->stack_base;
 	uint32_t nregs = frame->function->regs;
 
@@ -101,5 +145,18 @@ static void bb_dump_regs(bb_coro *c) {
 			printf("<%p>", val);
 		}
 		printf("\n");
+	}
+}
+
+static void bb_coro_dump_stack(bb_coro *c, int dumpregs) {
+	if (c->fstack_pos == 0) {
+		printf("\n--- call stack (empty) ---\n");
+		return;
+	}
+
+	printf("\n--- call stack (%u frames) ---\n", c->fstack_pos);
+	for (uint32_t i = 0; i < c->fstack_pos; i++) {
+		bb_frame *frame = bb_coro_frame(c, i);
+		bb_dump_frame(c, i, frame, dumpregs);
 	}
 } 

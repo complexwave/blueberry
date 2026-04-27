@@ -40,18 +40,17 @@ static inline ci_ptr bb_op_loadfalse(bb_coro *c, ci_ptr a, ci_ptr b) {
 }
 
 static inline ci_ptr bb_op_mapaccess(bb_coro *c, ci_ptr map, ci_ptr key) {
-	(void)c;
 	if (!CI_IS_MAP(map))
-		bb_error("MAPACCESS: operand is not a MAP");
+		bb_coro_error(c, "MAPACCESS: operand is not a MAP");
 	return ci_map_find(map, key);
 }
 
 static inline ci_ptr bb_op_methodbind(bb_coro *c, ci_ptr obj, ci_ptr key) {
 	ci_ptr method = bb_proto_find(c->vm, obj, key);
 	if (!method)
-		bb_error("METHODBIND: method not found");
+		bb_coro_error(c, "METHODBIND: method not found");
 	if (!CI_IS_CLOSURE(method))
-		bb_error("METHODBIND: method is not function type");
+		bb_coro_error(c, "METHODBIND: method is not function type");
 
 	bb_closure *bound = bb_vm_closure(c->vm, ((bb_closure *)method)->fn);
 	ci_inc(obj);
@@ -60,11 +59,10 @@ static inline ci_ptr bb_op_methodbind(bb_coro *c, ci_ptr obj, ci_ptr key) {
 }
 
 static inline ci_ptr bb_op_arraccess(bb_coro *c, ci_ptr arr, ci_ptr idx) {
-	(void)c;
 	if (!CI_IS_ANY_ARR(arr))
-		bb_error("ARRACCESS: operand is not an array");
+		bb_coro_error(c, "ARRACCESS: operand is not an array");
 	if (!CI_IS_INT(idx))
-		bb_error("ARRACCESS: index must be integer");
+		bb_coro_error(c, "ARRACCESS: index must be integer");
 
 	intptr_t index = CI_INT(idx);
 	uint32_t alen = ci_arr_len((const ci_array *)arr);
@@ -77,16 +75,15 @@ static inline ci_ptr bb_op_arraccess(bb_coro *c, ci_ptr arr, ci_ptr idx) {
  *  RRR special (no return value, not in table)
  * ================================================================ */
 
-static inline void bb_op_arraystore(bb_vm *vm, ci_ptr arr, ci_ptr idx, ci_ptr val) {
-	(void)vm;
+static inline void bb_op_arraystore(bb_coro *c, ci_ptr arr, ci_ptr idx, ci_ptr val) {
 	if (!CI_IS_ANY_ARR(arr))
-		bb_error("ARRAYSTORE: operand is not an array");
+		bb_coro_error(c, "ARRAYSTORE: operand is not an array");
 	if (!CI_IS_INT(idx))
-		bb_error("ARRAYSTORE: index must be integer");
+		bb_coro_error(c, "ARRAYSTORE: index must be integer");
 
 	intptr_t index = CI_INT(idx);
 	if (index < 0)
-		bb_error("ARRAYSTORE: negative index %lld", (long long)index);
+		bb_coro_error(c, "ARRAYSTORE: negative index %lld", (long long)index);
 
 	ci_array *a = (ci_array *)arr;
 	uint32_t alen = ci_arr_len(a);
@@ -99,10 +96,9 @@ static inline void bb_op_arraystore(bb_vm *vm, ci_ptr arr, ci_ptr idx, ci_ptr va
 	ci_arr_set(a, (uint32_t)index, val);
 }
 
-static inline void bb_op_hashstore(bb_vm *vm, ci_ptr map, ci_ptr key, ci_ptr val) {
-	(void)vm;
+static inline void bb_op_hashstore(bb_coro *c, ci_ptr map, ci_ptr key, ci_ptr val) {
 	if (!CI_IS_MAP(map))
-		bb_error("HASHSTORE: operand is not a map");
+		bb_coro_error(c, "HASHSTORE: operand is not a map");
 	ci_inc(val);
 	ci_map_put((ci_map *)map, key, val);
 }
@@ -125,7 +121,7 @@ static inline void bb_op_hashstore(bb_vm *vm, ci_ptr map, ci_ptr key, ci_ptr val
  *   type 1: key = register (klo = reg, khi = 0) */
 static void bb_op_newmap_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8_t *list) {
 	ci_ptr *stack = c->fast_stack;
-	bb_function *fn = c->fstack[c->fstack_pos - 1].function;
+	bb_function *fn = bb_coro_frame_top(c)->function;
 	uint32_t dst_reg = (uint32_t)a;
 	uint32_t npairs  = (uint32_t)b;
 
@@ -140,7 +136,7 @@ static void bb_op_newmap_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uin
 		if (type == 0) {
 			uint16_t strid = (uint16_t)list[i * 4 + 2] | ((uint16_t)list[i * 4 + 3] << 8);
 			if (strid >= fn->unit->str_count)
-				bb_error("NEWMAP: string index %u out of range", strid);
+				bb_coro_error(c, "NEWMAP: string index %u out of range", strid);
 			key = fn->unit->str2intern[strid];
 		} else {
 			key = stack[list[i * 4 + 2]];
@@ -177,7 +173,7 @@ static void bb_op_newarray_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, u
 /* HASHACCESS: a=dst, b=src, list=strids (2 per word); nwords = list[-5] */
 static void bb_op_hashaccess_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8_t *list) {
 	ci_ptr *stack = c->fast_stack;
-	bb_function *fn = c->fstack[c->fstack_pos - 1].function;
+	bb_function *fn = bb_coro_frame_top(c)->function;
 	uint32_t dst_reg = (uint32_t)a;
 	uint32_t src_reg = (uint32_t)b;
 	uint32_t nkeys   = (uint32_t)list[-5];  /* r3 = nwords; used as key count */
@@ -188,7 +184,7 @@ static void bb_op_hashaccess_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b,
 		if (!current) break;
 		uint16_t strid = (uint16_t)list[i * 2] | ((uint16_t)list[i * 2 + 1] << 8);
 		if (strid >= fn->unit->str_count)
-			bb_error("HASHACCESS: string index %u out of range", strid);
+			bb_coro_error(c, "HASHACCESS: string index %u out of range", strid);
 		current = bb_proto_find(c->vm, current, fn->unit->str2intern[strid]);
 	}
 
@@ -214,20 +210,13 @@ static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uin
 	(void)b;
 	ci_ptr *stack = c->fast_stack;
 	uint32_t count = (uint32_t)a;
-
-	ci_ptr ret_vals[256];
-	for (uint32_t i = 0; i < count; i++) {
-		ret_vals[i] = stack[list[i]];
-		ci_inc(ret_vals[i]);
-	}
-
+	
 	if (c->fstack_pos == 1) {
-		bb_frame *frame = &c->fstack[0];
+		bb_frame *frame = bb_coro_frame(c, 0);
 		uint32_t ret_base = frame->stack_base + frame->function->regs;
 		if (!ci_arr_ensure_space(c->stack, count))
 			bb_vm_error(c->vm, "return: oom");
-		for (uint32_t i = 0; i < count; i++)
-			c->stack->data[ret_base + i] = ret_vals[i];
+
 		c->stack->length  = ret_base + count;
 		c->lastreturn_idx = ret_base;
 		c->lastreturn_cnt = count;
@@ -235,22 +224,34 @@ static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uin
 		return;
 	}
 
-	c->fstack_pos--;
-	bb_frame *callee = &c->fstack[c->fstack_pos];
-	bb_frame *caller = &c->fstack[c->fstack_pos - 1];
+	bb_frame *callee = bb_coro_frame_top(c);
+	bb_frame *caller = bb_coro_frame_caller(c);
+	
+	bb_cached_op* call_opcode = caller->pc - 1;
+	
+	uint32_t nargs = call_opcode->a;
+	uint32_t nrets = call_opcode->b;
+	uint8_t* rets_list = ((uint8_t*)call_opcode->c) + 1 + nargs;
+	
 	ci_ptr *caller_stack = c->stack->data + caller->stack_base;
 
-	uint32_t nrets = callee->ret_count;
 	for (uint32_t i = 0; i < nrets && i < count; i++) {
-		VM_DBG("[RET] ret_vals[%u] -> R(%u)\n", i, callee->ret_regs[i]);
-		ci_dec(caller_stack[callee->ret_regs[i]]);
-		caller_stack[callee->ret_regs[i]] = ret_vals[i];
+		VM_DBG("[RET] callee[%u] -> caller[%u]\n", list[i], rets_list[i]);
+		
+		ci_ptr* callee_reg = &stack[ list[i] ];
+		
+		ci_ptr* caller_reg = &caller_stack[ rets_list[i] ];
+		
+		// caller reg is decr and nulled by caller
+		*caller_reg = *callee_reg;
+		
+		// this introduces bug when returnign same value return a, a
+		// dont touch refcnt this value
+		*callee_reg = NULL;
 	}
-	for (uint32_t i = nrets; i < count; i++)
-		ci_dec(ret_vals[i]);
-
-	c->stack->length = caller->stack_base + 256;
-	c->flags = BB_CORO_RETURNED;
+	
+	
+	bb_coro_popcall(c);
 }
 
 /* CALL: a=nargs, b=nrets, list[-4]=fn_reg,
@@ -263,66 +264,85 @@ static void bb_op_call_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8
 	uint32_t nrets   = (uint32_t)b;
 	uint8_t self_reg = list[0];
 
-	uint8_t *arg_list = list + 1;          /* [a0..aN-1] */
-	uint8_t *ret_list = list + 1 + nargs;  /* [r0..rM-1] */
+	/* list: [self] [a0..aN-1] [r0..rM-1] */
+	uint8_t *arg_list = list + 1;          
+	uint8_t *ret_list = list + 1 + nargs;  
 
 	ci_ptr fn_val = stack[fn_reg];
 	if (!fn_val)
-		bb_error("CALL: nil callee");
+		bb_coro_error(c, "CALL: nil callee");
 	bb_closure *cl = (bb_closure *)fn_val;
 
 	if (cl->fn->name && CI_IS_ANY_STR(cl->fn->name))
-		VM_DBG("[CALL] FN '%.*s'\n",
+		VM_DBG("[CALL] FN '%.*s' nargs %d nrets %d, fn_reg %d, self %d\n",
 		       (int)ci_str_len(cl->fn->name),
-		       (char *)ci_str_head(cl->fn->name));
+		       (char *)ci_str_head(cl->fn->name),
+		        nargs, nrets, fn_reg, self_reg
+		);
 	else
 		VM_DBG("[CALL] FN <unnamed>\n");
 
+	//zero out all rets
+	ci_ptr *dst = NULL;
+	
+	while(nrets){
+		nrets--;
+		
+		dst = &stack[ ret_list[nrets] ];
+		ci_dec(*dst);
+		
+		*dst = NULL;
+	} 
+	
+	
 	if (cl->fn->flags & BB_FN_NATIVE) {
 		ci_ptr result;
 		ci_ptr self_val = cl->self ? cl->self : stack[self_reg];
 
-		if (cl->fn->flags & BB_FN_NATIVE_VAR) {
+		/* Allow native functions to access the current coroutine */
+		bb_coro *saved_coro = vm->current_coro;
+		vm->current_coro = c;
+		
+		if (cl->fn->flags & BB_FN_NATIVE_METHOD) {
+			if (cl->fn->flags & BB_FN_NATIVE_VAR) {
+				ci_ptr gathered[256];
+				gathered[0] = self_val;
+				for (uint32_t i = 0; i < nargs; i++)
+					gathered[i + 1] = stack[arg_list[i]];
+				result = cl->fn->cfn_var(vm, (uint8_t)(nargs + 1), gathered);
+			} else {
+				result = cl->fn->cfn(vm, self_val,
+					nargs > 0 ? stack[arg_list[0]] : NULL,
+					nargs > 1 ? stack[arg_list[1]] : NULL);
+			}
+		} else if (cl->fn->flags & BB_FN_NATIVE_VAR) {
 			ci_ptr gathered[256];
 			for (uint32_t i = 0; i < nargs; i++)
 				gathered[i] = stack[arg_list[i]];
 			result = cl->fn->cfn_var(vm, (uint8_t)nargs, gathered);
 		} else {
 			result = cl->fn->cfn(vm,
-				nargs > 0 ? stack[arg_list[0]] : self_val,
+				nargs > 0 ? stack[arg_list[0]] : NULL,
 				nargs > 1 ? stack[arg_list[1]] : NULL,
 				nargs > 2 ? stack[arg_list[2]] : NULL);
 		}
 
-		if (nrets > 0 && result) {
-			ci_inc(result);
-			ci_dec(stack[ret_list[0]]);
-			stack[ret_list[0]] = result;
+		vm->current_coro = saved_coro;
+
+		if (dst) {
+			//ci_inc(result); c call should return value with refcnt 1 or more
+			*dst = result;
+		} else {
+			ci_dec(result);
 		}
+
 		return;
 	}
 
 	/* bytecode call — push frame */
 	bb_coro_pushcall(c, cl->fn);
-
-	bb_frame *callee = &c->fstack[c->fstack_pos - 1];
-	callee->ret_count = (uint8_t)(nrets < 4 ? nrets : 4);
-	for (uint32_t i = 0; i < callee->ret_count; i++)
-		callee->ret_regs[i] = ret_list[i];
-
-	ci_ptr *caller_stack = c->stack->data + (callee - 1)->stack_base;
-	ci_ptr *callee_stack = c->stack->data + callee->stack_base;
-
-	ci_ptr self_val = cl->self ? cl->self : caller_stack[self_reg];
-	ci_inc(self_val);
-	callee_stack[0] = self_val;
-
-	for (uint32_t i = 0; i < nargs; i++) {
-		ci_ptr v = caller_stack[arg_list[i]];
-		ci_inc(v);
-		callee_stack[1 + i] = v;
-	}
-
-	c->pc = 0;
-	c->flags = BB_CORO_RETURNED;
+	
+	VM_DBG("[CALL] exec start\n");
+	
+	return;
 }

@@ -1,7 +1,7 @@
 .PHONY: parser bytecode encoder decoder blueberry clean
 
 CC = clang-23
-CFLAGS = -Wall -O3 -Wextra -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER
+CFLAGS = -Wall -O1 -Wextra -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER -DBB_VM_DEBUG
 
 parser:
 	$(CC) $(CFLAGS) -DSTANDALONE_PARSER -o parser parser.c cma/cma.c

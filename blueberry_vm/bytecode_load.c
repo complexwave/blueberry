@@ -19,6 +19,11 @@ static uint16_t bb_read_u16(bb_reader *r) {
 	return lo | ((uint16_t)bb_read_u8(r) << 8);
 }
 
+static uint32_t bb_read_u32(bb_reader *r) {
+	uint32_t lo = bb_read_u16(r);
+	return lo | ((uint32_t)bb_read_u16(r) << 16);
+}
+
 static void bb_read_bytes(bb_reader *r, void *dst, uint32_t n) {
 	if (r->pos + n > r->len)
 		bb_error("load: unexpected end of file");
@@ -30,9 +35,9 @@ static void bb_read_bytes(bb_reader *r, void *dst, uint32_t n) {
 /* ================================================================
  *  Bytecode loader
  *
- *  .cbc file format (little-endian):
+ *  .cbc file format v2 (little-endian):
  *    "CIBC"              4 B  magic
- *    version             u16  = 1
+ *    version             u16  = 2
  *    string_count        u16
  *    function_count      u16
  *    --- string table ---
@@ -40,14 +45,17 @@ static void bb_read_bytes(bb_reader *r, void *dst, uint32_t n) {
  *    --- functions ---
  *    [name_idx u16][arg_count u8][reg_count u8]
  *    [local_count u16]                          (0 for now)
- *    [op_count u16]
- *    [...binary opcodes: op_count × 4 bytes...]
+ *    [code_bytes u32]
+ *    [...binary opcodes: code_bytes bytes...]
  *
- *  Opcode wire format — first byte: [subtype:2][opnum:6]
- *    subtype 00  RRR    [op][dst][src1][src2]   4 B
- *    subtype 01  RRU8   [op][dst][src1][imm8]   4 B
- *    subtype 10  RU16   [op][dst][imm_lo][imm_hi] 4 B (LE)
- *    subtype 11  VAR    [op][b1][extra_words][0] + extra_words × 4 B
+ *  Opcode wire format — every instruction is 8 bytes:
+ *    [op:u8][r1:u8][r2:u8][r3:u8][imm:i32-LE]
+ *    top 2 bits of op = subtype:
+ *    subtype 00  RRR    r1,r2,r3 are regs; imm=0
+ *    subtype 01  RRI    r1,r2,r3 are regs; imm=signed integer
+ *    subtype 10  RRS    r1 is reg; imm=string table id
+ *    subtype 11  VAR    r1,r2 per-op; r3=payload word count; imm varies
+ *                       followed by r3 × 4-byte payload words
  * ================================================================ */
 
 static bb_unit *bb_vm_loadbytecode(bb_vm *vm, const uint8_t *buf, uint32_t len) {
@@ -63,8 +71,8 @@ static bb_unit *bb_vm_loadbytecode(bb_vm *vm, const uint8_t *buf, uint32_t len) 
 		bb_error("load: bad magic (expected CIBC)");
 
 	uint16_t version  = bb_read_u16(r);
-	if (version != 1)
-		bb_error("load: unsupported version %u", version);
+	if (version != 2)
+		bb_error("load: unsupported version %u (expected 2)", version);
 
 	uint16_t str_count = bb_read_u16(r);
 	uint16_t fn_count  = bb_read_u16(r);
@@ -97,16 +105,17 @@ static bb_unit *bb_vm_loadbytecode(bb_vm *vm, const uint8_t *buf, uint32_t len) 
 			bb_read_u8(r);
 		}
 
-		uint16_t op_count  = bb_read_u16(r);
-		uint32_t code_bytes = (uint32_t)op_count * 4;
+		uint32_t code_bytes = bb_read_u32(r);
 
 		bb_function *fn = b_malloc(sizeof(bb_function));
+		memset(fn, 0, sizeof(*fn));
+		
 		fn->unit        = unit;
 		fn->name        = (name_idx < str_count) ? unit->str2intern[name_idx] : NULL;
 		fn->flags       = 0;
 		fn->args        = arg_count;
 		fn->regs        = reg_count;
-		fn->code_length = op_count;
+		fn->code_length = code_bytes;   /* bytes; word count derived in bb_build_cached */
 		fn->code        = b_malloc(code_bytes ? code_bytes : 1);
 		bb_read_bytes(r, fn->code, code_bytes);
 

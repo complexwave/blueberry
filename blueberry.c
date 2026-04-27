@@ -10,7 +10,7 @@
  * Loads and executes Citrin bytecode files produced by ./encoder.
  */
 
-
+#include <stdarg.h>
 
 #ifndef BB_CBC_ONLY
 #define BYTECODE_NO_MAIN
@@ -37,6 +37,17 @@ typedef struct bb_cached_op bb_cached_op;
 
 typedef ci_ptr (*bb_op_fn)(bb_coro *c, ci_ptr a, ci_ptr b);
 
+typedef size_t vm_dipatch_arg;
+
+typedef __attribute__((preserve_none)) void (*bb_fast_fn)(bb_coro *co, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg c);
+
+struct bb_cached_op {
+	bb_fast_fn fn;
+	vm_dipatch_arg a;
+	vm_dipatch_arg b;
+	vm_dipatch_arg c;
+};
+
 /* ================================================================
  *  Structs
  * ================================================================ */
@@ -48,6 +59,7 @@ struct bb_vm {
 	ci_array *units;
 	ci_map *proto_array;
 	ci_map *proto_string;
+	bb_coro *current_coro;
 };
 
 struct bb_unit {
@@ -67,7 +79,11 @@ struct bb_function {
 	uint32_t flags;
 	uint8_t args;
 	uint8_t regs;
+	
 	uint16_t code_length;
+	
+	bb_cached_op *ops;
+	
 	uint8_t *code;
 	union {
 		bb_cfn     cfn;
@@ -77,10 +93,8 @@ struct bb_function {
 
 struct bb_frame {
 	bb_function *function;
-	uint32_t ret_pc;
+	bb_cached_op *pc;
 	uint32_t stack_base;
-	uint8_t  ret_regs[4];
-	uint8_t  ret_count;
 };
 
 /*
@@ -115,6 +129,11 @@ struct bb_frame {
 #define BB_FN_NATIVE      (1u << 0)
 #define BB_FN_NATIVE_VAR  (1u << 1)
 
+/* Frame stack access macros */
+#define bb_coro_frame(c, n)      (&(c)->fstack[n])
+#define bb_coro_frame_top(c)     bb_coro_frame(c, (c)->fstack_pos - 1)
+#define bb_coro_frame_caller(c)  bb_coro_frame(c, (c)->fstack_pos - 2)
+
 
 #undef ci_inc
 #undef ci_dec
@@ -140,7 +159,6 @@ struct bb_coro {
 	CI_GC_HDR;
 	bb_vm *vm;
 	uint32_t flags;
-	uint32_t pc;
 
 	ci_array *stack;
 
@@ -152,9 +170,13 @@ struct bb_coro {
 	uint32_t lastreturn_cnt;
 
 	ci_ptr *fast_stack;
-	bb_cached_op *ops_pc;
+	bb_cached_op *pc;
 	bb_cached_op *ops_base;
 };
+
+static void bb_vm_execute(bb_coro *c);
+bb_cached_op* bb_function_ops(bb_function *fn);
+static void bb_coro_dump_stack(bb_coro *c, int dumpregs);
 
 /* ================================================================
  *  Falsy / error
@@ -171,6 +193,23 @@ __attribute__((noreturn))
 static void bb_vm_error(bb_vm *vm, const char *msg) {
 	(void)vm;
 	fprintf(stderr, "vm error: %s\n", msg);
+	exit(1);
+}
+
+__attribute__((noreturn))
+static void bb_coro_error(bb_coro *c, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	fprintf(stderr, "error: ");
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+	fprintf(stderr, "\n");
+	fflush(stderr);
+
+	if (c && c->fstack_pos > 0) {
+		bb_coro_dump_stack(c, 0);
+	}
+
 	exit(1);
 }
 
@@ -346,6 +385,19 @@ static ci_ptr bb_native_setprototype(bb_vm *vm, ci_ptr a0, ci_ptr a1, ci_ptr a2)
 	return a0;
 }
 
+static ci_ptr bb_native_stacktrace(bb_vm *vm, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
+	(void)a1; (void)a2;
+	if (!vm->current_coro) {
+		printf("stacktrace: not in a coroutine\n");
+		return NULL;
+	}
+	int dumpregs = 0;
+	if (CI_IS_INT(a0))
+		dumpregs = (int)CI_INT(a0);
+	bb_coro_dump_stack(vm->current_coro, dumpregs);
+	return NULL;
+}
+
 
 /* ================================================================
  *  Bytecode loader
@@ -378,19 +430,62 @@ static ci_ptr bb_native_setprototype(bb_vm *vm, ci_ptr a0, ci_ptr a1, ci_ptr a2)
 
 static void bb_coro_pushcall(bb_coro *c, bb_function *fn) {
 	if (c->fstack_pos >= c->fstack_cap)
-		bb_error("frame stack overflow");
+		bb_coro_error(c, "frame stack overflow");
 
+	if(c->fstack_pos){
+		bb_frame *current_frame = bb_coro_frame_top(c);
+		current_frame->pc = c->pc;
+	}
+	
 	uint32_t base = c->stack->length;
 
 	if (!ci_arr_ensure_space(c->stack, 256))
 		bb_vm_error(c->vm, "stack: out of memory");
 	memset(c->stack->data + base, 0, 256 * sizeof(ci_ptr));
+
 	c->stack->length += 256;
 
-	bb_frame *frame   = &c->fstack[c->fstack_pos++];
+	bb_frame *frame = bb_coro_frame(c, c->fstack_pos);
+
 	frame->function   = fn;
-	frame->ret_pc     = c->pc;
+	frame->pc     = 0;
 	frame->stack_base = base;
+
+	ci_ptr *stack   = c->stack->data + frame->stack_base;
+
+	VM_DBG("[PUSH(%u) FRAME(%p)] fstack %p -> %p [%u]. save pc %p\n",
+		   c->fstack_pos, fn, c->fast_stack, stack, frame->stack_base, frame->pc);
+	
+	stack[255]    = (ci_ptr)c->vm->globals;
+	c->fast_stack = stack;
+
+	bb_cached_op *ops = bb_function_ops(fn);
+	
+	c->ops_base = ops;
+	c->pc   = ops;
+	
+	c->fstack_pos++;
+}
+
+static void bb_coro_popcall(bb_coro *c) {
+	bb_frame *frame = bb_coro_frame_top(c);
+	bb_frame *caller = bb_coro_frame_caller(c);
+
+	c->stack->length = caller->stack_base + 256;
+
+	ci_ptr *stack   = c->stack->data + caller->stack_base;
+	
+	VM_DBG("[POP(%u) FRAME(%p)] fstack %p -> %p[%u]. pop pc %p \n", 
+		   c->fstack_pos, frame->function, c->fast_stack, stack, frame->stack_base, frame->pc);
+	
+	c->fast_stack = stack;
+	
+	bb_cached_op *ops = bb_function_ops(caller->function);
+	
+	c->ops_base = ops;
+	c->pc   = caller->pc;
+	
+	c->fstack_pos--;
 }
 
 static bb_coro *bb_coro_new(bb_vm *vm, bb_function *fn) {
@@ -439,16 +534,6 @@ static bb_coro *bb_coro_new(bb_vm *vm, bb_function *fn) {
  *  Fast dispatch — precached {fnptr, ctx} array
  * ================================================================ */
 
-typedef size_t vm_dipatch_arg;
-
-typedef __attribute__((preserve_none)) void (*bb_fast_fn)(bb_coro *co, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg c);
-
-struct bb_cached_op {
-	bb_fast_fn fn;
-	vm_dipatch_arg a;
-	vm_dipatch_arg b;
-	vm_dipatch_arg c;
-};
 
 #include "blueberry_vm/advanced_opcodes.c"
 
@@ -467,7 +552,7 @@ struct bb_cached_op {
 #define VM_OP_SET_STACK(idx, val) ci_dec(VM_OP_STACK(idx)); VM_OP_STACK(idx) = val;
 
 #define BB_DISPATCH_NEXT(c) \
-	bb_cached_op *op = c->ops_pc++;\
+	bb_cached_op *op = c->pc++;\
 	[[clang::musttail]] return op->fn(c, op->a, op->b, op->c);\
 
 
@@ -503,7 +588,7 @@ VM_OP static void __vmop_##label##_rri(bb_coro *c, vm_dipatch_arg a, vm_dipatch_
 VM_OP static void __vmop_##label##_rrs(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) { \
 	VM_OP_ACCESS_STACK; \
 	ci_ptr arg_b = VM_OP_STACK(b); \
-	bb_function *fn = c->fstack[c->fstack_pos - 1].function; \
+	bb_function *fn = bb_coro_frame_top(c)->function; \
 	ci_ptr arg_key = fn->unit->str2intern[_c]; \
 	ci_ptr r = impl(c, arg_b, arg_key); \
 	ci_inc(r); \
@@ -567,7 +652,7 @@ VM_OP static void __vmop_loadint(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b,
 VM_OP static void __vmop_loadstr(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	(void)b;
 	VM_OP_ACCESS_STACK;
-	bb_function *fn = c->fstack[c->fstack_pos - 1].function;
+	bb_function *fn = bb_coro_frame_top(c)->function;
 	VM_OP_SET_STACK(a, fn->unit->str2intern[_c]);
 
 	BB_DISPATCH_NEXT(c);
@@ -576,7 +661,7 @@ VM_OP static void __vmop_loadstr(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b,
 VM_OP static void __vmop_loadfn(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	(void)b;
 	VM_OP_ACCESS_STACK;
-	bb_function *fn = c->fstack[c->fstack_pos - 1].function;
+	bb_function *fn = bb_coro_frame_top(c)->function;
 	bb_function *f = ci_arr_index(fn->unit->functions, _c);
 	bb_closure *cl = bb_vm_closure(c->vm, f);
 	VM_OP_SET_STACK(a, (ci_ptr)cl);
@@ -587,7 +672,7 @@ VM_OP static void __vmop_loadfn(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, 
 VM_OP static void __vmop_jmp(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	(void)a;
 	(void)b;
-	c->ops_pc = c->ops_base + _c;
+	c->pc = c->ops_base + _c;
 
 	BB_DISPATCH_NEXT(c);
 }
@@ -596,7 +681,7 @@ VM_OP static void __vmop_jmpf(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm
 	(void)b;
 	VM_OP_ACCESS_STACK;
 	if (CI_IS_FALSY(VM_OP_STACK(a)))
-		c->ops_pc = c->ops_base + _c;
+		c->pc = c->ops_base + _c;
 
 	BB_DISPATCH_NEXT(c);
 }
@@ -605,7 +690,7 @@ VM_OP static void __vmop_jmpt(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm
 	(void)b;
 	VM_OP_ACCESS_STACK;
 	if (!CI_IS_FALSY(VM_OP_STACK(a)))
-		c->ops_pc = c->ops_base + _c;
+		c->pc = c->ops_base + _c;
 
 	BB_DISPATCH_NEXT(c);
 }
@@ -614,23 +699,23 @@ VM_OP static void __vmop_jmpt(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm
 
 VM_OP static void __vmop_arraystore(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	VM_OP_ACCESS_STACK;
-	bb_op_arraystore(c->vm, VM_OP_STACK(a), VM_OP_STACK(b), VM_OP_STACK(_c));
+	bb_op_arraystore(c, VM_OP_STACK(a), VM_OP_STACK(b), VM_OP_STACK(_c));
 
 	BB_DISPATCH_NEXT(c);
 }
 
 VM_OP static void __vmop_hashstore(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	VM_OP_ACCESS_STACK;
-	bb_op_hashstore(c->vm, VM_OP_STACK(a), VM_OP_STACK(b), VM_OP_STACK(_c));
+	bb_op_hashstore(c, VM_OP_STACK(a), VM_OP_STACK(b), VM_OP_STACK(_c));
 
 	BB_DISPATCH_NEXT(c);
 }
 
 VM_OP static void __vmop_hashstore_rrs(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	VM_OP_ACCESS_STACK;
-	bb_function *fn = c->fstack[c->fstack_pos - 1].function;
+	bb_function *fn = bb_coro_frame_top(c)->function;
 	ci_ptr key = fn->unit->str2intern[_c];
-	bb_op_hashstore(c->vm, VM_OP_STACK(a), key, VM_OP_STACK(b));
+	bb_op_hashstore(c, VM_OP_STACK(a), key, VM_OP_STACK(b));
 
 	BB_DISPATCH_NEXT(c);
 }
@@ -639,6 +724,13 @@ VM_OP static void __vmop_nop(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_
 	(void)a; (void)b; (void)_c;
 
 	BB_DISPATCH_NEXT(c);
+}
+
+
+VM_OP static void bb_vm_end_dispatch(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
+	(void)a; (void)b; (void)_c;
+
+	return;
 }
 
 VM_OP static void __vmop_exit(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
@@ -778,27 +870,11 @@ static bb_cached_op *bb_build_cached(bb_function *fn) {
 	ops[wi].a = ops[wi].b = ops[wi].c = 0;
 	return ops;
 }
-	
-	
-	
 
-
-
+#include "blueberry_vm/function.c"
 
 static void bb_vm_execute(bb_coro *c) {
-	bb_frame *frame = &c->fstack[c->fstack_pos - 1];
-	bb_function *fn = frame->function;
-	ci_ptr *stack   = c->stack->data + frame->stack_base;
-
-	stack[255]    = (ci_ptr)c->vm->globals;
-	c->fast_stack = stack;
-
-	bb_cached_op *ops = bb_build_cached(fn);
-	c->ops_base = ops;
-	c->ops_pc   = ops;
-
-	bb_cached_op *op = c->ops_pc++;
-	
+	bb_cached_op *op = c->pc++;
 	op->fn(c, op->a, op->b, op->c);
 }
 
@@ -812,6 +888,8 @@ static void bb_coro_resume(bb_coro *c) {
  * ================================================================ */
 
 #include "blueberry_vm/util.c"
+#include "blueberry_vm/lib/io.c"
+#include "blueberry_vm/lib/cma.c"
 
 /* ================================================================
  *  Compile .ci to .cbc
@@ -882,11 +960,18 @@ int main(int argc, char **argv) {
 
 			bb_closure *setproto_cl = bb_vm_native(vm, "setprototype", bb_native_setprototype);
 			ci_map_put(vm->globals, setproto_cl->fn->name, (ci_ptr)setproto_cl);
+
+			bb_closure *stacktrace_cl = bb_vm_native(vm, "stacktrace", bb_native_stacktrace);
+			ci_map_put(vm->globals, stacktrace_cl->fn->name, (ci_ptr)stacktrace_cl);
 		}
 
 		/* init built-in prototypes */
 		bb_proto_array_init(vm);
 		bb_proto_string_init(vm);
+
+		/* init stdlib */
+		bb_lib_io_init(vm);
+		bb_lib_cma_init(vm);
 
 		bb_unit *unit = bb_vm_loadbytecode(vm, buf, len);
 		free(buf);
@@ -900,6 +985,8 @@ int main(int argc, char **argv) {
 			continue;
 		}
 
+		/* Execute the last function (user code), not the first (global setup) */
+		uint32_t fn_count = ci_arr_len(unit->functions);
 		bb_function *main_fn = (bb_function *)ci_arr_index(unit->functions, 0);
 		bb_coro *c = bb_coro_new(vm, main_fn);
 
@@ -907,7 +994,7 @@ int main(int argc, char **argv) {
 			printf("\n=== execute ===\n");
 		bb_coro_resume(c);
 		if (!quiet)
-			bb_dump_regs(c);
+			bb_coro_dump_stack(c, 1);
 
 		bb_vm_free(vm);
 	}
