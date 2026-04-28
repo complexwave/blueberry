@@ -274,75 +274,82 @@ static void bb_op_call_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8
 	bb_closure *cl = (bb_closure *)fn_val;
 
 	if (cl->fn->name && CI_IS_ANY_STR(cl->fn->name))
-		VM_DBG("[CALL] FN '%.*s' nargs %d nrets %d, fn_reg %d, self %d\n",
+		VM_DBG("[CALL] FN '%.*s' nargs %d [expects %u] nrets %d, fn_reg %d, self %d\n",
 		       (int)ci_str_len(cl->fn->name),
 		       (char *)ci_str_head(cl->fn->name),
-		        nargs, nrets, fn_reg, self_reg
+		        nargs, cl->fn->args,
+				nrets, fn_reg, self_reg
 		);
 	else
 		VM_DBG("[CALL] FN <unnamed>\n");
 
-	//zero out all rets
-	ci_ptr *dst = NULL;
 	
-	while(nrets){
-		nrets--;
-		
-		dst = &stack[ ret_list[nrets] ];
-		ci_dec(*dst);
-		
-		*dst = NULL;
-	} 
-	
+	ci_ptr self_val = cl->self ? cl->self : stack[self_reg];
 	
 	if (cl->fn->flags & BB_FN_NATIVE) {
 		ci_ptr result;
-		ci_ptr self_val = cl->self ? cl->self : stack[self_reg];
-
-		/* Allow native functions to access the current coroutine */
-		bb_coro *saved_coro = vm->current_coro;
-		vm->current_coro = c;
 		
-		if (cl->fn->flags & BB_FN_NATIVE_METHOD) {
-			if (cl->fn->flags & BB_FN_NATIVE_VAR) {
-				ci_ptr gathered[256];
-				gathered[0] = self_val;
-				for (uint32_t i = 0; i < nargs; i++)
-					gathered[i + 1] = stack[arg_list[i]];
-				result = cl->fn->cfn_var(vm, (uint8_t)(nargs + 1), gathered);
-			} else {
-				result = cl->fn->cfn(vm, self_val,
-					nargs > 0 ? stack[arg_list[0]] : NULL,
-					nargs > 1 ? stack[arg_list[1]] : NULL);
-			}
-		} else if (cl->fn->flags & BB_FN_NATIVE_VAR) {
+		if (cl->fn->flags & BB_FN_NATIVE_VAR) {
 			ci_ptr gathered[256];
+			gathered[0] = self_val;
 			for (uint32_t i = 0; i < nargs; i++)
 				gathered[i] = stack[arg_list[i]];
-			result = cl->fn->cfn_var(vm, (uint8_t)nargs, gathered);
+			result = cl->fn->cfn_var(c, self_val, (size_t)(nargs), gathered);
+		} else if (cl->fn->flags & BB_FN_NATIVE_METHOD) {
+				result = cl->fn->cfn(c, self_val,
+					nargs > 0 ? stack[arg_list[0]] : NULL,
+					nargs > 1 ? stack[arg_list[1]] : NULL);
 		} else {
-			result = cl->fn->cfn(vm,
+			result = cl->fn->cfn(c,
 				nargs > 0 ? stack[arg_list[0]] : NULL,
 				nargs > 1 ? stack[arg_list[1]] : NULL,
 				nargs > 2 ? stack[arg_list[2]] : NULL);
 		}
 
-		vm->current_coro = saved_coro;
-
-		if (dst) {
+		if (nrets) {
 			//ci_inc(result); c call should return value with refcnt 1 or more
-			*dst = result;
+			stack[ ret_list[0] ] = result;
+			
+			nrets--;
+			stack++;
 		} else {
 			ci_dec(result);
 		}
-
-		return;
+			
+		goto zero_rets;
 	}
 
 	/* bytecode call — push frame */
 	bb_coro_pushcall(c, cl->fn);
 	
+	bb_frame *callee = bb_coro_frame_top(c);
+	ci_ptr *callee_stack = c->stack->data + callee->stack_base;
+	
+	callee_stack[0] = self_val;
+	callee_stack++;
+	
+	for (uint32_t i = 0; i < nargs && i < cl->fn->args; i++){
+		ci_ptr *caller_reg = &stack[arg_list[i]];
+		ci_ptr *callee_reg = &callee_stack[i];
+		
+		VM_DBG("[ARG] caller[%u] -> callee[%u]\n", arg_list[i], i+1);
+		
+		*callee_reg = *caller_reg;
+		
+		ci_inc(*callee_reg);
+	}
+	
 	VM_DBG("[CALL] exec start\n");
+	
+	zero_rets:
+	while(nrets){
+			nrets--;
+			
+			ci_ptr* ret = &stack[ ret_list[nrets] ];
+			ci_dec(*ret);
+			
+			*ret = NULL;
+	} 
 	
 	return;
 }

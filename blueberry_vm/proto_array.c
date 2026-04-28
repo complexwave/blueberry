@@ -4,36 +4,36 @@
  * All methods receive self (the array) as a0.
  */
 
-static ci_ptr bb_arr_len(bb_vm_arg *vm, ci_ptr arr) {
+static ci_ptr bb_arr_len(bb_coro_arg *c, ci_ptr arr) {
 	BB_CHECK_ARRAY(arr);
 	return CI_PACKINT(ci_arr_len((ci_array *)arr));
 }
 
-static ci_ptr bb_arr_push(bb_vm_arg *vm, ci_ptr arr, ci_ptr val) {
+static ci_ptr bb_arr_push(bb_coro_arg *c, ci_ptr arr, ci_ptr val) {
 	BB_CHECK_ARRAY(arr);
 	ci_inc(val);
 	ci_arr_push((ci_array *)arr, val);
 	return NULL;
 }
 
-static ci_ptr bb_arr_pop(bb_vm_arg *vm, ci_ptr arr) {
+static ci_ptr bb_arr_pop(bb_coro_arg *c, ci_ptr arr) {
 	BB_CHECK_ARRAY(arr);
 	return ci_arr_pop((ci_array *)arr);
 }
 
-static ci_ptr bb_arr_shift(bb_vm_arg *vm, ci_ptr arr) {
+static ci_ptr bb_arr_shift(bb_coro_arg *c, ci_ptr arr) {
 	BB_CHECK_ARRAY(arr);
 	return ci_arr_shift((ci_array *)arr);
 }
 
-static ci_ptr bb_arr_unshift(bb_vm_arg *vm, ci_ptr arr, ci_ptr val) {
+static ci_ptr bb_arr_unshift(bb_coro_arg *c, ci_ptr arr, ci_ptr val) {
 	BB_CHECK_ARRAY(arr);
 	ci_inc(val);
 	ci_arr_unshift((ci_array *)arr, val);
 	return NULL;
 }
 
-static ci_ptr bb_arr_resize(bb_vm_arg *vm, ci_ptr arr, ci_ptr newsize) {
+static ci_ptr bb_arr_resize(bb_coro_arg *c, ci_ptr arr, ci_ptr newsize) {
 	BB_CHECK_ARRAY(arr);
 	BB_CHECK_INT(newsize);
 
@@ -55,34 +55,34 @@ static ci_ptr bb_arr_resize(bb_vm_arg *vm, ci_ptr arr, ci_ptr newsize) {
 	return CI_PACKINT(a->size);
 }
 
-static ci_ptr bb_arr_size(bb_vm_arg *vm, ci_ptr arr, ci_ptr newsize) {
+static ci_ptr bb_arr_size(bb_coro_arg *c, ci_ptr arr, ci_ptr newsize) {
 	BB_CHECK_ARRAY(arr);
 	
 	if(newsize != NULL){
-		return bb_arr_resize(vm, arr, newsize);
+		return bb_arr_resize(c, arr, newsize);
 	}
 	
 	return CI_PACKINT(((ci_array *)arr)->size);
 }
 
-static ci_ptr bb_arr__offset(bb_vm_arg *vm, ci_ptr arr) {
+static ci_ptr bb_arr__offset(bb_coro_arg *c, ci_ptr arr) {
 	BB_CHECK_ARRAY(arr);
 	return CI_PACKINT(((ci_array *)arr)->offset);
 }
 
-static ci_ptr bb_arr_find(bb_vm_arg *vm, ci_ptr arr, ci_ptr val) {
+static ci_ptr bb_arr_find(bb_coro_arg *c, ci_ptr arr, ci_ptr val) {
 	BB_CHECK_ARRAY(arr);
 	int32_t idx = ci_arr_find((ci_array *)arr, val, 0);
 	if (idx < 0) return CI_BOOL(0);
 	return CI_PACKINT(idx);
 }
 
-static ci_ptr bb_arr_contains(bb_vm_arg *vm, ci_ptr arr, ci_ptr val) {
+static ci_ptr bb_arr_contains(bb_coro_arg *c, ci_ptr arr, ci_ptr val) {
 	BB_CHECK_ARRAY(arr);
 	return CI_BOOL(ci_arr_contains((ci_array *)arr, val));
 }
 
-static ci_ptr bb_arr_slice(bb_vm_arg *vm, ci_ptr arr, ci_ptr from, ci_ptr to) {
+static ci_ptr bb_arr_slice(bb_coro_arg *c, ci_ptr arr, ci_ptr from, ci_ptr to) {
 	BB_CHECK_ARRAY(arr);
 	BB_CHECK_INT(from);
 	BB_CHECK_INT(to);
@@ -90,18 +90,18 @@ static ci_ptr bb_arr_slice(bb_vm_arg *vm, ci_ptr arr, ci_ptr from, ci_ptr to) {
 	return (ci_ptr)result;
 }
 
-static ci_ptr bb_arr_copy(bb_vm_arg *vm, ci_ptr arr) {
+static ci_ptr bb_arr_copy(bb_coro_arg *c, ci_ptr arr) {
 	BB_CHECK_ARRAY(arr);
 	return (ci_ptr)ci_arr_copy((ci_array *)arr);
 }
 
-static ci_ptr bb_arr_clear(bb_vm_arg *vm, ci_ptr arr) {
+static ci_ptr bb_arr_clear(bb_coro_arg *c, ci_ptr arr) {
 	BB_CHECK_ARRAY(arr);
 	ci_arr_clear((ci_array *)arr);
 	return NULL;
 }
 
-static ci_ptr bb_arr_reverse(bb_vm_arg *vm, ci_ptr arr) {
+static ci_ptr bb_arr_reverse(bb_coro_arg *c, ci_ptr arr) {
 	BB_CHECK_ARRAY(arr);
 	ci_arr_reverse((ci_array *)arr);
 	return NULL;
@@ -126,6 +126,12 @@ static void bb_proto_array_init(bb_vm *vm) {
 		{ "reverse", bb_arr_reverse, 0 },
 		{ "_offset", bb_arr__offset, 0 },
 	};
-	vm->proto_array = ci_map_ident_new(16);
-	bb_func2map(vm, vm->proto_array, arr_lib, sizeof(arr_lib) / sizeof(arr_lib[0]));
+	ci_map *proto = bb_proto_register(vm, "array");
+	bb_func2map(vm, proto, arr_lib, sizeof(arr_lib) / sizeof(arr_lib[0]));
+
+	bb_set_arena_prototype(CI_ARR,            proto);
+	bb_set_arena_prototype(CI_ARR_SMALL_128,  proto);
+	bb_set_arena_prototype(CI_ARR_SMALL_256,  proto);
+	bb_set_arena_prototype(CI_ARR_SMALL_1024, proto);
+	bb_set_arena_prototype(CI_ARR_SMALL_2048, proto);
 }

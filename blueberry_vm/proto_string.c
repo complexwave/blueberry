@@ -6,12 +6,12 @@
 
 /* ---- query ---- */
 
-static ci_ptr bb_str_len(bb_vm_arg *vm, ci_ptr s) {
+static ci_ptr bb_str_len(bb_coro_arg *c, ci_ptr s) {
 	BB_CHECK_STRING(s);
 	return CI_PACKINT((intptr_t)ci_str_len(s));
 }
 
-static ci_ptr bb_str_size(bb_vm_arg *vm, ci_ptr s) {
+static ci_ptr bb_str_size(bb_coro_arg *c, ci_ptr s) {
 	BB_CHECK_STRING(s);
 	return CI_PACKINT((intptr_t)ci_str_size(s));
 }
@@ -19,7 +19,7 @@ static ci_ptr bb_str_size(bb_vm_arg *vm, ci_ptr s) {
 /* ---- access ---- */
 
 /* at(idx) — single byte as int, null if OOB */
-static ci_ptr bb_str_at(bb_vm_arg *vm, ci_ptr s, ci_ptr idx) {
+static ci_ptr bb_str_at(bb_coro_arg *c, ci_ptr s, ci_ptr idx) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_INT(idx);
 	intptr_t i = CI_INT(idx);
@@ -29,8 +29,8 @@ static ci_ptr bb_str_at(bb_vm_arg *vm, ci_ptr s, ci_ptr idx) {
 	return CI_PACKINT(ci_str_head(s)[i]);
 }
 
-/* slice(start, end) — new string from [start, end), negative = from end */
-static ci_ptr bb_str_slice(bb_vm_arg *vm, ci_ptr s, ci_ptr a_start, ci_ptr a_end) {
+/* slice(start, end) — zero-copy slice view into [start, end), negative = from end */
+static ci_ptr bb_str_slice(bb_coro_arg *c, ci_ptr s, ci_ptr a_start, ci_ptr a_end) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_INT(a_start);
 
@@ -51,23 +51,57 @@ static ci_ptr bb_str_slice(bb_vm_arg *vm, ci_ptr s, ci_ptr a_start, ci_ptr a_end
 	if (si < 0) si = 0;
 	if (ei > len) ei = len;
 	if (si >= ei)
-		return (ci_ptr)ci_str_from_cstr("");
+		return (ci_ptr)ci_str_slice_new((const uint8_t *)"", 0, NULL);
 
+	/* NOTE: parent string is NOT promoted to readonly here.
+	 * Slices are unsafe if parent reallocs — caller's responsibility.
+	 * Future: ci_str_make_readonly(s) when a slice is created. */
 	uint8_t *head = ci_str_head(s);
 	size_t slen = (size_t)(ei - si);
-
-	ci_str *r = ci_str_new(slen);
+	ci_str *r = ci_str_slice_new(head + si, slen, s);
 	if (!r) bb_error("slice: out of memory");
-	uint8_t *dst = ci_str_ensure_tail(r, slen);
-	memcpy(dst, head + si, slen);
-	ci_str_put_tail(r, slen);
 	return (ci_ptr)r;
+}
+
+/* is_slice() — true if this string is a zero-copy slice view */
+static ci_ptr bb_str_is_slice(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING(s);
+	return CI_BOOL(CI_IS_SLICE(s));
+}
+
+/* slice_offset() — byte offset between parent's head and this slice's head.
+ * Returns null if self is not a slice, or 0 if parent is null (static memory). */
+static ci_ptr bb_str_slice_offset(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING(s);
+	if (!CI_IS_SLICE(s))
+		return NULL;
+	ci_str_slice *sl = (ci_str_slice *)s;
+	if (!sl->parent || !CI_IS_ANY_STR(sl->parent))
+		return CI_PACKINT(0);
+	intptr_t offset = (intptr_t)(sl->slice.start - ci_str_head(sl->parent));
+	return CI_PACKINT(offset);
+}
+
+/* ctx() — arbitrary context pointer stored on slice; null for non-slices */
+static ci_ptr bb_str_ctx(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING(s);
+	if (!CI_IS_SLICE(s))
+		return NULL;
+	return ((ci_str_slice *)s)->ctx;
+}
+
+/* parent() — owning string of a slice; null for non-slices */
+static ci_ptr bb_str_parent(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING(s);
+	if (!CI_IS_SLICE(s))
+		return NULL;
+	return ((ci_str_slice *)s)->parent;
 }
 
 /* ---- search ---- */
 
 /* find(needle) — index of first occurrence, null if not found */
-static ci_ptr bb_str_find(bb_vm_arg *vm, ci_ptr s, ci_ptr needle) {
+static ci_ptr bb_str_find(bb_coro_arg *c, ci_ptr s, ci_ptr needle) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_STRING(needle);
 
@@ -89,13 +123,13 @@ static ci_ptr bb_str_find(bb_vm_arg *vm, ci_ptr s, ci_ptr needle) {
 }
 
 /* contains(needle) — true or false */
-static ci_ptr bb_str_contains(bb_vm_arg *vm, ci_ptr s, ci_ptr needle) {
-	ci_ptr idx = bb_str_find(vm, s, needle);
+static ci_ptr bb_str_contains(bb_coro_arg *c, ci_ptr s, ci_ptr needle) {
+	ci_ptr idx = bb_str_find(c, s, needle);
 	return CI_BOOL(idx != CI_BOOL(0));
 }
 
 /* starts(prefix) */
-static ci_ptr bb_str_starts(bb_vm_arg *vm, ci_ptr s, ci_ptr prefix) {
+static ci_ptr bb_str_starts(bb_coro_arg *c, ci_ptr s, ci_ptr prefix) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_STRING(prefix);
 
@@ -107,7 +141,7 @@ static ci_ptr bb_str_starts(bb_vm_arg *vm, ci_ptr s, ci_ptr prefix) {
 }
 
 /* ends(suffix) */
-static ci_ptr bb_str_ends(bb_vm_arg *vm, ci_ptr s, ci_ptr suffix) {
+static ci_ptr bb_str_ends(bb_coro_arg *c, ci_ptr s, ci_ptr suffix) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_STRING(suffix);
 
@@ -121,8 +155,8 @@ static ci_ptr bb_str_ends(bb_vm_arg *vm, ci_ptr s, ci_ptr suffix) {
 /* ---- mutation (return self for chaining) ---- */
 
 /* append(other) — append string to self */
-static ci_ptr bb_str_append(bb_vm_arg *vm, ci_ptr s, ci_ptr other) {
-	BB_CHECK_STRING(s);
+static ci_ptr bb_str_append(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
+	BB_CHECK_STRING_WRITABLE(s);
 	BB_CHECK_STRING(other);
 
 	size_t olen = ci_str_len(other);
@@ -142,8 +176,8 @@ static ci_ptr bb_str_append(bb_vm_arg *vm, ci_ptr s, ci_ptr other) {
 }
 
 /* prepend(other) */
-static ci_ptr bb_str_prepend(bb_vm_arg *vm, ci_ptr s, ci_ptr other) {
-	BB_CHECK_STRING(s);
+static ci_ptr bb_str_prepend(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
+	BB_CHECK_STRING_WRITABLE(s);
 	BB_CHECK_STRING(other);
 
 	size_t olen = ci_str_len(other);
@@ -162,8 +196,8 @@ static ci_ptr bb_str_prepend(bb_vm_arg *vm, ci_ptr s, ci_ptr other) {
 }
 
 /* clear() */
-static ci_ptr bb_str_clear(bb_vm_arg *vm, ci_ptr s) {
-	BB_CHECK_STRING(s);
+static ci_ptr bb_str_clear(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING_WRITABLE(s);
 	ci_str_clear((ci_str *)s);
 	return s;
 }
@@ -171,82 +205,75 @@ static ci_ptr bb_str_clear(bb_vm_arg *vm, ci_ptr s) {
 /* ---- produce new strings ---- */
 
 /* copy() — deep copy */
-static ci_ptr bb_str_copy(bb_vm_arg *vm, ci_ptr s) {
+static ci_ptr bb_str_copy(bb_coro_arg *c, ci_ptr s) {
 	BB_CHECK_STRING(s);
 	ci_str *r = ci_str_copy(s, 0);
 	if (!r) bb_error("copy: out of memory");
 	return (ci_ptr)r;
 }
 
-/* upper() — new uppercased string */
-static ci_ptr bb_str_upper(bb_vm_arg *vm, ci_ptr s) {
-	BB_CHECK_STRING(s);
+/* upper() — uppercase self in-place, return self */
+static ci_ptr bb_str_upper(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING_WRITABLE(s);
 	size_t len = ci_str_len(s);
-	ci_str *r = ci_str_copy(s, 0);
-	if (!r) bb_error("upper: out of memory");
-	uint8_t *p = ci_str_head(r);
+	uint8_t *p = ci_str_head(s);
 	for (size_t i = 0; i < len; i++) {
 		if (p[i] >= 'a' && p[i] <= 'z')
 			p[i] -= 32;
 	}
-	ci_str_reset_hash(r);
-	return (ci_ptr)r;
+	ci_str_reset_hash(s);
+	return s;
 }
 
-/* lower() — new lowercased string */
-static ci_ptr bb_str_lower(bb_vm_arg *vm, ci_ptr s) {
-	BB_CHECK_STRING(s);
+/* lower() — lowercase self in-place, return self */
+static ci_ptr bb_str_lower(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING_WRITABLE(s);
 	size_t len = ci_str_len(s);
-	ci_str *r = ci_str_copy(s, 0);
-	if (!r) bb_error("lower: out of memory");
-	uint8_t *p = ci_str_head(r);
+	uint8_t *p = ci_str_head(s);
 	for (size_t i = 0; i < len; i++) {
 		if (p[i] >= 'A' && p[i] <= 'Z')
 			p[i] += 32;
 	}
-	ci_str_reset_hash(r);
-	return (ci_ptr)r;
+	ci_str_reset_hash(s);
+	return s;
 }
 
-/* trim() — new string with leading/trailing whitespace removed */
-static ci_ptr bb_str_trim(bb_vm_arg *vm, ci_ptr s) {
-	BB_CHECK_STRING(s);
+/* trim() — remove leading/trailing whitespace in-place, return self */
+static ci_ptr bb_str_trim(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING_WRITABLE(s);
 	uint8_t *h = ci_str_head(s);
 	size_t len = ci_str_len(s);
 
-	size_t start = 0;
-	while (start < len && (h[start] == ' ' || h[start] == '\t' || h[start] == '\n' || h[start] == '\r'))
-		start++;
+	size_t head_cut = 0;
+	while (head_cut < len && (h[head_cut] == ' ' || h[head_cut] == '\t' || h[head_cut] == '\n' || h[head_cut] == '\r'))
+		head_cut++;
 
-	size_t end = len;
-	while (end > start && (h[end-1] == ' ' || h[end-1] == '\t' || h[end-1] == '\n' || h[end-1] == '\r'))
-		end--;
+	size_t tail_cut = 0;
+	while (tail_cut < len - head_cut && (h[len - 1 - tail_cut] == ' ' || h[len - 1 - tail_cut] == '\t' || h[len - 1 - tail_cut] == '\n' || h[len - 1 - tail_cut] == '\r'))
+		tail_cut++;
 
-	size_t rlen = end - start;
-	ci_str *r = ci_str_new(rlen);
-	if (!r) bb_error("trim: out of memory");
-	uint8_t *dst = ci_str_ensure_tail(r, rlen);
-	memcpy(dst, h + start, rlen);
-	ci_str_put_tail(r, rlen);
-	return (ci_ptr)r;
+	if (head_cut) ci_str_rmhead((ci_str *)s, head_cut);
+	if (tail_cut) ci_str_rmtail((ci_str *)s, tail_cut);
+	ci_str_reset_hash(s);
+	return s;
 }
 
-/* rev() — new reversed string */
-static ci_ptr bb_str_rev(bb_vm_arg *vm, ci_ptr s) {
-	BB_CHECK_STRING(s);
+/* rev() — reverse self in-place, return self */
+static ci_ptr bb_str_rev(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING_WRITABLE(s);
 	size_t len = ci_str_len(s);
-	ci_str *r = ci_str_new(len);
-	if (!r) bb_error("rev: out of memory");
-	uint8_t *src = ci_str_head(s);
-	uint8_t *dst = ci_str_ensure_tail(r, len);
-	for (size_t i = 0; i < len; i++)
-		dst[i] = src[len - 1 - i];
-	ci_str_put_tail(r, len);
-	return (ci_ptr)r;
+	uint8_t *p = ci_str_head(s);
+	for (size_t i = 0; i < len / 2; i++) {
+		uint8_t tmp = p[i];
+		p[i] = p[len - 1 - i];
+		p[len - 1 - i] = tmp;
+	}
+	ci_str_reset_hash(s);
+	return s;
 }
 
 /* repeat(n) — new string, self repeated n times */
-static ci_ptr bb_str_repeat(bb_vm_arg *vm, ci_ptr s, ci_ptr n) {
+static ci_ptr bb_str_repeat(bb_coro_arg *c, ci_ptr s, ci_ptr n) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_INT(n);
 	intptr_t count = CI_INT(n);
@@ -270,7 +297,7 @@ static ci_ptr bb_str_repeat(bb_vm_arg *vm, ci_ptr s, ci_ptr n) {
 /* ---- conversion ---- */
 
 /* split(delim) — array of strings split on delimiter */
-static ci_ptr bb_str_split(bb_vm_arg *vm, ci_ptr s, ci_ptr delim) {
+static ci_ptr bb_str_split(bb_coro_arg *c, ci_ptr s, ci_ptr delim) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_STRING(delim);
 
@@ -322,7 +349,7 @@ static ci_ptr bb_str_split(bb_vm_arg *vm, ci_ptr s, ci_ptr delim) {
 }
 
 /* bytes() — array of ints (byte values) */
-static ci_ptr bb_str_bytes(bb_vm_arg *vm, ci_ptr s) {
+static ci_ptr bb_str_bytes(bb_coro_arg *c, ci_ptr s) {
 	BB_CHECK_STRING(s);
 	size_t len = ci_str_len(s);
 	uint8_t *h = ci_str_head(s);
@@ -336,40 +363,40 @@ static ci_ptr bb_str_bytes(bb_vm_arg *vm, ci_ptr s) {
 }
 
 /* hash() — FNV-1a hash as int */
-static ci_ptr bb_str_hash(bb_vm_arg *vm, ci_ptr s) {
+static ci_ptr bb_str_hash(bb_coro_arg *c, ci_ptr s) {
 	BB_CHECK_STRING(s);
 	return CI_PACKINT((intptr_t)ci_str_hash((ci_str *)s));
 }
 
 /* eq(other) — string equality */
-static ci_ptr bb_str_eq(bb_vm_arg *vm, ci_ptr s, ci_ptr other) {
+static ci_ptr bb_str_eq(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_STRING(other);
 	return CI_PACKINT(ci_str_eq((const ci_str *)s, (const ci_str *)other));
 }
 
 /* cmp(other) — lexicographic compare: -1/0/1 */
-static ci_ptr bb_str_cmp(bb_vm_arg *vm, ci_ptr s, ci_ptr other) {
+static ci_ptr bb_str_cmp(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_STRING(other);
 
 	size_t la = ci_str_len(s);
 	size_t lb = ci_str_len(other);
 	size_t min = la < lb ? la : lb;
-	int c = memcmp(ci_str_head(s), ci_str_head(other), min);
-	if (c == 0) {
-		if (la < lb) c = -1;
-		else if (la > lb) c = 1;
+	int cmp = memcmp(ci_str_head(s), ci_str_head(other), min);
+	if (cmp == 0) {
+		if (la < lb) cmp = -1;
+		else if (la > lb) cmp = 1;
 	} else {
-		c = c < 0 ? -1 : 1;
+		cmp = cmp < 0 ? -1 : 1;
 	}
-	return CI_PACKINT(c);
+	return CI_PACKINT(cmp);
 }
 
 /* ---- replace ---- */
 
 /* replace(needle, replacement) — new string with all occurrences replaced */
-static ci_ptr bb_str_replace(bb_vm_arg *vm, ci_ptr s, ci_ptr needle, ci_ptr replacement) {
+static ci_ptr bb_str_replace(bb_coro_arg *c, ci_ptr s, ci_ptr needle, ci_ptr replacement) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_STRING(needle);
 	BB_CHECK_STRING(replacement);
@@ -424,8 +451,12 @@ static void bb_proto_string_init(bb_vm *vm) {
 		{ "len",      bb_str_len,      0 },
 		{ "size",     bb_str_size,     0 },
 		/* access */
-		{ "at",       bb_str_at,       0 },
-		{ "slice",    bb_str_slice,    0 },
+		{ "at",          bb_str_at,           0 },
+		{ "slice",       bb_str_slice,       0 },
+		{ "is_slice",    bb_str_is_slice,    0 },
+		{ "slice_offset", bb_str_slice_offset, 0 },
+		{ "ctx",         bb_str_ctx,         0 },
+		{ "parent",      bb_str_parent,      0 },
 		/* search */
 		{ "find",     bb_str_find,     0 },
 		{ "contains", bb_str_contains, 0 },
@@ -451,6 +482,13 @@ static void bb_proto_string_init(bb_vm *vm) {
 		{ "eq",       bb_str_eq,       0 },
 		{ "cmp",      bb_str_cmp,      0 },
 	};
-	vm->proto_string = ci_map_ident_new(32);
-	bb_func2map(vm, vm->proto_string, str_lib, sizeof(str_lib) / sizeof(str_lib[0]));
+	ci_map *proto = bb_proto_register(vm, "string");
+	bb_func2map(vm, proto, str_lib, sizeof(str_lib) / sizeof(str_lib[0]));
+
+	bb_set_arena_prototype(CI_STR,           proto);
+	bb_set_arena_prototype(CI_STR_SLICE,     proto);
+	bb_set_arena_prototype(CI_STR_SMALL_32,  proto);
+	bb_set_arena_prototype(CI_STR_SMALL_64,  proto);
+	bb_set_arena_prototype(CI_STR_SMALL_128, proto);
+	bb_set_arena_prototype(CI_STR_SMALL_256, proto);
 }

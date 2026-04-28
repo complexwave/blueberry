@@ -29,8 +29,8 @@ static char *bb_io_cpath(ci_ptr s, char *buf, size_t bufsz) {
 
 /* ---- file_read(path) ---- */
 
-static ci_ptr bb_io_file_read(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)vm; (void)a1; (void)a2;
+static ci_ptr bb_io_file_read(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
+	(void)c; (void)a1; (void)a2;
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -68,8 +68,8 @@ static ci_ptr bb_io_file_read(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2) 
 
 /* ---- file_write(path, data) ---- */
 
-static ci_ptr bb_io_file_write(bb_vm_arg *vm, ci_ptr path, ci_ptr data, ci_ptr a2) {
-	(void)vm; (void)a2;
+static ci_ptr bb_io_file_write(bb_coro_arg *c, ci_ptr path, ci_ptr data, ci_ptr a2) {
+	(void)c; (void)a2;
 	BB_CHECK_STRING(path);
 	BB_CHECK_STRING(data);
 
@@ -92,8 +92,8 @@ static ci_ptr bb_io_file_write(bb_vm_arg *vm, ci_ptr path, ci_ptr data, ci_ptr a
 
 /* ---- file_append(path, data) ---- */
 
-static ci_ptr bb_io_file_append(bb_vm_arg *vm, ci_ptr path, ci_ptr data, ci_ptr a2) {
-	(void)vm; (void)a2;
+static ci_ptr bb_io_file_append(bb_coro_arg *c, ci_ptr path, ci_ptr data, ci_ptr a2) {
+	(void)c; (void)a2;
 	BB_CHECK_STRING(path);
 	BB_CHECK_STRING(data);
 
@@ -116,8 +116,8 @@ static ci_ptr bb_io_file_append(bb_vm_arg *vm, ci_ptr path, ci_ptr data, ci_ptr 
 
 /* ---- file_exists(path) ---- */
 
-static ci_ptr bb_io_file_exists(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)vm; (void)a1; (void)a2;
+static ci_ptr bb_io_file_exists(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
+	(void)c; (void)a1; (void)a2;
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -129,8 +129,8 @@ static ci_ptr bb_io_file_exists(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2
 
 /* ---- file_size(path) ---- */
 
-static ci_ptr bb_io_file_size(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)vm; (void)a1; (void)a2;
+static ci_ptr bb_io_file_size(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
+	(void)c; (void)a1; (void)a2;
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -145,8 +145,8 @@ static ci_ptr bb_io_file_size(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2) 
 
 /* ---- file_remove(path) ---- */
 
-static ci_ptr bb_io_file_remove(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)vm; (void)a1; (void)a2;
+static ci_ptr bb_io_file_remove(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
+	(void)c; (void)a1; (void)a2;
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -157,8 +157,8 @@ static ci_ptr bb_io_file_remove(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2
 
 /* ---- file_rename(old, new) ---- */
 
-static ci_ptr bb_io_file_rename(bb_vm_arg *vm, ci_ptr oldp, ci_ptr newp, ci_ptr a2) {
-	(void)vm; (void)a2;
+static ci_ptr bb_io_file_rename(bb_coro_arg *c, ci_ptr oldp, ci_ptr newp, ci_ptr a2) {
+	(void)c; (void)a2;
 	BB_CHECK_STRING(oldp);
 	BB_CHECK_STRING(newp);
 
@@ -171,8 +171,8 @@ static ci_ptr bb_io_file_rename(bb_vm_arg *vm, ci_ptr oldp, ci_ptr newp, ci_ptr 
 
 /* ---- dir_list(path) → array of filename strings ---- */
 
-static ci_ptr bb_io_dir_list(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)vm; (void)a1; (void)a2;
+static ci_ptr bb_io_dir_list(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
+	(void)c; (void)a1; (void)a2;
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -203,8 +203,8 @@ static ci_ptr bb_io_dir_list(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2) {
 
 /* ---- dir_exists(path) ---- */
 
-static ci_ptr bb_io_dir_exists(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)vm; (void)a1; (void)a2;
+static ci_ptr bb_io_dir_exists(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
+	(void)c; (void)a1; (void)a2;
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -216,8 +216,8 @@ static ci_ptr bb_io_dir_exists(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2)
 
 /* ---- dir_create(path) ---- */
 
-static ci_ptr bb_io_dir_create(bb_vm_arg *vm, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)vm; (void)a1; (void)a2;
+static ci_ptr bb_io_dir_create(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
+	(void)c; (void)a1; (void)a2;
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];

@@ -61,6 +61,11 @@
 *
 * "Small" lives in ci_gchdr.flags as CI_OBJ_SMALL (bit 0).
 * "Readonly/internalized" lives in ci_gchdr.flags as CI_OBJ_READONLY (bit 1).
+* "Slice" lives in ci_gchdr.flags as CI_OBJ_SLICE (bit 2).
+*   Slice is a ci_str_slice cast to ci_str *; shares CI_STR tag.
+*   memory==start, limit==end — head/tail space both 0.
+*   Mutation is blocked by CI_OBJ_READONLY (always set on slices).
+*   parent field keeps the foreign memory owner alive via refcount.
 *
 *   tag     ptrtag  type
 *   0x000B  0x0B    CI_STR             full string, refcountable
@@ -75,8 +80,9 @@
 #define CI_STR_FAMILY    CI_O_FAMILY_4                      /* 0x08 */
 #define CI_STR_TAG       CI_FAMILY_ENTRY(CI_STR_FAMILY, 0)  /* 0x08 */
 
-#define CI_STR           ((uint16_t)(CI_STR_TAG | CI_OBJECT | CI_REFCOUNTABLE))  /* 0x000B */
-#define CI_STR_SMALL_32  ((uint16_t)(CI_STR_TAG | CI_OBJECT))                    /* 0x0009 */
+#define CI_STR           ((uint16_t)(CI_STR_TAG | CI_OBJECT | CI_REFCOUNTABLE))         /* 0x000B */
+#define CI_STR_SLICE     ((uint16_t)(CI_UPPER_TAG(0x01) | CI_STR_TAG | CI_OBJECT | CI_REFCOUNTABLE)) /* 0x010B */
+#define CI_STR_SMALL_32  ((uint16_t)(CI_STR_TAG | CI_OBJECT))                          /* 0x0009 */
 #define CI_STR_SMALL_64  ((uint16_t)(CI_UPPER_TAG(0x40) | CI_STR_TAG | CI_OBJECT))     /* 0x4009 */
 #define CI_STR_SMALL_128 ((uint16_t)(CI_UPPER_TAG(0x80) | CI_STR_TAG | CI_OBJECT))     /* 0x8009 */
 #define CI_STR_SMALL_256 ((uint16_t)(CI_UPPER_TAG(0xC0) | CI_STR_TAG | CI_OBJECT))     /* 0xC009 */
@@ -111,6 +117,32 @@ typedef struct {
 	uint8_t  *end;       /* one past last data byte  (SKB: tail) */
 	uint8_t  *limit;     /* one past end of buffer   (SKB: end)  */
 } ci_str;
+
+/* CI_OBJ_SLICE — set in gc.flags alongside CI_OBJ_READONLY for slice objects */
+#define CI_OBJ_SLICE    (1 << 2)
+
+#define CI_IS_SLICE(p)  (((const ci_gchdr *)(p))->flags & CI_OBJ_SLICE)
+
+/*
+ * ci_str_slice — foreign-memory view into a ci_str or any refcounted owner.
+ *
+ * Same tag as CI_STR (ptrtag 0x0B), allocated with sizeof(ci_str_slice).
+ * gc.flags has CI_OBJ_SLICE | CI_OBJ_READONLY always set.
+ * memory == start, limit == end — so head/tail space == 0 and all
+ * existing size/space accessors work without any slice-specific branching.
+ * parent keeps the backing memory alive; ci_dec'd in destructor.
+ * parent may be NULL for slices into static/global memory.
+ */
+
+
+typedef struct {
+	ci_str  slice;   /* must be first — cast to ci_str * for all accessors */
+	
+	ci_ptr  parent; // parent string is any
+	
+	ci_ptr  ctx; // additional context
+} ci_str_slice;
+
 
 /*
 * ci_str_small_new(data, len)
@@ -229,6 +261,15 @@ ci_str *ci_str_from_cstr(const char *cstr);
 ci_str *ci_str_copy(const void *src, size_t extra);
 
 /*
+ * ci_str_slice_new(data, len, parent)
+ *   Create a readonly slice pointing into foreign memory [data, data+len).
+ *   parent is ci_inc'd and ci_dec'd when the slice is freed.
+ *   parent may be NULL for static/global memory with infinite lifetime.
+ *   Returns ci_str * (tagged CI_STR, flagged CI_OBJ_SLICE|CI_OBJ_READONLY).
+ */
+ci_str *ci_str_slice_new(const uint8_t *data, size_t len, ci_ptr parent);
+
+/*
 * Use ci_free(s) for unconditional release (destructor frees memory buffer).
 * Use ci_dec(s)  for refcount-aware release.
 */
@@ -339,6 +380,23 @@ int ci_str_eq_cstr(const ci_str *s, const char *cstr);
 * Implementations
 * ============================================================ */
 
+/* ---- Error / readonly guard ---- */
+
+__attribute__((noreturn))
+static void ci_string_error(const void *s, const char *msg) {
+	const uint8_t *head = ci_str_head((void *)s);
+	size_t len  = ci_str_len(s);
+	size_t show = len < 20 ? len : 20;
+	fprintf(stderr, "ci_str error: \"%.*s%s\" %s\n",
+	        (int)show, (const char *)head, len > 20 ? "..." : "", msg);
+	exit(1);
+}
+
+#define CI_STR_CHECK_WRITABLE(s) do { \
+	if (__builtin_expect(CI_IS_READONLY(s), 0)) \
+		ci_string_error(s, "is readonly"); \
+} while(0)
+
 /* ---- Registration ---- */
 
 static void ci_str_destructor(void *ptr, tg_arena_t *arena) {
@@ -346,6 +404,13 @@ static void ci_str_destructor(void *ptr, tg_arena_t *arena) {
 	ci_str *s = ptr;
 	free(s->memory);
 	s->memory = NULL;
+}
+
+static void ci_str_slice_destructor(void *ptr, tg_arena_t *arena) {
+	(void)arena;
+	ci_str_slice *sl = (ci_str_slice *)ptr;
+	ci_dec(sl->parent);
+	ci_dec(sl->ctx);
 }
 
 /* destructor for small string slots — only frees if upgraded to full */
@@ -359,10 +424,12 @@ static void ci_str_small_destructor(void *ptr, tg_arena_t *arena) {
 }
 
 void ci_str_register(void) {
-	tg_arena_ops str_ops       = { ci_str_destructor, NULL, NULL };
+	tg_arena_ops str_ops       = { ci_str_destructor,       NULL, NULL };
+	tg_arena_ops str_slice_ops = { ci_str_slice_destructor, NULL, NULL };
 	tg_arena_ops str_small_ops = { ci_str_small_destructor, NULL, NULL };
 
-	ci_register_ops(CI_STR,           sizeof(ci_str), &str_ops);
+	ci_register_ops(CI_STR,           sizeof(ci_str),       &str_ops);
+	ci_register_ops(CI_STR_SLICE,     sizeof(ci_str_slice), &str_slice_ops);
 	ci_register_ops(CI_STR_SMALL_32,  32,  &str_small_ops);
 	ci_register_ops(CI_STR_SMALL_64,  64,  &str_small_ops);
 	ci_register_ops(CI_STR_SMALL_128, 128, &str_small_ops);
@@ -482,9 +549,30 @@ ci_str *ci_str_copy(const void *src, size_t extra) {
 	return s;
 }
 
+ci_str *ci_str_slice_new(const uint8_t *data, size_t len, ci_ptr parent) {
+	ci_str_slice *sl = (ci_str_slice *)ci_new(CI_STR_SLICE);
+	if (!sl) return NULL;
+
+	/* ci_new sets refcnt=1, flags=0; OR in our flags */
+	sl->slice.gc.flags = CI_OBJ_SLICE | CI_OBJ_READONLY;
+	sl->slice.hash     = 0;
+	sl->slice.memory   = (uint8_t *)data;  /* == start: head space = 0 */
+	sl->slice.start    = (uint8_t *)data;
+	sl->slice.end      = (uint8_t *)data + len;
+	sl->slice.limit    = (uint8_t *)data + len;  /* == end: tail space = 0 */
+	sl->parent         = parent;
+	sl->ctx            = NULL;
+	
+	ci_inc(parent);
+
+	return (ci_str *)sl;
+}
+
 /* ---- Buffer management ---- */
 
 uint8_t *ci_str_ensure_tail(ci_str *s, size_t n) {
+	CI_STR_CHECK_WRITABLE(s);
+
 	if (CI_IS_STR_SMALL(s)) {
 		ci_str_small *sm = (ci_str_small *)s;
 		if (ci_str_tail_space(sm) >= n)
@@ -515,6 +603,7 @@ uint8_t *ci_str_ensure_tail(ci_str *s, size_t n) {
 
 void ci_str_put_tail(ci_str *s, size_t n) {
 	assert(ci_str_tail_space(s) >= n);
+	CI_STR_CHECK_WRITABLE(s);
 
 	if (CI_IS_STR_SMALL(s)) {
 		ci_str_small *sm = (ci_str_small *)s;
@@ -526,6 +615,8 @@ void ci_str_put_tail(ci_str *s, size_t n) {
 }
 
 uint8_t *ci_str_ensure_head(ci_str *s, size_t n) {
+	CI_STR_CHECK_WRITABLE(s);
+
 	if (CI_IS_STR_SMALL(s)) {
 		s = ci_str_upgrade(s);
 		if (!s) return NULL;
@@ -585,7 +676,7 @@ int ci_str_append(ci_str *s, const void *data, size_t len) {
 
 
 int ci_str_prepend(ci_str *s, const void *data, size_t len) {
-	uint8_t *head = ci_str_ensure_head(s, len); /* upgrades small in-place */
+	uint8_t *head = ci_str_ensure_head(s, len); /* upgrades small in-place; checks readonly */
 	if (!head) return 0;
 	memcpy(head, data, len);
 	s->start -= len;

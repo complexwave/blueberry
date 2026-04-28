@@ -57,7 +57,11 @@ typedef void (*tg_type_visitor_fn)(void *ptr, tg_arena_t *arena);
 typedef struct {
 	tg_type_destructor_fn destructor;
 	tg_type_visitor_fn    visitor;
-	void                 *ctx;
+	
+	union {
+		void                 *ctx;
+		void                 *prototype;
+	};
 } tg_arena_ops;
 
 /*

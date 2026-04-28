@@ -1,4 +1,12 @@
 
+//claude refactor: bool opcodes like eq neq lt gt should return bool type, not int
+
+static inline ci_ptr bb_op_loadnull(bb_coro *c, ci_ptr a, ci_ptr b) {
+	(void)a; (void)b;
+	
+	return NULL;
+}
+
 static inline ci_ptr bb_op_add(bb_coro *c, ci_ptr a, ci_ptr b) {
 	if (CI_IS_INT(a) && CI_IS_INT(b))
 		return CI_PACKINT(CI_INT(a) + CI_INT(b));
@@ -117,6 +125,8 @@ static inline ci_ptr bb_op_eq(bb_coro *c, ci_ptr a, ci_ptr b) {
 	(void)c;
 	if (CI_IS_INT(a) && CI_IS_INT(b))
 		return CI_PACKINT(CI_INT(a) == CI_INT(b));
+	printf("eq %p %p \n", a, b);
+	
 	return CI_PACKINT(a == b);
 }
 

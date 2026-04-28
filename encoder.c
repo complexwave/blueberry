@@ -18,7 +18,7 @@
 *     r2 = src1 / obj / fn
 *     r3 = src2 / key / nwords (VAR)
 *
-*   Jump targets are absolute word indices (4-byte words) stored in imm (i32).
+*   Jump targets are absolute opcode indices stored in imm (i32).
 *   r1 = cond reg for JMPF/JMPT (0 = unused for JMP).
 *
 *   VAR payload layouts:
@@ -195,7 +195,7 @@ static uint16_t bc_strtab_intern(bc_strtab *t, const char *s, uint32_t len) {
 }
 
 /* ================================================================
- *  Label map: label name -> absolute word index (4-byte words)
+ *  Label map: label name -> absolute opcode index
  * ================================================================ */
 
 static void bc_label_set(ci_map *m, char *name, uint32_t word_idx) {
@@ -216,14 +216,14 @@ static bc_buf *be_encode_function(b_function *f) {
 	bc_buf  *out    = bc_buf_new();
 	ci_map  *labels = ci_map_new(16);
 	uint32_t total  = ci_arr_len(f->bytecode);
+	uint32_t ic     = 0;   /* instruction (opcode) counter — VM indexes by this */
 
 	/* emit pass: encode all instructions, record labels, mark jumps */
 	for (uint32_t i = 0; i < total; i++) {
 		b_opcode *op = (b_opcode *)ci_arr_index(f->bytecode, i);
 
 		if (op->op == B_LABEL) {
-			bc_label_set(labels, op->r.dst->value.label,
-			             bc_buf_len(out) / 4);
+			bc_label_set(labels, op->r.dst->value.label, ic);
 			continue;
 		}
 
@@ -234,26 +234,20 @@ static bc_buf *be_encode_function(b_function *f) {
 				op->rrr.dst->number,
 				op->rrr.src1->number,
 				op->rrr.src2->number, 0);
-			continue;
 		}
-
-		if (op->enc == B_ENC_RRI) {
+		else if (op->enc == B_ENC_RRI) {
 			bc_emit_fixed(out, BC_SUB_RRI, op->op,
 				op->rri32.dst->number,
 				op->rri32.src1->number,
 				0, op->rri32.imm);
-			continue;
 		}
-
-		if (op->enc == B_ENC_RI) {
+		else if (op->enc == B_ENC_RI) {
 			bc_emit_fixed(out, BC_SUB_RRI, op->op,
 				op->rri32.dst->number,
 				op->rri32.dst->number,
 				0, op->rri32.imm);
-			continue;
 		}
-
-		if (op->enc == B_ENC_R) {
+		else if (op->enc == B_ENC_R) {
 			if (op->op == B_JMPF || op->op == B_JMPT) {
 				/* emit with placeholder imm=0, record patch offset */
 				uint32_t imm_off = bc_buf_len(out) + 4;
@@ -264,10 +258,8 @@ static bc_buf *be_encode_function(b_function *f) {
 				bc_emit_fixed(out, BC_SUB_RRR, op->op,
 					op->r.dst->number, op->r.src->number, 0, 0);
 			}
-			continue;
 		}
-
-		if (op->enc == B_ENC_R0) {
+		else if (op->enc == B_ENC_R0) {
 			if (op->op == B_JMP) {
 				uint32_t imm_off = bc_buf_len(out) + 4;
 				bc_emit_fixed(out, BC_SUB_RRI, op->op, 0, 0, 0, 0);
@@ -276,15 +268,14 @@ static bc_buf *be_encode_function(b_function *f) {
 				bc_emit_fixed(out, BC_SUB_RRR, op->op,
 					op->r.dst->number, 0, 0, 0);
 			}
-			continue;
 		}
-
-		if (op->enc == B_ENC_DECIDE)
+		else if (op->enc == B_ENC_DECIDE) {
 			b_error("encoder: unresolved DECIDE for '%s'", b_op_names[op->op]);
+		}
 
 		/* --- VAR encodings --- */
 
-		if (op->enc == B_ENC_VAR || op->enc == B_ENC_VAR_STRID) {
+		else if (op->enc == B_ENC_VAR || op->enc == B_ENC_VAR_STRID) {
 			uint32_t vcnt = ci_arr_len(op->var.regs);
 
 			if (op->op == B_RETURN || op->op == B_LOADNULL) {
@@ -294,10 +285,8 @@ static bc_buf *be_encode_function(b_function *f) {
 				for (uint32_t v = 0; v < vcnt; v++)
 					bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.regs, v))->number);
 				bc_buf_pad4(out, nwords, vcnt);
-				continue;
 			}
-
-			if (op->op == B_CALL) {
+			else if (op->op == B_CALL) {
 				if (vcnt < 2) b_error("CALL: need fn + self in regs");
 				b_reg fn   = (b_reg)ci_arr_index(op->var.regs, 0);
 				b_reg self = (b_reg)ci_arr_index(op->var.regs, 1);
@@ -317,10 +306,8 @@ static bc_buf *be_encode_function(b_function *f) {
 						bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.rets, v))->number);
 				}
 				bc_buf_pad4(out, nwords, pbytes);
-				continue;
 			}
-
-			if (op->op == B_NEWARRAY) {
+			else if (op->op == B_NEWARRAY) {
 				if (vcnt < 1) b_error("NEWARRAY: missing dst");
 				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
 				uint32_t nelem = vcnt - 1;
@@ -331,10 +318,8 @@ static bc_buf *be_encode_function(b_function *f) {
 				for (uint32_t v = 1; v < vcnt; v++)
 					bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.regs, v))->number);
 				bc_buf_pad4(out, nwords, nelem);
-				continue;
 			}
-
-			if (op->op == B_NEWMAP) {
+			else if (op->op == B_NEWMAP) {
 				if (vcnt < 1) b_error("NEWMAP: missing dst");
 				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
 				if ((vcnt - 1) % 2 != 0) b_error("NEWMAP: need pairs of [val, key]");
@@ -356,10 +341,8 @@ static bc_buf *be_encode_function(b_function *f) {
 						bc_buf_u8(out, 0);
 					}
 				}
-				continue;
 			}
-
-			if (op->op == B_HASHACCESS) {
+			else if (op->op == B_HASHACCESS) {
 				if (vcnt < 2) b_error("HASHACCESS: need dst + src");
 				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
 				b_reg src = (b_reg)ci_arr_index(op->var.regs, 1);
@@ -375,13 +358,16 @@ static bc_buf *be_encode_function(b_function *f) {
 					bc_buf_u16(out, (uint16_t)key->interned_string_id);
 				}
 				if (nkeys % 2 != 0) bc_buf_u16(out, 0);
-				continue;
 			}
-
-			b_error("encoder: unhandled VAR op '%s'", b_op_names[op->op]);
+			else {
+				b_error("encoder: unhandled VAR op '%s'", b_op_names[op->op]);
+			}
+		}
+		else {
+			b_error("encoder: unknown enc %u for '%s'", op->enc, b_op_names[op->op]);
 		}
 
-		b_error("encoder: unknown enc %u for '%s'", op->enc, b_op_names[op->op]);
+		ic++;
 	}
 
 	/* backpatch pass: resolve jump targets from actual label positions */
@@ -455,7 +441,7 @@ static bc_buf *be_encode_unit(b_unit *unit) {
 		uint8_t  reg_count = f->cb ? f->cb->reg_next : 0;
 
 		bc_buf_u16(out, name_idx);
-		bc_buf_u8 (out, 0);          /* arg_count — TODO: track in b_function */
+		bc_buf_u8 (out, f->arg_count);
 		bc_buf_u8 (out, reg_count);
 		bc_buf_u16(out, 0);          /* local_count placeholder */
 		bc_buf_u32(out, bc_buf_len(fc));   /* code_bytes */

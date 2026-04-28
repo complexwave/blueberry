@@ -14,27 +14,43 @@
 /* ---- CHECK macros (return NULL on type mismatch) ---- */
 
 #define BB_CHECK_STRING(a) do { \
-	if (!bb_is_string(a)) { bb_error("%s: expected string", __func__); return NULL; } \
+	if (!bb_is_string(a)) { bb_coro_error(c, "%s: expected string", __func__); } \
+} while(0)
+
+#define BB_CHECK_STRING_WRITABLE(a) do { \
+	if (!bb_is_string(a)) { bb_coro_error(c, "%s: expected string", __func__); } \
+	if (CI_IS_READONLY(a)) { bb_coro_error(c, "%s: string is readonly", __func__); } \
+	ci_str_reset_hash(a); \
 } while(0)
 
 #define BB_CHECK_ARRAY(a) do { \
-	if (!bb_is_array(a)) { bb_error("%s: expected array", __func__); return NULL; } \
+	if (!bb_is_array(a)) { bb_coro_error(c, "%s: expected array", __func__); } \
 } while(0)
 
 #define BB_CHECK_INT(a) do { \
-	if (!bb_is_int(a)) { bb_error("%s: expected int", __func__); return NULL; } \
+	if (!bb_is_int(a)) { bb_coro_error(c, "%s: expected int", __func__); } \
 } while(0)
 
 #define BB_CHECK_CLOSURE(a) do { \
-	if (!bb_is_closure(a)) { bb_error("%s: expected closure", __func__); return NULL; } \
+	if (!bb_is_closure(a)) { bb_coro_error(c, "%s: expected closure", __func__); } \
 } while(0)
 
 #define BB_CHECK_MAP(a) do { \
-	if (!bb_is_map(a)) { bb_error("%s: expected map", __func__); return NULL; } \
+	if (!bb_is_map(a)) { bb_coro_error(c, "%s: expected map", __func__); } \
 } while(0)
 
 #define BB_CHECK_BOOL(a) do { \
-	if (!bb_is_bool(a)) { bb_error("%s: expected bool", __func__); return NULL; } \
+	if (!bb_is_bool(a)) { bb_coro_error(c, "%s: expected bool", __func__); } \
+} while(0)
+
+/* BB_VARARG_OR_ARRAY — if called with a single array arg, unpack it in-place.
+ * Uses ci_arr_head() — valid for non-wrapped arrays (push-only, typical case). */
+#define BB_VARARG_OR_ARRAY do { \
+	if (nargs == 1 && bb_is_array(args[0])) { \
+		ci_array *_voa = (ci_array *)args[0]; \
+		nargs = ci_arr_len(_voa); \
+		args  = ci_arr_head(_voa); \
+	} \
 } while(0)
 
 /* ---- native method flag ---- */
@@ -49,13 +65,21 @@ typedef struct {
 	uint32_t    flags;  /* BB_FN_NATIVE_METHOD, BB_FN_NATIVE_VAR, etc */
 } bb_cfunc;
 
-/* create a closure from a cfunc descriptor */
+/* create a closure from a cfunc descriptor.
+ * flags == 0: BB_FN_NATIVE_METHOD (method, self prepended as a0).
+ * flags != 0: use exactly as specified (BB_FN_NATIVE_VAR, etc.). */
 static bb_closure *bb_vm_cfunc(bb_vm *vm, const bb_cfunc *desc) {
 	bb_function *fn = b_malloc(sizeof(bb_function));
 	memset(fn, 0, sizeof(bb_function));
-	fn->flags = BB_FN_NATIVE | BB_FN_NATIVE_METHOD | desc->flags;
+
+	uint32_t flags = desc->flags ? desc->flags : BB_FN_NATIVE_METHOD;
+	fn->flags = BB_FN_NATIVE | flags;
 	fn->name  = bb_vm_istring(vm, desc->name, (uint32_t)strlen(desc->name));
-	fn->cfn   = (bb_cfn)desc->fn;
+
+	if (flags & BB_FN_NATIVE_VAR)
+		fn->cfn_var = (bb_cfn_var)desc->fn;
+	else
+		fn->cfn = (bb_cfn)desc->fn;
 
 	bb_closure *cl = ci_new(CI_BB_CLOSURE);
 	if (!cl)

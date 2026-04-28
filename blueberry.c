@@ -57,8 +57,7 @@ struct bb_vm {
 	ci_map *strings;
 	ci_map *globals;
 	ci_array *units;
-	ci_map *proto_array;
-	ci_map *proto_string;
+	ci_map *prototypes;
 	bb_coro *current_coro;
 };
 
@@ -68,10 +67,10 @@ struct bb_unit {
 	ci_ptr str2intern[];
 };
 
-#define bb_vm_arg  bb_vm __attribute__((unused))
+#define bb_coro_arg  bb_coro __attribute__((unused))
 
-typedef ci_ptr (*bb_cfn)(bb_vm *vm, ci_ptr a0, ci_ptr a1, ci_ptr a2);
-typedef ci_ptr (*bb_cfn_var)(bb_vm *vm, uint8_t nargs, ci_ptr *args);
+typedef ci_ptr (*bb_cfn)(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2);
+typedef ci_ptr (*bb_cfn_var)(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args);
 
 struct bb_function {
 	bb_unit *unit;
@@ -242,9 +241,10 @@ static bb_vm *bb_vm_new(void) {
 	bb_vm *vm = ci_new(CI_BB_VM);
 	if (!vm)
 		bb_error("bb_vm_new: out of memory");
-	vm->strings = ci_map_ident_new(64);
-	vm->globals = ci_map_ident_new(16);
-	vm->units   = ci_arr_new(4);
+	vm->strings    = ci_map_ident_new(64);
+	vm->globals    = ci_map_ident_new(16);
+	vm->units      = ci_arr_new(4);
+	vm->prototypes = ci_map_ident_new(16);
 	return vm;
 }
 
@@ -279,6 +279,9 @@ static ci_ptr bb_vm_istring(bb_vm *vm, const char *s, uint32_t len) {
 	return tmp;
 }
 
+
+#include "blueberry_vm/intern_str.c"
+#include "blueberry_vm/types.c"
 
 // calude: refactor this to
 // *bb_vm_native_function(vm, name, cfn, flags)
@@ -326,27 +329,22 @@ static ci_ptr bb_map_proto_find(bb_vm *vm, const ci_map *m, ci_ptr key) {
 	return NULL;
 }
 
-/* generic prototype lookup: NULL→null, map→proto chain, array→proto_array */
+/* generic prototype lookup: NULL→null, map→walk proto chain, all others→arena ops */
 static ci_ptr bb_proto_find(bb_vm *vm, ci_ptr obj, ci_ptr key) {
+	(void)vm;
+
 	if (!obj)
 		return NULL;
 
 	if (CI_IS_MAP(obj))
 		return bb_map_proto_find(vm, (const ci_map *)obj, key);
 
-	if (CI_IS_ANY_ARR(obj)) {
-		if (vm->proto_array)
-			return ci_map_find(vm->proto_array, key);
-		return NULL;
+	if (CI_IS_OBJECT(obj)) {
+		ci_map *proto = (ci_map *)tg_ptr_arena(obj)->ops.prototype;
+		if (proto)
+			return bb_map_proto_find(vm, proto, key);
 	}
 
-	if (CI_IS_ANY_STR(obj)) {
-		if (vm->proto_string)
-			return ci_map_find(vm->proto_string, key);
-		return NULL;
-	}
-
-	/* other types: no prototype yet */
 	return NULL;
 }
 
@@ -367,15 +365,17 @@ static void bb_print_val(ci_ptr v) {
 		printf("<obj:%p>", (void *)v);
 }
 
-static ci_ptr bb_native_print(bb_vm *vm, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
-	(void)vm; (void)a1; (void)a2;
-	bb_print_val(a0);
+static ci_ptr bb_native_print(bb_coro *c, ci_ptr self, size_t n, ci_ptr *args) {
+	for(int i = 0; i < n; i++){
+		bb_print_val(args[i]);
+		printf(" ");
+	}
 	printf("\n");
 	return NULL;
 }
 
-static ci_ptr bb_native_setprototype(bb_vm *vm, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
-	(void)vm; (void)a2;
+static ci_ptr bb_native_setprototype(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
+	(void)c; (void)a2;
 	if (!CI_IS_MAP(a0))
 		bb_error("setprototype: first argument must be a map");
 	if (a1 && !CI_IS_MAP(a1))
@@ -385,16 +385,12 @@ static ci_ptr bb_native_setprototype(bb_vm *vm, ci_ptr a0, ci_ptr a1, ci_ptr a2)
 	return a0;
 }
 
-static ci_ptr bb_native_stacktrace(bb_vm *vm, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
+static ci_ptr bb_native_stacktrace(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
 	(void)a1; (void)a2;
-	if (!vm->current_coro) {
-		printf("stacktrace: not in a coroutine\n");
-		return NULL;
-	}
 	int dumpregs = 0;
 	if (CI_IS_INT(a0))
 		dumpregs = (int)CI_INT(a0);
-	bb_coro_dump_stack(vm->current_coro, dumpregs);
+	bb_coro_dump_stack(c, dumpregs);
 	return NULL;
 }
 
@@ -602,6 +598,8 @@ VM_OP static void __vmop_##label##_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_
 	BB_DISPATCH_NEXT(c);\
 }
 
+
+
 VM_FAST_RRR(add, bb_op_add)       VM_FAST_RRI(add, bb_op_add)
 VM_FAST_RRR(sub, bb_op_sub)       VM_FAST_RRI(sub, bb_op_sub)
 VM_FAST_RRR(mul, bb_op_mul)       VM_FAST_RRI(mul, bb_op_mul)
@@ -628,6 +626,8 @@ VM_FAST_RRR(hashaccess, bb_op_hashaccess_rrr)  VM_FAST_RRS(hashaccess, bb_op_has
 VM_FAST_RRR(mapaccess, bb_op_mapaccess)
 VM_FAST_RRR(arraccess, bb_op_arraccess)
 VM_FAST_RRR(methodbind, bb_op_methodbind)
+
+VM_FAST_RRR(loadnull, bb_op_loadnull)
 VM_FAST_RRR(loadtrue, bb_op_loadtrue)
 VM_FAST_RRR(loadfalse, bb_op_loadfalse)
 
@@ -778,9 +778,11 @@ static void bb_fast_table_init(void) {
 	FT_RRR(B_MAPACCESS, mapaccess);
 	FT_RRR(B_ARRACCESS, arraccess);
 	FT_RRR(B_METHODBIND, methodbind);
+	FT_RRR(B_LOADNULL, loadnull);
 	FT_RRR(B_LOADTRUE, loadtrue);
 	FT_RRR(B_LOADFALSE, loadfalse);
-
+	
+	
 	FT_RRI_ONLY(B_LOADINT, loadint);
 	FT_RRI_ONLY(B_LOADSTR, loadstr);
 	FT_RRI_ONLY(B_LOADFN, loadfn);
@@ -906,14 +908,14 @@ static void bb_coro_resume(bb_coro *c) {
 #ifndef BB_NO_MAIN
 int main(int argc, char **argv) {
 	if (argc < 2) {
-		fprintf(stderr, "usage: blueberry [-q] <file.cbc|file.ci>\n");
+		fprintf(stderr, "usage: blueberry [-d] <file.cbc|file.ci>\n");
 		return 1;
 	}
 
-	int quiet = 0;
+	int dump = 0;
 	int file_start = 1;
-	if (argc > 2 && strcmp(argv[1], "-q") == 0) {
-		quiet = 1;
+	if (argc > 2 && strcmp(argv[1], "-d") == 0) {
+		dump = 1;
 		file_start = 2;
 	}
 
@@ -948,14 +950,14 @@ int main(int argc, char **argv) {
 			}
 		}
 
-		if (!quiet)
+		if (dump)
 			printf("=== %s (%u bytes) ===\n\n", path, len);
 
 		bb_vm *vm = bb_vm_new();
 
 		/* register built-in native functions */
 		{
-			bb_closure *print_cl = bb_vm_native(vm, "print", bb_native_print);
+			bb_closure *print_cl = bb_vm_native_var(vm, "print", bb_native_print);
 			ci_map_put(vm->globals, print_cl->fn->name, (ci_ptr)print_cl);
 
 			bb_closure *setproto_cl = bb_vm_native(vm, "setprototype", bb_native_setprototype);
@@ -973,10 +975,24 @@ int main(int argc, char **argv) {
 		bb_lib_io_init(vm);
 		bb_lib_cma_init(vm);
 
+		/* expose script arguments as global argv array */
+		{
+			int nargs = argc - i - 1;
+			ci_array *args = ci_arr_new(nargs > 0 ? (uint32_t)nargs : 1);
+			for (int j = i + 1; j < argc; j++) {
+				ci_ptr s = (ci_ptr)ci_str_from_cstr(argv[j]);
+				ci_arr_push(args, s);
+				ci_dec(s);
+			}
+			ci_ptr argv_key = bb_vm_istring(vm, "argv", 4);
+			ci_map_put(vm->globals, argv_key, (ci_ptr)args);
+			ci_dec((ci_ptr)args);
+		}
+
 		bb_unit *unit = bb_vm_loadbytecode(vm, buf, len);
 		free(buf);
 
-		if (!quiet)
+		if (dump)
 			bb_dump_unit(unit);
 
 		if (ci_arr_len(unit->functions) == 0) {
@@ -990,10 +1006,10 @@ int main(int argc, char **argv) {
 		bb_function *main_fn = (bb_function *)ci_arr_index(unit->functions, 0);
 		bb_coro *c = bb_coro_new(vm, main_fn);
 
-		if (!quiet)
+		if (dump)
 			printf("\n=== execute ===\n");
 		bb_coro_resume(c);
-		if (!quiet)
+		if (dump)
 			bb_coro_dump_stack(c, 1);
 
 		bb_vm_free(vm);

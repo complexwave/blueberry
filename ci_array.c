@@ -172,6 +172,53 @@ static inline ci_ptr ci_arr_index(const ci_array *a, uint32_t i) {
 	return ci_arr(a, i);
 }
 
+static ci_array *ci_arr_upgrade(ci_array *a);  /* defined below */
+
+/* true when the live elements wrap around the end of the backing buffer */
+static inline int ci_arr__is_wrapped(const ci_array *a) {
+	return a->length > 0 && a->offset + a->length > a->size;
+}
+
+/* Allocate a fresh buffer of newsize, linearize into it, replace a->data.
+ * Zeros tail beyond length. Frees old a->data.
+ * Must NOT be called on small (inline) arrays — a->data is not malloc'd there. */
+static int ci_arr__linearize(ci_array *a, uint32_t newsize) {
+	ci_ptr *mem = malloc(newsize * sizeof(ci_ptr));
+	if (!mem) return 0;
+	
+	ci_arr_rmoffset(a, mem);
+	
+	if (newsize > a->length)
+		memset(mem + a->length, 0, (newsize - a->length) * sizeof(ci_ptr));
+	
+	free(a->data);
+	
+	a->data   = mem;
+	a->size   = newsize;
+	a->offset = 0;
+	
+	return 1;
+}
+
+/* Ensure elements are in a contiguous region.
+ * No-op when not wrapped. For small arrays, upgrades first. */
+static int ci_arr_ensure_continuous(ci_array *a) {
+	if (a->gc.flags & CI_OBJ_SMALL) {
+		if (!ci_arr_upgrade(a)) return 0;
+		return 1; /* upgrade always linearizes */
+	}
+	if (!ci_arr__is_wrapped(a)) return 1;
+	
+	return ci_arr__linearize(a, a->size);
+}
+
+/* Direct pointer to the first element.
+ * Linearizes only if wrapped; non-wrapped shifted arrays return data+offset as-is. */
+static inline ci_ptr *ci_arr_head(ci_array *a) {
+	ci_arr_ensure_continuous(a);
+	return a->data + a->offset;
+}
+
 /* write at logical index i */
 static inline void ci_arr_set(ci_array *a, uint32_t i, ci_ptr val) {
 	assert(i < a->length);
@@ -337,21 +384,10 @@ int ci_arr_ensure_space(ci_array *a, uint32_t n) {
 		(void)need;
 	}
 
-	/* full array: realloc, linearize */
+	/* full array: realloc + linearize */
 	uint32_t newsize = a->size * 2;
 	if (newsize < a->length + n) newsize = a->length + n;
-
-	ci_ptr *newmem = malloc(newsize * sizeof(ci_ptr));
-	if (!newmem) return 0;
-
-	ci_arr_rmoffset(a, newmem);
-	memset(newmem + a->length, 0, (newsize - a->length) * sizeof(ci_ptr));
-
-	free(a->data);
-	a->data   = newmem;
-	a->size   = newsize;
-	a->offset = 0;
-	return 1;
+	return ci_arr__linearize(a, newsize);
 }
 
 

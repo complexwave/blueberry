@@ -385,7 +385,7 @@ static void ci_map__insert_noresize(ci_map *m, ci_ptr key, ci_ptr val, uint32_t 
 		pos = (pos + 1) & mask;
 	}
 	
-	insert_to:
+	insert_to:;
 		uint8_t cur_max = ci_map__extract_maxpsl(preidx[p_idx]);
 		if (psl > cur_max) {
 			uint8_t clamped = psl > 31 ? 31 : (uint8_t)psl;
@@ -562,7 +562,6 @@ static inline void ci_map_delete_kv(ci_map *m, ci_map_kv *kv) {
 	
 	uint32_t pos = kv - kvs;
 	
-found:;
 	/* backward-shift: pull subsequent entries back */
 	while (1) {
 		uint32_t next = (pos + 1) & mask;

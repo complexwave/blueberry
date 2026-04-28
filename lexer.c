@@ -126,7 +126,7 @@ static const char *token_names[L_COUNT] = {
  * ================================================================ */
 
 /* keyword: case-insensitive + word boundary (not followed by ident char) */
-#define KW(str, id) CAPi(A(Si(str), NOT(R("A-Za-z_0-9"))), (size_t)(id))
+#define KW(str, id) CAPi(A( skip, Si(str), NOT(R("A-Za-z_0-9"))), (size_t)(id))
 
 /* operator: literal string match */
 #define OP(str, id) CAPi(S(str), (size_t)(id))
@@ -167,8 +167,6 @@ static cma_op *lexer_grammar(void) {
 	 * Keywords before identifier. Multi-char ops before single-char.
 	 */
 	cma_op *token = O(
-		skip,
-
 		/* keywords */
 		KW("function", L_FUNCTION),
 		KW("fun",      L_FUNCTION),
@@ -189,11 +187,13 @@ static cma_op *lexer_grammar(void) {
 		KW("continue", L_NEXT),
 		KW("goto",     L_GOTO),
 		KW("require",  L_REQUIRE),
-
+		
+		skip,
+		
 		/* strings */
 		dq_string,
 		sq_string,
-
+		
 		/* numbers (hex/bin before decimal, double before int) */
 		hex_num,
 		bin_num,

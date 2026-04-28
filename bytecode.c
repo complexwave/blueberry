@@ -279,6 +279,7 @@ struct b_function {
 	ci_array    *bytecode;    /* b_opcode* */
 	b_codeblock *cb;          /* root codeblock */
 	uint32_t     label_next;
+	uint8_t      arg_count;
 };
 
 struct b_unit {
@@ -913,16 +914,69 @@ static b_reg b_emit_prefix(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	return dst;
 }
 
+/* Process C-style escape sequences in a string literal.
+ * src/len: raw token content (between the quotes, no NUL terminator needed).
+ * dst: output buffer, must be at least len bytes (unescaped is always <=).
+ * Returns the unescaped byte count. */
+static uint32_t b_unescape_str(const char *src, uint32_t len, char *dst) {
+	uint32_t r = 0, w = 0;
+	while (r < len) {
+		if (src[r] != '\\' || r + 1 >= len) {
+			dst[w++] = src[r++];
+			continue;
+		}
+		r++; /* consume backslash */
+		switch (src[r++]) {
+		case 'n':  dst[w++] = '\n'; break;
+		case 't':  dst[w++] = '\t'; break;
+		case 'r':  dst[w++] = '\r'; break;
+		case '\\': dst[w++] = '\\'; break;
+		case '\'': dst[w++] = '\''; break;
+		case '"':  dst[w++] = '"';  break;
+		case '0':  dst[w++] = '\0'; break;
+		case 'x': {
+			/* \xHH — exactly two hex digits */
+			#define HEX(c) ((c)>='0'&&(c)<='9' ? (c)-'0' : \
+			                (c)>='a'&&(c)<='f' ? (c)-'a'+10 : \
+			                (c)>='A'&&(c)<='F' ? (c)-'A'+10 : -1)
+			if (r + 1 < len) {
+				int hi = HEX(src[r]), lo = HEX(src[r + 1]);
+				if (hi >= 0 && lo >= 0) {
+					dst[w++] = (char)((hi << 4) | lo);
+					r += 2;
+					break;
+				}
+			}
+			#undef HEX
+			/* not valid hex — emit literally */
+			dst[w++] = '\\';
+			dst[w++] = 'x';
+			break;
+		}
+		default:
+			/* unknown escape — keep backslash + char */
+			dst[w++] = '\\';
+			dst[w++] = src[r - 1];
+			break;
+		}
+	}
+	return w;
+}
+
 static b_reg b_emit_string_value(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	(void)ctx;
-	uint16_t idx = b_unit_intern_str(cb->func->unit,
-	                                 n->token.data, n->token.len);
+
+	/* unescape into a fresh buffer; unescaped length <= raw length */
+	char *buf = b_malloc(n->token.len + 1);
+	uint32_t ulen = b_unescape_str(n->token.data, n->token.len, buf);
+
+	uint16_t idx = b_unit_intern_str(cb->func->unit, buf, ulen);
 
 	b_reg dst = b_reg_value();
 	dst->type = B_REG_STRING;
 
-	dst->strlen = n->token.len;
-	dst->value.string = n->token.data;
+	dst->strlen = ulen;
+	dst->value.string = buf;
 
 	dst->interned_string_id = idx;
 
@@ -1363,7 +1417,7 @@ static b_reg b_emit_assign(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 			ast_node *lid = b_expr_idx(lhs, i);
 			ast_node *glob = NULL;
 
-			call_reconsider:
+			call_reconsider:;
 			uint32_t kind = A_TYPE(lid->type);
 			if (kind == A_IDENTIFIER) {
 				b_reg dst = b_lookup_ident(cb, lid, &glob);
@@ -1404,7 +1458,7 @@ static b_reg b_emit_assign(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 		b_reg src = b_reg_reg(cb, b_consume_ast(cb, b_expr_idx(rhs, i)));
 		ast_node *glob = NULL;
 
-		reconsider:
+		reconsider:;
 		uint32_t kind = A_TYPE(lid->type);
 		if (kind == A_IDENTIFIER) {
 			b_reg dst = b_lookup_ident(cb, lid, &glob);
@@ -1619,6 +1673,7 @@ static b_reg b_emit_function(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	ast_node *args = n->op_function.args;
 	if (args) {
 		uint32_t cnt = b_expr_cnt(args);
+		f->arg_count = (uint8_t)cnt;
 		for (uint32_t i = 0; i < cnt; i++)
 			b_declare_one(fn_cb, b_expr_idx(args, i));
 	}
