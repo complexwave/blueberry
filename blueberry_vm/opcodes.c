@@ -1,6 +1,3 @@
-
-//claude refactor: bool opcodes like eq neq lt gt should return bool type, not int
-
 static inline ci_ptr bb_op_loadnull(bb_coro *c, ci_ptr a, ci_ptr b) {
 	(void)a; (void)b;
 	
@@ -75,7 +72,7 @@ static inline ci_ptr bb_op_neg(bb_coro *c, ci_ptr a, ci_ptr b) {
 
 static inline ci_ptr bb_op_not(bb_coro *c, ci_ptr a, ci_ptr b) {
 	(void)c; (void)b;
-	return CI_IS_FALSY(a) ? CI_PACKINT(1) : CI_PACKINT(0);
+	return CI_IS_FALSY(a) ? CI_BOOL(1) : CI_BOOL(0);
 }
 
 static inline ci_ptr bb_op_bin_inv(bb_coro *c, ci_ptr a, ci_ptr b) {
@@ -123,44 +120,38 @@ static inline ci_ptr bb_op_bin_rshift(bb_coro *c, ci_ptr a, ci_ptr b) {
 
 static inline ci_ptr bb_op_eq(bb_coro *c, ci_ptr a, ci_ptr b) {
 	(void)c;
-	if (CI_IS_INT(a) && CI_IS_INT(b))
-		return CI_PACKINT(CI_INT(a) == CI_INT(b));
-	printf("eq %p %p \n", a, b);
-	
-	return CI_PACKINT(a == b);
+	return CI_BOOL(a == b);
 }
 
 static inline ci_ptr bb_op_neq(bb_coro *c, ci_ptr a, ci_ptr b) {
 	(void)c;
-	if (CI_IS_INT(a) && CI_IS_INT(b))
-		return CI_PACKINT(CI_INT(a) != CI_INT(b));
-	return CI_PACKINT(a != b);
+	return CI_BOOL(a != b);
 }
 
 static inline ci_ptr bb_op_gt(bb_coro *c, ci_ptr a, ci_ptr b) {
 	if (CI_IS_INT(a) && CI_IS_INT(b))
-		return CI_PACKINT(CI_INT(a) > CI_INT(b));
+		return CI_BOOL(CI_INT(a) > CI_INT(b));
 	bb_coro_error(c, "GT: type error");
 	return NULL;
 }
 
 static inline ci_ptr bb_op_lt(bb_coro *c, ci_ptr a, ci_ptr b) {
 	if (CI_IS_INT(a) && CI_IS_INT(b))
-		return CI_PACKINT(CI_INT(a) < CI_INT(b));
+		return CI_BOOL(CI_INT(a) < CI_INT(b));
 	bb_coro_error(c, "LT: type error");
 	return NULL;
 }
 
 static inline ci_ptr bb_op_gt_eq(bb_coro *c, ci_ptr a, ci_ptr b) {
 	if (CI_IS_INT(a) && CI_IS_INT(b))
-		return CI_PACKINT(CI_INT(a) >= CI_INT(b));
+		return CI_BOOL(CI_INT(a) >= CI_INT(b));
 	bb_coro_error(c, "GT_EQ: type error");
 	return NULL;
 }
 
 static inline ci_ptr bb_op_lt_eq(bb_coro *c, ci_ptr a, ci_ptr b) {
 	if (CI_IS_INT(a) && CI_IS_INT(b))
-		return CI_PACKINT(CI_INT(a) <= CI_INT(b));
+		return CI_BOOL(CI_INT(a) <= CI_INT(b));
 	bb_coro_error(c, "LT_EQ: type error");
 	return NULL;
 }

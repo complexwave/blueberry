@@ -176,6 +176,10 @@ struct bb_coro {
 static void bb_vm_execute(bb_coro *c);
 bb_cached_op* bb_function_ops(bb_function *fn);
 static void bb_coro_dump_stack(bb_coro *c, int dumpregs);
+static bb_unit *bb_vm_loadbytecode(bb_vm *vm, const uint8_t *buf, uint32_t len);
+#ifndef BB_CBC_ONLY
+static uint8_t *bb_compile_ci_file(const char *ci_path, uint32_t *out_len);
+#endif
 
 /* ================================================================
  *  Falsy / error
@@ -385,6 +389,35 @@ static ci_ptr bb_native_setprototype(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2
 	return a0;
 }
 
+static ci_ptr bb_native_require(bb_coro_arg *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
+	(void)a1; (void)a2;
+	if (!CI_IS_ANY_STR(a0))
+		bb_coro_error(c, "require: argument must be a string");
+
+	char path[1024];
+	size_t len = ci_str_len(a0);
+	if (len >= sizeof(path))
+		bb_coro_error(c, "require: path too long");
+	memcpy(path, ci_str_head(a0), len);
+	path[len] = '\0';
+
+#ifndef BB_CBC_ONLY
+	uint32_t blen;
+	uint8_t *buf = bb_compile_ci_file(path, &blen);
+	if (!buf)
+		bb_coro_error(c, "require: cannot compile '%s'", path);
+
+	bb_unit *unit = bb_vm_loadbytecode(c->vm, buf, blen);
+	free(buf);
+
+	bb_function *main_fn = (bb_function *)ci_arr_index(unit->functions, 0);
+	bb_closure *cl = bb_vm_closure(c->vm, main_fn);
+	return (ci_ptr)cl;
+#else
+	bb_coro_error(c, "require: not supported in cbc-only mode");
+#endif
+}
+
 static ci_ptr bb_native_stacktrace(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
 	(void)a1; (void)a2;
 	int dumpregs = 0;
@@ -449,8 +482,8 @@ static void bb_coro_pushcall(bb_coro *c, bb_function *fn) {
 
 	ci_ptr *stack   = c->stack->data + frame->stack_base;
 
-	VM_DBG("[PUSH(%u) FRAME(%p)] fstack %p -> %p [%u]. save pc %p\n",
-		   c->fstack_pos, fn, c->fast_stack, stack, frame->stack_base, frame->pc);
+	VM_DBG("[PUSH(%u) FRAME(%p)] fstack %p -> %p [%u]. \n",
+		   c->fstack_pos, fn, c->fast_stack, stack, frame->stack_base);
 	
 	stack[255]    = (ci_ptr)c->vm->globals;
 	c->fast_stack = stack;
@@ -472,7 +505,7 @@ static void bb_coro_popcall(bb_coro *c) {
 	ci_ptr *stack   = c->stack->data + caller->stack_base;
 	
 	VM_DBG("[POP(%u) FRAME(%p)] fstack %p -> %p[%u]. pop pc %p \n", 
-		   c->fstack_pos, frame->function, c->fast_stack, stack, frame->stack_base, frame->pc);
+		   c->fstack_pos, frame->function, c->fast_stack, stack, frame->stack_base, caller->pc);
 	
 	c->fast_stack = stack;
 	
@@ -531,7 +564,6 @@ static bb_coro *bb_coro_new(bb_vm *vm, bb_function *fn) {
  * ================================================================ */
 
 
-#include "blueberry_vm/advanced_opcodes.c"
 
 /*
  * ctx layout (b0 stripped — fnptr already knows the op):
@@ -599,6 +631,9 @@ VM_OP static void __vmop_##label##_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_
 }
 
 
+#include "blueberry_vm/advanced_opcodes.c"
+
+
 
 VM_FAST_RRR(add, bb_op_add)       VM_FAST_RRI(add, bb_op_add)
 VM_FAST_RRR(sub, bb_op_sub)       VM_FAST_RRI(sub, bb_op_sub)
@@ -625,6 +660,7 @@ VM_FAST_RRR(move, bb_op_move)
 VM_FAST_RRR(hashaccess, bb_op_hashaccess_rrr)  VM_FAST_RRS(hashaccess, bb_op_hashaccess_rrr)
 VM_FAST_RRR(mapaccess, bb_op_mapaccess)
 VM_FAST_RRR(arraccess, bb_op_arraccess)
+/* iterinit/iterstep are custom handlers in advanced_opcodes.c */
 VM_FAST_RRR(methodbind, bb_op_methodbind)
 
 VM_FAST_RRR(loadnull, bb_op_loadnull)
@@ -636,7 +672,6 @@ VM_FAST_VAR(newmap,     bb_op_newmap_var)
 VM_FAST_VAR(newarray,   bb_op_newarray_var)
 VM_FAST_VAR(hashaccess, bb_op_hashaccess_var)
 VM_FAST_VAR(loadnull,   bb_op_loadnull_var)
-VM_FAST_VAR(vmreturn,   bb_op_return_var)
 VM_FAST_VAR(call,       bb_op_call_var)
 
 /* --- RRI-only ops (no src reg, just dst + imm32) --- */
@@ -777,6 +812,8 @@ static void bb_fast_table_init(void) {
 	FT_RRR(B_HASHACCESS, hashaccess);  FT_RRS(B_HASHACCESS, hashaccess);
 	FT_RRR(B_MAPACCESS, mapaccess);
 	FT_RRR(B_ARRACCESS, arraccess);
+	bb_fast_table[BB_ST_RRR | B_ITERINIT] = __vmop_iterinit;
+	bb_fast_table[BB_ST_RRI | B_ITERSTEP] = __vmop_iterstep;
 	FT_RRR(B_METHODBIND, methodbind);
 	FT_RRR(B_LOADNULL, loadnull);
 	FT_RRR(B_LOADTRUE, loadtrue);
@@ -796,11 +833,12 @@ static void bb_fast_table_init(void) {
 	bb_fast_table[BB_ST_RRI | B_HASHSTORE]  = __vmop_hashstore;
 	bb_fast_table[BB_ST_RRS | B_HASHSTORE]  = __vmop_hashstore_rrs;
 
+	bb_fast_table[BB_ST_VAR | B_RETURN]  = bb_op_return_var;
+	
 	FT_VAR(B_NEWMAP,      newmap);
 	FT_VAR(B_NEWARRAY,    newarray);
 	FT_VAR(B_HASHACCESS,  hashaccess);
 	FT_VAR(B_LOADNULL,    loadnull);
-	FT_VAR(B_RETURN,      vmreturn);
 	FT_VAR(B_CALL,        call);
 
 	#undef FT_RRR
@@ -814,8 +852,8 @@ static void bb_fast_table_init(void) {
 
 static bb_cached_op *bb_build_cached(bb_function *fn) {
 	/* one cached_op per instruction; instructions are at least 8 bytes */
-	uint32_t max_wc = fn->code_length / 8 + 1;
-	bb_cached_op *ops = b_malloc((max_wc + 1) * sizeof(bb_cached_op));
+	uint32_t max_wc = fn->code_length / 8 + 4;
+	bb_cached_op *ops = b_malloc(max_wc * sizeof(bb_cached_op));
 
 	uint32_t bi = 0;   /* byte cursor into fn->code */
 	uint32_t wi = 0;   /* word index into ops[]     */
@@ -868,8 +906,9 @@ static bb_cached_op *bb_build_cached(bb_function *fn) {
 		}
 	}
 
-	ops[wi].fn = __vmop_exit;
+	ops[wi].fn = bb_op_return_var;
 	ops[wi].a = ops[wi].b = ops[wi].c = 0;
+	
 	return ops;
 }
 
@@ -926,94 +965,99 @@ int main(int argc, char **argv) {
 	bb_vm_types_register();
 	bb_fast_table_init();
 
-	for (int i = file_start; i < argc; i++) {
-		const char *path = argv[i];
-		uint32_t len;
-		uint8_t *buf = NULL;
+	const char *path = argv[file_start];
+	uint32_t len;
+	uint8_t *buf = NULL;
 
-		/* detect extension and handle accordingly */
-		const char *ext = strrchr(path, '.');
+	/* detect extension and handle accordingly */
+	const char *ext = strrchr(path, '.');
 #ifndef BB_CBC_ONLY
-		if (ext && strcmp(ext, ".ci") == 0) {
-			/* compile .ci to bytecode */
-			buf = bb_compile_ci_file(path, &len);
-			if (!buf)
-				continue;
-		} else
+	if (ext && strcmp(ext, ".ci") == 0) {
+		/* compile .ci to bytecode */
+		buf = bb_compile_ci_file(path, &len);
+		if (!buf)
+			goto shutdown;
+	} else
 #endif
-		{
-			/* load .cbc file directly */
-			buf = bb_read_file(path, &len);
-			if (!buf) {
-				fprintf(stderr, "error: cannot read '%s'\n", path);
-				continue;
-			}
+	{
+		/* load .cbc file directly */
+		buf = bb_read_file(path, &len);
+		if (!buf) {
+			fprintf(stderr, "error: cannot read '%s'\n", path);
+			goto shutdown;
 		}
-
-		if (dump)
-			printf("=== %s (%u bytes) ===\n\n", path, len);
-
-		bb_vm *vm = bb_vm_new();
-
-		/* register built-in native functions */
-		{
-			bb_closure *print_cl = bb_vm_native_var(vm, "print", bb_native_print);
-			ci_map_put(vm->globals, print_cl->fn->name, (ci_ptr)print_cl);
-
-			bb_closure *setproto_cl = bb_vm_native(vm, "setprototype", bb_native_setprototype);
-			ci_map_put(vm->globals, setproto_cl->fn->name, (ci_ptr)setproto_cl);
-
-			bb_closure *stacktrace_cl = bb_vm_native(vm, "stacktrace", bb_native_stacktrace);
-			ci_map_put(vm->globals, stacktrace_cl->fn->name, (ci_ptr)stacktrace_cl);
-		}
-
-		/* init built-in prototypes */
-		bb_proto_array_init(vm);
-		bb_proto_string_init(vm);
-
-		/* init stdlib */
-		bb_lib_io_init(vm);
-		bb_lib_cma_init(vm);
-
-		/* expose script arguments as global argv array */
-		{
-			int nargs = argc - i - 1;
-			ci_array *args = ci_arr_new(nargs > 0 ? (uint32_t)nargs : 1);
-			for (int j = i + 1; j < argc; j++) {
-				ci_ptr s = (ci_ptr)ci_str_from_cstr(argv[j]);
-				ci_arr_push(args, s);
-				ci_dec(s);
-			}
-			ci_ptr argv_key = bb_vm_istring(vm, "argv", 4);
-			ci_map_put(vm->globals, argv_key, (ci_ptr)args);
-			ci_dec((ci_ptr)args);
-		}
-
-		bb_unit *unit = bb_vm_loadbytecode(vm, buf, len);
-		free(buf);
-
-		if (dump)
-			bb_dump_unit(unit);
-
-		if (ci_arr_len(unit->functions) == 0) {
-			fprintf(stderr, "error: no functions in unit\n");
-			bb_vm_free(vm);
-			continue;
-		}
-
-		/* Execute the last function (user code), not the first (global setup) */
-		uint32_t fn_count = ci_arr_len(unit->functions);
-		bb_function *main_fn = (bb_function *)ci_arr_index(unit->functions, 0);
-		bb_coro *c = bb_coro_new(vm, main_fn);
-
-		if (dump)
-			printf("\n=== execute ===\n");
-		bb_coro_resume(c);
-		if (dump)
-			bb_coro_dump_stack(c, 1);
-
-		bb_vm_free(vm);
 	}
+
+	if (dump)
+		printf("=== %s (%u bytes) ===\n\n", path, len);
+
+	bb_vm *vm = bb_vm_new();
+
+	/* register built-in native functions */
+	{
+		bb_closure *print_cl = bb_vm_native_var(vm, "print", bb_native_print);
+		ci_map_put(vm->globals, print_cl->fn->name, (ci_ptr)print_cl);
+
+		bb_closure *setproto_cl = bb_vm_native(vm, "setprototype", bb_native_setprototype);
+		ci_map_put(vm->globals, setproto_cl->fn->name, (ci_ptr)setproto_cl);
+
+		bb_closure *stacktrace_cl = bb_vm_native(vm, "stacktrace", bb_native_stacktrace);
+		ci_map_put(vm->globals, stacktrace_cl->fn->name, (ci_ptr)stacktrace_cl);
+
+		bb_closure *require_cl = bb_vm_native(vm, "require", bb_native_require);
+		ci_map_put(vm->globals, require_cl->fn->name, (ci_ptr)require_cl);
+	}
+
+	/* init built-in prototypes */
+	bb_proto_array_init(vm);
+	bb_proto_string_init(vm);
+
+	/* init stdlib */
+	bb_lib_io_init(vm);
+	bb_lib_cma_init(vm);
+
+	/* expose script arguments as global argv array */
+	{
+		int nargs = argc - file_start - 1;
+		ci_array *args = ci_arr_new(nargs > 0 ? (uint32_t)nargs : 1);
+		for (int j = file_start + 1; j < argc; j++) {
+			ci_ptr s = (ci_ptr)ci_str_from_cstr(argv[j]);
+			ci_arr_push(args, s);
+			ci_dec(s);
+		}
+		ci_ptr argv_key = bb_vm_istring(vm, "argv", 4);
+		ci_map_put(vm->globals, argv_key, (ci_ptr)args);
+		ci_dec((ci_ptr)args);
+	}
+
+	bb_unit *unit = bb_vm_loadbytecode(vm, buf, len);
+	free(buf);
+
+	if (dump)
+		bb_dump_unit(unit);
+
+	if (ci_arr_len(unit->functions) == 0) {
+		fprintf(stderr, "error: no functions in unit\n");
+		bb_vm_free(vm);
+		goto shutdown;
+	}
+
+	/* Execute the last function (user code), not the first (global setup) */
+	uint32_t fn_count = ci_arr_len(unit->functions);
+	bb_function *main_fn = (bb_function *)ci_arr_index(unit->functions, 0);
+	bb_coro *c = bb_coro_new(vm, main_fn);
+
+	if (dump)
+		printf("\n=== execute ===\n");
+	
+	bb_coro_resume(c);
+	printf("\n=== returned ===\n");
+	if (dump)
+		bb_coro_dump_stack(c, 1);
+
+	bb_vm_free(vm);
+	
+	shutdown:
 
 	ci_shutdown();
 	return 0;

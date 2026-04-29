@@ -72,6 +72,8 @@ static void *b_malloc(size_t size) {
 	X(JMPT)    \
 	X(LABEL)   \
 	X(LOADFN)  \
+	X(ITERINIT) \
+	X(ITERSTEP)
 
 enum {
 	B__INVALID = 0,
@@ -300,6 +302,7 @@ struct b_codeblock {
 };
 
 static b_reg b_reg_reg(b_codeblock *cb, b_reg r);
+static void b_reg_release(b_codeblock *cb, b_reg r);
 
 static b_unit *b_unit_new(void) {
 	b_unit *u = b_malloc(sizeof(b_unit));
@@ -398,14 +401,67 @@ static uint32_t b_reg_tmp__alloc_number(b_codeblock *cb) {
 		return cb->free_list[--cb->free_count];
 	}
 	
-	if (cb->reg_next == 255)
+	if (cb->reg_next == 254)
 		b_error("register overflow");
 	
 	return cb->reg_next++;
 }
 
+int freelist_compare(const void* a, const void* b) {
+   return (  ((int32_t) *(uint8_t*)a) - ((int32_t) *(uint8_t*)b)  );
+}
+
+static void b_reg_sort_freelist(b_codeblock *cb) {
+	qsort(cb->free_list, cb->free_count, sizeof(uint8_t), freelist_compare);
+}
+
 static b_reg b_reg_tmp(b_codeblock *cb) {
 	return b_reg_new(b_reg_tmp__alloc_number(cb), B_REG_TMP);
+}
+
+static b_reg b_reg_tmp_fresh(b_codeblock *cb) {
+	if (cb->reg_next == 254)
+		b_error("register overflow");
+	
+	return b_reg_new( cb->reg_next++ , B_REG_TMP);
+}
+
+static void b_reg_tmp_continuous(b_codeblock *cb, b_reg* dst, int32_t registers_required) {
+	b_reg_sort_freelist(cb);
+
+	int32_t end = cb->free_count - registers_required;
+	
+	if(end < 0) goto alloc_new;
+	
+	int32_t pos = cb->free_count-1;
+	while(pos > end){
+		if( (cb->free_list[pos]-1) == cb->free_list[pos-1]) goto alloc_new;
+		pos--;
+	}
+	
+	while(end < cb->free_count){
+		*dst = b_reg_new( cb->free_list[end] , B_REG_TMP);
+		
+		end++;
+		dst++;
+	}
+	
+	return;
+		
+	alloc_new:
+	
+	while(registers_required--){
+		*dst = b_reg_tmp_fresh(cb);
+		dst++;
+	}
+}
+
+
+static void b_reg_tmp_release_continuous(b_codeblock *cb, b_reg* dst, int32_t regs) {
+	while(regs--){
+		b_reg_release(cb, *dst);
+		dst++;
+	}
 }
 
 static void b_reg_free(b_codeblock *cb, b_reg r) {
@@ -502,6 +558,25 @@ static b_reg b_codeblock_find(b_codeblock *cb, const char *name) {
 	return (b_reg)ci_map_get_str(cb->locals, name);
 }
 
+static void _dump_locals(b_codeblock *cb) {
+	int depth = 0;
+	for (b_codeblock *scope = cb; scope; scope = scope->parent, depth++) {
+		ci_map_kv *kvs = (ci_map_kv *)scope->locals->space;
+		uint32_t buckets = scope->locals->divmask + 1;
+		fprintf(stderr, "%s[%d]:", depth == 0 ? "current" : "parent", depth);
+		int found = 0;
+		for (uint32_t i = 0; i < buckets; i++) {
+			if (kvs[i].key) {
+				b_reg r = (b_reg)kvs[i].val;
+				fprintf(stderr, " %s=%d", (char *)kvs[i].key, r->number);
+				found = 1;
+			}
+		}
+		if (!found) fprintf(stderr, " (empty)");
+		fprintf(stderr, "\n");
+	}
+}
+
 /* look up identifier walking scope chain; returns B_REG_GLOBAL if not found */
 static b_reg b_codeblock_get_ident(b_codeblock *cb, const char *name) {
 	for (b_codeblock *scope = cb; scope; scope = scope->parent) {
@@ -512,8 +587,13 @@ static b_reg b_codeblock_get_ident(b_codeblock *cb, const char *name) {
 	return NULL;
 }
 
-/* declare a new local — strdup the name so it's null-terminated */
-static b_reg b_codeblock_declare(b_codeblock *cb, const char *name, uint32_t len) {
+/* declare a local with a specific register */
+static b_reg b_codeblock_declare_reg(b_codeblock *cb, const char *name, uint32_t len, b_reg r) {
+	if (r->type == B_REG_TMP)
+		r->type = B_REG_REG;
+	else if (r->type != B_REG_REG)
+		b_error("declare_reg: expected tmp or reg, got type %u", r->type);
+
 	char *key = b_malloc(len + 1);
 	memcpy(key, name, len);
 	key[len] = '\0';
@@ -524,9 +604,13 @@ static b_reg b_codeblock_declare(b_codeblock *cb, const char *name, uint32_t len
 		return existing;
 	}
 
-	b_reg r = b_reg_alloc(cb);
 	ci_map_set_str(cb->locals, key, (ci_ptr)r);
 	return r;
+}
+
+/* declare a new local — strdup the name so it's null-terminated */
+static b_reg b_codeblock_declare(b_codeblock *cb, const char *name, uint32_t len) {
+	return b_codeblock_declare_reg(cb, name, len, b_reg_alloc(cb));
 }
 
 
@@ -1593,7 +1677,7 @@ static b_reg b_emit_while(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 
 	b_codeblock *body_cb = b_codeblock_new(cb->func, cb);
 	body_cb->current_loop_id = loop_id;
-	b_consume_codelist(body_cb, is_do ? n->op_loop.body : n->op_loop.body);
+	b_consume_codelist(body_cb, n->op_loop.body);
 	cb->reg_next = body_cb->reg_next;
 
 	b_emit_label(cb, lbl_cond);
@@ -1602,6 +1686,47 @@ static b_reg b_emit_while(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	b_emit_jmpt(cb, cond, lbl_body);
 
 	b_emit_label(cb, lbl_end);
+
+	return NULL;
+}
+
+static b_reg b_emit_for(b_codeblock *cb, ast_node *n, uint32_t ctx) {
+	uint32_t loop_id = b_loop_id_next++;
+
+	b_reg lbl_cond = b_ulabel_idx(cb, "wcond", loop_id);
+	b_reg lbl_body = b_ulabel_idx(cb, "wbody", loop_id);
+	b_reg lbl_end = b_ulabel_idx(cb, "wend", loop_id);
+
+	uint32_t var_cnt = b_expr_cnt(n->op_loop.step);
+	uint32_t tmp_cnt = var_cnt + 2; // iterator, cursor, ...vars
+
+	b_reg iterable = b_reg_reg(cb, b_consume_ast(cb, n->op_loop.init));
+
+	b_reg tmps[32];
+	b_reg_tmp_continuous(cb, tmps, tmp_cnt);
+
+	b_emit_rrr(cb, B_ITERINIT, b_reg_reg(cb, iterable), b_reg_reg(cb, tmps[0]), b_reg_reg(cb, tmps[1]));
+
+	b_emit_label(cb, lbl_cond);
+	b_emit_rri32(cb, B_ITERSTEP, tmps[0], lbl_end, tmp_cnt - 2);
+
+	b_emit_label(cb, lbl_body);
+
+	b_codeblock *body_cb = b_codeblock_new(cb->func, cb);
+	body_cb->current_loop_id = loop_id;
+
+	/* bind iterator variables (i, v, ...) to tmps[2..] in body scope */
+	for (uint32_t i = 0; i < var_cnt; i++) {
+		ast_node *id = b_expr_idx(n->op_loop.step, i);
+		b_codeblock_declare_reg(body_cb, id->token.data, id->token.len, tmps[2 + i]);
+	}
+
+	b_consume_codelist(body_cb, n->op_loop.body);
+
+	b_emit_jmp(cb, lbl_cond);
+
+	b_emit_label(cb, lbl_end);
+	b_reg_tmp_release_continuous(cb, tmps, tmp_cnt);
 
 	return NULL;
 }
@@ -1877,6 +2002,7 @@ static const b_dispatch_entry b_dispatch[] = {
 	{ A_RETURN,     b_emit_return,        0     },
 	{ A_IF,         b_emit_if,            0     },
 	{ A_LOOP,       b_emit_while,         0     },
+	{ A_FOR_LOOP,     b_emit_for,         0     },
 	{ A_VAR,        b_emit_declare,       0     },
 	{ A_ASSIGN,     b_emit_assign,        0     },
 	{ A_HASHACCESS, b_emit_hashaccess,    0     },

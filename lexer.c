@@ -38,6 +38,7 @@
 	X(CONTINUE) \
 	X(GOTO) \
 	X(REQUIRE) \
+	X(IN) \
 	/* literals */ \
 	X(INT) \
 	X(HEX) \
@@ -126,7 +127,7 @@ static const char *token_names[L_COUNT] = {
  * ================================================================ */
 
 /* keyword: case-insensitive + word boundary (not followed by ident char) */
-#define KW(str, id) CAPi(A( skip, Si(str), NOT(R("A-Za-z_0-9"))), (size_t)(id))
+#define KW(str, id) A( skip, CAPi(A( Si(str), NOT(R("A-Za-z_0-9"))), (size_t)(id) ) )
 
 /* operator: literal string match */
 #define OP(str, id) CAPi(S(str), (size_t)(id))
@@ -186,8 +187,7 @@ static cma_op *lexer_grammar(void) {
 		KW("next",     L_NEXT),
 		KW("continue", L_NEXT),
 		KW("goto",     L_GOTO),
-		KW("require",  L_REQUIRE),
-		
+		KW("in",  L_IN),
 		skip,
 		
 		/* strings */

@@ -96,6 +96,85 @@ static inline void bb_op_arraystore(bb_coro *c, ci_ptr arr, ci_ptr idx, ci_ptr v
 	ci_arr_set(a, (uint32_t)index, val);
 }
 
+/* ================================================================
+ *  Iterator ops
+ * ================================================================ */
+
+/* ITERINIT: a=iterable_reg, b=iterator_reg, c=cursor_reg
+ * Copies iterable into iterator reg, sets cursor to 0 */
+VM_OP static void __vmop_iterinit(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
+	VM_OP_ACCESS_STACK;
+	ci_ptr iterable = VM_OP_STACK(a);
+	ci_inc(iterable);
+	VM_OP_SET_STACK(b, iterable);
+	VM_OP_SET_STACK(_c, CI_PACKINT(0));
+	BB_DISPATCH_NEXT(c);
+}
+
+/* ITERSTEP: a=first_reg, b=nregs, c=jump_target
+ * regs layout: [iterator, cursor, var0, var1, ...]
+ * Advances cursor, fills vars, jumps to c when done */
+VM_OP static void __vmop_iterstep(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
+	VM_OP_ACCESS_STACK;
+	ci_ptr *regs = &sk[a];
+	uint32_t nregs = (uint32_t)b;
+	ci_ptr iterator = regs[0];
+	ci_ptr cursor   = regs[1];
+	intptr_t idx = cursor ? CI_INT(cursor) : 0;
+
+	if (CI_IS_ANY_ARR(iterator)) {
+		ci_array *arr = (ci_array *)iterator;
+		uint32_t len = ci_arr_len(arr);
+
+		if (idx >= (intptr_t)len) goto end_looping;
+
+		/* var0 = index, var1 = value (if requested) */
+		if (nregs >= 1) {
+			ci_dec(regs[2]);
+			regs[2] = CI_PACKINT(idx);
+		}
+		if (nregs >= 2) {
+			ci_ptr val = ci_arr_index(arr, (uint32_t)idx);
+			ci_inc(val);
+			ci_dec(regs[3]);
+			regs[3] = val;
+		}
+
+		regs[1] = CI_PACKINT(idx + 1);
+	}
+	else if (CI_IS_MAP(iterator)) {
+		ci_map *map = (ci_map *)iterator;
+		uint32_t cursor = (uint32_t)idx;
+		ci_map_kv *kv = ci_map_next(map, &cursor);
+
+		if (!kv) goto end_looping;
+
+		if (nregs >= 1) {
+			ci_inc(kv->key);
+			ci_dec(regs[2]);
+			regs[2] = kv->key;
+		}
+		if (nregs >= 2) {
+			ci_inc(kv->val);
+			ci_dec(regs[3]);
+			regs[3] = kv->val;
+		}
+
+		regs[1] = CI_PACKINT(cursor);
+	}
+	else {
+		bb_coro_error(c, "ITERSTEP: not iterable");
+	}
+
+	
+	BB_DISPATCH_NEXT(c);
+	
+	end_looping: {
+		c->pc = c->ops_base + _c;
+		BB_DISPATCH_NEXT(c);
+	}
+}
+
 static inline void bb_op_hashstore(bb_coro *c, ci_ptr map, ci_ptr key, ci_ptr val) {
 	if (!CI_IS_MAP(map))
 		bb_coro_error(c, "HASHSTORE: operand is not a map");
@@ -206,8 +285,9 @@ static void bb_op_loadnull_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, u
 }
 
 /* RETURN: a=nrets, b=0, list=[reg0..regN-1] */
-static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8_t *list) {
-	(void)b;
+VM_OP static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
+	uint8_t *list = (uint8_t*) _c;
+	
 	ci_ptr *stack = c->fast_stack;
 	uint32_t count = (uint32_t)a;
 	
@@ -221,6 +301,8 @@ static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uin
 		c->lastreturn_idx = ret_base;
 		c->lastreturn_cnt = count;
 		c->flags = BB_CORO_DONE;
+		
+		printf("done\n");
 		return;
 	}
 
@@ -252,6 +334,8 @@ static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uin
 	
 	
 	bb_coro_popcall(c);
+	
+	BB_DISPATCH_NEXT(c);
 }
 
 /* CALL: a=nargs, b=nrets, list[-4]=fn_reg,

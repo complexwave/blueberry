@@ -26,6 +26,7 @@ static int ast_debug = 0;
 	X(IDENTIFIER) \
 	X(IF)         \
 	X(LOOP)       \
+	X(FOR_LOOP)       \
 	X(DO_LOOP)    \
 	X(FUNCTION)   \
 	X(VAR)        \
@@ -161,8 +162,14 @@ struct ast_node {
 
 		struct {                    /* A_ARG_4 */
 			ast_node *init;
+			
 			ast_node *condition;
-			ast_node *step;
+			
+			union {
+				ast_node *step;
+				ast_node *iterator_vars;
+			};
+			
 			ast_node *body;
 		} op_loop;
 		
@@ -370,6 +377,24 @@ static ast_node *ast_simple_prefix(ast *a, const ast_op_entry *entry) {
 	n->args[0] = operand;
 	return n;
 }
+
+// accept no operand
+static ast_node *ast_statement_return(ast *a, const ast_op_entry *entry) {
+	b_tok op = b_parser_try_next(a->p, entry->token_type);
+	if (!op.data) return NULL;
+
+	ast_node *operand = ast_expr_bp(a, entry->prio);
+	
+	uint32_t at = entry->prefix_type ? entry->prefix_type : A_PREFIX_OP;
+	ast_node *n = ast_newnode(a, at | A_PREFIX, op);
+	if (!n) {
+		ast_node_free(operand);
+		return NULL;
+	}
+	n->args[0] = operand;
+	return n;
+}
+
 
 static void ast_error(ast *a, const char *msg) {
 	fprintf(stderr, "error: %s", msg);
@@ -713,6 +738,48 @@ static ast_node *ast_statement_while(ast *a, const ast_op_entry *entry) {
 	return n;
 }
 
+static ast_node *ast_statement_for(ast *a, const ast_op_entry *entry) {
+	(void)entry;
+
+	b_tok op = ast_expect_token(a, L_FOR);
+	if (!op.data) return NULL;
+
+	ast_node *n = ast_newnode(a, A_FOR_LOOP | A_ARG_4, op);
+	if (!n) return NULL;
+
+	
+	n->op_loop.iterator_vars = ast_consume_expression_list(a);
+	if (!n->op_loop.iterator_vars) {
+		ast_error(a, "expected iterator_vars after 'for'");
+		ast_node_free(n);
+		return NULL;
+	}
+	
+	op = ast_expect_token(a, L_IN);
+	if (!op.data) {
+		ast_error(a, "expected IN after 'for'");
+		ast_node_free(n);
+		return NULL;
+	}
+	
+	n->op_loop.init = ast_consume_expression_list(a);
+	if (!n->op_loop.iterator_vars) {
+		ast_error(a, "expected iterable after 'for in'");
+		ast_node_free(n);
+		return NULL;
+	}
+	
+	
+	n->op_loop.body = ast_codeblock(a);
+	if (!n->op_loop.body) {
+		ast_error(a, "expected code block after 'for' condition");
+		ast_node_free(n);
+		return NULL;
+	}
+
+	return n;
+}
+
 static ast_node *ast_statement_function(ast *a, const ast_op_entry *entry) {
 	(void)entry;
 
@@ -865,16 +932,19 @@ static const ast_op_entry as_ops_prio[] = {
 	{ 250,    L_LSHIFT_ASSIGN,  NULL,                   0,            ast_simple_infix,         A_ASSIGN_LSHIFT,    0         },
 	{ 250,    L_RSHIFT_ASSIGN,  NULL,                   0,            ast_simple_infix,         A_ASSIGN_RSHIFT,    0         },
 	
-#define A_EXPR_LIST_PRIO 300
+
 	{ 300,    L_COMMA,         NULL,                     0,            ast_comma_list,           0,             0              },
 	{ 300,    L_HASHCOMMA,     NULL,                     0,            ast_comma_list,           0,             0              },
 	{ 300,    L_COLON,         NULL,                     0,            ast_comma_list,           0,             0              },
 	
+#define A_EXPR_LIST_PRIO 301
+	
 	{ 500,    L_IF,            ast_statement_if,         0,            NULL,                     0,             0              },
 	{ 500,    L_WHILE,         ast_statement_while,      0,            NULL,                     0,             0              },
 	{ 500,    L_DO,            ast_statement_do,         0,            NULL,                     0,             0              },
+	{ 500,    L_FOR,           ast_statement_for,        0,            NULL,                     0,             0              },
 
-	{ 500,    L_RETURN,        ast_simple_prefix,        A_RETURN,     NULL,                     0,             0              },
+	{ 500,    L_RETURN,        ast_statement_return,     A_RETURN,     NULL,                     0,             0              },
 	
 	{ 500,    L_VAR,           ast_simple_prefix,        A_VAR,        NULL,                     0,             0              },
 	{ 500,    L_GOTO,          ast_simple_prefix,        A_GOTO,       NULL,                     0,             0              },
@@ -1034,6 +1104,7 @@ static void ast_dump(ast_node *n, int indent) {
 		DUMP_FIELD("else",   n->op_if.else_body);
 		#undef DUMP_FIELD
 		return;
+	case A_FOR_LOOP:
 	case A_LOOP:
 		#define DUMP_FIELD(label, node) do { \
 			printf("%*s" label ": ", (indent+1)*2, ""); \

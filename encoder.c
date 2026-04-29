@@ -235,6 +235,15 @@ static bc_buf *be_encode_function(b_function *f) {
 				op->rrr.src1->number,
 				op->rrr.src2->number, 0);
 		}
+		else if (op->enc == B_ENC_RRI && op->op == B_ITERSTEP) {
+			/* ITERSTEP: [first_reg][nregs][0][i32 jump_target] */
+			uint32_t imm_off = bc_buf_len(out) + 4;
+			bc_emit_fixed(out, BC_SUB_RRI, op->op,
+				op->rri32.dst->number,
+				(uint8_t)op->rri32.imm,
+				0, 0);
+			op->rri32.src1->label_patch_addr = (uint8_t *)(uintptr_t)imm_off;
+		}
 		else if (op->enc == B_ENC_RRI) {
 			bc_emit_fixed(out, BC_SUB_RRI, op->op,
 				op->rri32.dst->number,
@@ -379,6 +388,8 @@ static bc_buf *be_encode_function(b_function *f) {
 			label_reg = op->r.dst;
 		else if ((op->op == B_JMPF || op->op == B_JMPT) && op->enc == B_ENC_R)
 			label_reg = op->r.src;
+		else if (op->op == B_ITERSTEP && op->enc == B_ENC_RRI)
+			label_reg = op->rri32.src1;
 
 		if (label_reg && label_reg->label_patch_addr) {
 			uint32_t imm_off = (uint32_t)(uintptr_t)label_reg->label_patch_addr;
