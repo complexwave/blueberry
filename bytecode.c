@@ -430,26 +430,26 @@ static void b_reg_tmp_continuous(b_codeblock *cb, b_reg* dst, int32_t registers_
 	b_reg_sort_freelist(cb);
 
 	int32_t end = cb->free_count - registers_required;
-	
+
 	if(end < 0) goto alloc_new;
-	
+
 	int32_t pos = cb->free_count-1;
 	while(pos > end){
-		if( (cb->free_list[pos]-1) == cb->free_list[pos-1]) goto alloc_new;
+		if( (cb->free_list[pos]-1) != cb->free_list[pos-1]) goto alloc_new;
 		pos--;
 	}
-	
+
 	while(end < cb->free_count){
 		*dst = b_reg_new( cb->free_list[end] , B_REG_TMP);
-		
+
 		end++;
 		dst++;
 	}
-	
+
 	return;
-		
+
 	alloc_new:
-	
+
 	while(registers_required--){
 		*dst = b_reg_tmp_fresh(cb);
 		dst++;

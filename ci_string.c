@@ -44,7 +44,7 @@
 * Tag definitions  (16-bit tags: upper byte | lower byte)
 * ============================================================
 *
-* CI_STR_FAMILY = CI_O_FAMILY_4 = 0x08 (bit 3 in ptrtag)
+* CI_STR_FAMILY = CI_O_FAMILY_2
 * Entry 0 via CI_FAMILY_ENTRY — same entry for full and small,
 * upper byte distinguishes pool size for small variants.
 *
@@ -77,7 +77,7 @@
 * All four small variants share ptrtag=0x09; upper byte drives pool selection.
 */
 
-#define CI_STR_FAMILY    CI_O_FAMILY_4                      /* 0x08 */
+#define CI_STR_FAMILY    CI_O_FAMILY_2                      /* 0x08 */
 #define CI_STR_TAG       CI_FAMILY_ENTRY(CI_STR_FAMILY, 0)  /* 0x08 */
 
 #define CI_STR           ((uint16_t)(CI_STR_TAG | CI_OBJECT | CI_REFCOUNTABLE))         /* 0x000B */

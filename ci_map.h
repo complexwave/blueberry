@@ -68,19 +68,13 @@ typedef struct {
  * Tag definitions
  * ============================================================ */
 
-#define CI_MAP_FAMILY   CI_O_FAMILY_2
+#define CI_MAP_FAMILY   CI_O_FAMILY_4
 #define CI_MAP_TAG      CI_FAMILY_ENTRY(CI_MAP_FAMILY, 0)
 
-#define CI_MAP          ((uint16_t)(CI_MAP_TAG | CI_OBJECT | CI_REFCOUNTABLE))  /* 0x0013, ptrtag=0x13 */
-/* TODO: small map tags
-#define CI_MAP_SMALL_128  ((uint16_t)(CI_MAP_TAG | CI_OBJECT))
-#define CI_MAP_SMALL_256  ((uint16_t)(CI_UPPER_TAG(0x40) | CI_MAP_TAG | CI_OBJECT))
-#define CI_MAP_SMALL_1024 ((uint16_t)(CI_UPPER_TAG(0x80) | CI_MAP_TAG | CI_OBJECT))
-#define CI_MAP_SMALL_2048 ((uint16_t)(CI_UPPER_TAG(0xC0) | CI_MAP_TAG | CI_OBJECT))
-*/
+#define CI_MAP          ((uint16_t)(CI_MAP_TAG | CI_OBJECT | CI_REFCOUNTABLE))
 
 #define CI_IS_ANY_MAP(ptr)  CI_CHECK_MASK_FAMILY(ptr, CI_MAP_FAMILY | CI_OBJECT, CI_MAP_FAMILY)
-#define CI_IS_MAP(ptr)      (CI_IS_ANY_MAP(ptr))
+#define CI_IS_MAP(ptr)      CI_CHECK_MASK_FAMILY(ptr, CI_MAP_TAG | CI_OBJECT, CI_MAP_FAMILY)
 
 #ifndef CI_MAP_LOAD_FACTOR
 #define CI_MAP_LOAD_FACTOR  0.7

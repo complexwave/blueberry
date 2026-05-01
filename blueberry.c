@@ -134,10 +134,6 @@ struct bb_frame {
 #define bb_coro_frame_caller(c)  bb_coro_frame(c, (c)->fstack_pos - 2)
 
 
-#undef ci_inc
-#undef ci_dec
-#define ci_inc(x) ((void)(x))
-#define ci_dec(x) ((void)(x))
 
 struct bb_closure {
 	CI_GC_HDR;
@@ -167,6 +163,7 @@ struct bb_coro {
 
 	uint32_t lastreturn_idx;
 	uint32_t lastreturn_cnt;
+	uint32_t stop_frame;
 
 	ci_ptr *fast_stack;
 	bb_cached_op *pc;
@@ -517,13 +514,14 @@ static void bb_coro_popcall(bb_coro *c) {
 	c->fstack_pos--;
 }
 
-static bb_coro *bb_coro_new(bb_vm *vm, bb_function *fn) {
+static bb_coro *bb_coro_new(bb_vm *vm) {
 	bb_coro *c = ci_new(CI_BB_CORO);
 	if (!c)
 		bb_vm_error(vm, "bb_coro_new: out of memory");
 	c->vm    = vm;
-	c->flags = 0;
+	c->flags = BB_CORO_SUSPENDED;
 	c->pc    = 0;
+	c->stop_frame = 0;
 
 	c->stack = ci_arr_new(256*3);
 
@@ -531,7 +529,6 @@ static bb_coro *bb_coro_new(bb_vm *vm, bb_function *fn) {
 	c->fstack_pos = 0;
 	c->fstack     = b_malloc(c->fstack_cap * sizeof(bb_frame));
 
-	bb_coro_pushcall(c, fn);
 	return c;
 }
 
@@ -542,6 +539,7 @@ static bb_coro *bb_coro_new(bb_vm *vm, bb_function *fn) {
 #include "blueberry_vm/api.c"
 #include "blueberry_vm/proto_array.c"
 #include "blueberry_vm/proto_string.c"
+#include "blueberry_vm/proto_btree.c"
 #include "blueberry_vm/opcodes.c"
 
 
@@ -919,9 +917,139 @@ static void bb_vm_execute(bb_coro *c) {
 	op->fn(c, op->a, op->b, op->c);
 }
 
-static void bb_coro_resume(bb_coro *c) {
+/* ================================================================
+ *  Coro call API
+ * ================================================================ */
+
+static ci_ptr bb_coro_call(bb_coro *c, bb_closure *cl, ci_ptr a, ci_ptr b, ci_ptr c_arg) {
+	c->vm->current_coro = c;
+
+	ci_ptr self = cl->self ? cl->self : cl;
+	
+	if (cl->fn->flags & BB_FN_NATIVE) {
+		if (cl->fn->flags & BB_FN_NATIVE_VAR) {
+			ci_ptr gathered[3] = { a, b, c_arg };
+			uint32_t n = !!a + !!b + !!c_arg;
+			return cl->fn->cfn_var(c, self, n, gathered);
+		}
+		if (cl->fn->flags & BB_FN_NATIVE_METHOD)
+			return cl->fn->cfn(c, self, a, b);
+
+		return cl->fn->cfn(c, a, b, c_arg);
+	}
+
+	/* bytecode call */
+	uint32_t saved_stop = c->stop_frame;
+	uint32_t saved_flags = c->flags;
+	c->stop_frame = c->fstack_pos;
+
+	bb_coro_pushcall(c, cl->fn);
+	ci_ptr *sk = c->fast_stack;
+	sk[0] = self;
+	sk[1] = a;
+	sk[2] = b;
+	sk[3] = c_arg;
+
 	c->flags = BB_CORO_RUNNING;
 	bb_vm_execute(c);
+
+	ci_ptr result = NULL;
+	if (c->lastreturn_cnt > 0)
+		result = c->stack->data[c->lastreturn_idx];
+
+	if (c->fstack_pos > 1)
+		bb_coro_popcall(c);
+	else
+		c->fstack_pos = 0;
+
+	c->stop_frame = saved_stop;
+	c->flags = saved_flags;
+
+	return result;
+}
+
+static void bb_coro_call_var(bb_coro *c, bb_closure *cl,
+                             ci_ptr *args, uint32_t nargs,
+                             ci_ptr *rets, uint32_t nrets)
+{
+	c->vm->current_coro = c;
+
+	if (cl->fn->flags & BB_FN_NATIVE) {
+		ci_ptr self = cl->self ? cl->self : (nargs > 0 ? args[0] : NULL);
+		ci_ptr result;
+
+		if (cl->fn->flags & BB_FN_NATIVE_VAR) {
+			result = cl->fn->cfn_var(c, self, nargs, args);
+		} else if (cl->fn->flags & BB_FN_NATIVE_METHOD) {
+			result = cl->fn->cfn(c, self,
+				nargs > 0 ? args[0] : NULL,
+				nargs > 1 ? args[1] : NULL);
+		} else {
+			result = cl->fn->cfn(c,
+				nargs > 0 ? args[0] : NULL,
+				nargs > 1 ? args[1] : NULL,
+				nargs > 2 ? args[2] : NULL);
+		}
+
+		if (nrets > 0) rets[0] = result;
+		for (uint32_t i = 1; i < nrets; i++) rets[i] = NULL;
+		return;
+	}
+
+	/* bytecode call */
+	uint32_t saved_stop = c->stop_frame;
+	uint32_t saved_flags = c->flags;
+	c->stop_frame = c->fstack_pos;
+
+	bb_coro_pushcall(c, cl->fn);
+	ci_ptr *sk = c->fast_stack;
+	sk[0] = cl->self;
+	for (uint32_t i = 0; i < nargs && i < cl->fn->args; i++)
+		sk[i + 1] = args[i];
+
+	c->flags = BB_CORO_RUNNING;
+	bb_vm_execute(c);
+
+	uint32_t got = c->lastreturn_cnt;
+	ci_ptr *ret_base = c->stack->data + c->lastreturn_idx;
+	for (uint32_t i = 0; i < nrets; i++)
+		rets[i] = (i < got) ? ret_base[i] : NULL;
+
+	if (c->fstack_pos > 1)
+		bb_coro_popcall(c);
+	else
+		c->fstack_pos = 0;
+
+	c->stop_frame = saved_stop;
+	c->flags = saved_flags;
+}
+
+static ci_ptr bb_coro_result(bb_coro *c, uint32_t idx) {
+	if (idx >= c->lastreturn_cnt) return NULL;
+	return c->stack->data[c->lastreturn_idx + idx];
+}
+
+static uint32_t bb_coro_nresults(bb_coro *c) {
+	return c->lastreturn_cnt;
+}
+
+/* varargs call macros */
+#define BB_CORO_VCALL(c, cl, args, nargs) \
+	ci_ptr __bb_vrets[32] = {}; \
+	uint32_t __bb_vret_cnt = 0; \
+	do { \
+		__bb_vret_cnt = 32; \
+		bb_coro_call_var(c, cl, args, nargs, __bb_vrets, __bb_vret_cnt); \
+		__bb_vret_cnt = (c)->lastreturn_cnt < 32 ? (c)->lastreturn_cnt : 32; \
+	} while(0)
+
+#define BB_VRET_CNT  __bb_vret_cnt
+#define BB_VRET(i)   __bb_vrets[i]
+#define BB_VRET_FINALIZE ci_dec_multi(__bb_vrets, 32)
+
+static void bb_coro_yield(bb_coro *c, ci_ptr val) {
+	(void)val;
+	bb_coro_error(c, "yield: not implemented");
 }
 
 /* ================================================================
@@ -931,6 +1059,8 @@ static void bb_coro_resume(bb_coro *c) {
 #include "blueberry_vm/util.c"
 #include "blueberry_vm/lib/io.c"
 #include "blueberry_vm/lib/cma.c"
+#include "blueberry_vm/lib/map.c"
+#include "blueberry_vm/lib/callapi.c"
 
 /* ================================================================
  *  Compile .ci to .cbc
@@ -962,6 +1092,7 @@ int main(int argc, char **argv) {
 	ci_str_register();
 	ci_arr_register();
 	ci_map_register();
+	ci_tree_register();
 	bb_vm_types_register();
 	bb_fast_table_init();
 
@@ -1011,10 +1142,13 @@ int main(int argc, char **argv) {
 	/* init built-in prototypes */
 	bb_proto_array_init(vm);
 	bb_proto_string_init(vm);
+	bb_proto_btree_init(vm);
 
 	/* init stdlib */
 	bb_lib_io_init(vm);
 	bb_lib_cma_init(vm);
+	bb_lib_map_init(vm);
+	bb_lib_callapi_init(vm);
 
 	/* expose script arguments as global argv array */
 	{
@@ -1042,16 +1176,15 @@ int main(int argc, char **argv) {
 		goto shutdown;
 	}
 
-	/* Execute the last function (user code), not the first (global setup) */
-	uint32_t fn_count = ci_arr_len(unit->functions);
+	/* Execute the first function (main/global setup) */
 	bb_function *main_fn = (bb_function *)ci_arr_index(unit->functions, 0);
-	bb_coro *c = bb_coro_new(vm, main_fn);
+	bb_closure *main_cl = bb_vm_closure(vm, main_fn);
+	bb_coro *c = bb_coro_new(vm);
 
 	if (dump)
 		printf("\n=== execute ===\n");
-	
-	bb_coro_resume(c);
-	printf("\n=== returned ===\n");
+
+	bb_coro_call(c, main_cl, NULL, NULL, NULL);
 	if (dump)
 		bb_coro_dump_stack(c, 1);
 

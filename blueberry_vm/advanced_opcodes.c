@@ -101,13 +101,22 @@ static inline void bb_op_arraystore(bb_coro *c, ci_ptr arr, ci_ptr idx, ci_ptr v
  * ================================================================ */
 
 /* ITERINIT: a=iterable_reg, b=iterator_reg, c=cursor_reg
- * Copies iterable into iterator reg, sets cursor to 0 */
+ * Copies iterable into iterator reg, sets cursor to 0.
+ * For ordered maps: creates a ci_tree_iter GC object as the iterator. */
 VM_OP static void __vmop_iterinit(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	VM_OP_ACCESS_STACK;
 	ci_ptr iterable = VM_OP_STACK(a);
-	ci_inc(iterable);
-	VM_OP_SET_STACK(b, iterable);
-	VM_OP_SET_STACK(_c, CI_PACKINT(0));
+
+	if (CI_IS_ORDERED_MAP(iterable)) {
+		ci_tree_iter *it = ci_tree_iter_new((ci_tree *)iterable);
+		VM_OP_SET_STACK(b, (ci_ptr)it);
+		VM_OP_SET_STACK(_c, CI_PACKINT(0));
+	}
+	else {
+		ci_inc(iterable);
+		VM_OP_SET_STACK(b, iterable);
+		VM_OP_SET_STACK(_c, CI_PACKINT(0));
+	}
 	BB_DISPATCH_NEXT(c);
 }
 
@@ -161,6 +170,23 @@ VM_OP static void __vmop_iterstep(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b
 		}
 
 		regs[1] = CI_PACKINT(cursor);
+	}
+	else if (CI_IS_TREE_ITER(iterator)) {
+		ci_tree_iter *it = (ci_tree_iter *)iterator;
+		ci_map_kv *kv = ci_tree_iter_next(it);
+
+		if (!kv) goto end_looping;
+
+		if (nregs >= 1) {
+			ci_inc(kv->key);
+			ci_dec(regs[2]);
+			regs[2] = kv->key;
+		}
+		if (nregs >= 2) {
+			ci_inc(kv->val);
+			ci_dec(regs[3]);
+			regs[3] = kv->val;
+		}
 	}
 	else {
 		bb_coro_error(c, "ITERSTEP: not iterable");
@@ -291,18 +317,20 @@ VM_OP static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg 
 	ci_ptr *stack = c->fast_stack;
 	uint32_t count = (uint32_t)a;
 	
-	if (c->fstack_pos == 1) {
-		bb_frame *frame = bb_coro_frame(c, 0);
+	if (c->fstack_pos == c->stop_frame + 1) {
+		bb_frame *frame = bb_coro_frame(c, c->stop_frame);
 		uint32_t ret_base = frame->stack_base + frame->function->regs;
 		if (!ci_arr_ensure_space(c->stack, count))
 			bb_vm_error(c->vm, "return: oom");
+
+		ci_ptr *ret_dst = c->stack->data + ret_base;
+		for (uint32_t i = 0; i < count; i++)
+			ret_dst[i] = stack[list[i]];
 
 		c->stack->length  = ret_base + count;
 		c->lastreturn_idx = ret_base;
 		c->lastreturn_cnt = count;
 		c->flags = BB_CORO_DONE;
-		
-		printf("done\n");
 		return;
 	}
 

@@ -34,6 +34,7 @@ void ci_register_ops(uint16_t tag, uint16_t obj_size, const tg_arena_ops *ops) {
 #define CIMAP_INCLUDE "ci_map.c"
 #endif
 #include CIMAP_INCLUDE
+#include "ci_tree.c"
 
 /* ==== test ==== */
 

@@ -215,6 +215,20 @@ static inline void ci_free(void *ptr) {
 
 /* ---- saturating refcount ---- */
 
+static inline void ci_nocnt(void *ptr) {
+	if (!CI_IS_REFCOUNTABLE(ptr)) return;
+
+	ci_gchdr *hdr = (ci_gchdr *)ptr;
+	hdr->refcnt = 0xFFFF;
+}
+
+#ifdef CI_DISABLE_REFCOUNTING
+
+#define ci_inc(x) ((void)(x))
+#define ci_dec(x) ((void)(x))
+
+#else
+
 static inline void ci_inc(void *ptr) {
 	if (!CI_IS_REFCOUNTABLE(ptr)) return;
 
@@ -222,13 +236,6 @@ static inline void ci_inc(void *ptr) {
 	uint16_t rc = hdr->refcnt + 1;
 	rc |= -(uint16_t)(rc == 0);   /* overflow -> 0xFFFF (sticky) */
 	hdr->refcnt = rc;
-}
-
-static inline void ci_nocnt(void *ptr) {
-	if (!CI_IS_REFCOUNTABLE(ptr)) return;
-	
-	ci_gchdr *hdr = (ci_gchdr *)ptr;
-	hdr->refcnt = 0xFFFF; 
 }
 
 /* returns 1 if object was freed, 0 otherwise */
@@ -245,6 +252,13 @@ static inline int ci_dec(void *ptr) {
 	}
 	return 0;
 }
+
+#endif /* CI_DISABLE_REFCOUNTING */
+
+#define ci_dec_multi(arr, n) do { \
+	ci_ptr *_p = (arr); size_t _n = (n); \
+	while (_n--) { ci_dec(*_p); _p++; } \
+} while(0)
 
 /* ---- query helpers ---- */
 

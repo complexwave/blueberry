@@ -27,6 +27,8 @@ static void bb_dump_function(bb_function *fn, uint32_t stop_at) {
 				printf("[%u]", imm);
 			else if (opnum == B_JMPF || opnum == B_JMPT)
 				printf("r%u, [%u]", b1, imm);
+			else if (opnum == B_ITERSTEP)
+				printf("r%u, %u, [%u]", b1, b2, imm);
 			else
 				printf("r%u, %d", b1, (int32_t)imm);
 			break;
