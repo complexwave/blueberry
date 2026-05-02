@@ -226,7 +226,7 @@ static inline void bb_op_hashstore(bb_coro *c, ci_ptr map, ci_ptr key, ci_ptr va
  *   type 1: key = register (klo = reg, khi = 0) */
 static void bb_op_newmap_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8_t *list) {
 	ci_ptr *stack = c->fast_stack;
-	bb_function *fn = bb_coro_frame_top(c)->function;
+	bb_function *fn = bb_coro_frame_function(bb_coro_frame_top(c));
 	uint32_t dst_reg = (uint32_t)a;
 	uint32_t npairs  = (uint32_t)b;
 
@@ -278,7 +278,7 @@ static void bb_op_newarray_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, u
 /* HASHACCESS: a=dst, b=src, list=strids (2 per word); nwords = list[-5] */
 static void bb_op_hashaccess_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8_t *list) {
 	ci_ptr *stack = c->fast_stack;
-	bb_function *fn = bb_coro_frame_top(c)->function;
+	bb_function *fn = bb_coro_frame_function(bb_coro_frame_top(c));
 	uint32_t dst_reg = (uint32_t)a;
 	uint32_t src_reg = (uint32_t)b;
 	uint32_t nkeys   = (uint32_t)list[-5];  /* r3 = nwords; used as key count */
@@ -319,7 +319,7 @@ VM_OP static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg 
 	
 	if (c->fstack_pos == c->stop_frame + 1) {
 		bb_frame *frame = bb_coro_frame(c, c->stop_frame);
-		uint32_t ret_base = frame->stack_base + frame->function->regs;
+		uint32_t ret_base = frame->stack_base + bb_coro_frame_function(frame)->regs;
 		if (!ci_arr_ensure_space(c->stack, count))
 			bb_vm_error(c->vm, "return: oom");
 
@@ -432,7 +432,7 @@ static void bb_op_call_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8
 	}
 
 	/* bytecode call — push frame */
-	bb_coro_pushcall(c, cl->fn);
+	bb_coro_pushcall(c, cl);
 	
 	bb_frame *callee = bb_coro_frame_top(c);
 	ci_ptr *callee_stack = c->stack->data + callee->stack_base;

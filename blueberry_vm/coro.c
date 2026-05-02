@@ -1,0 +1,240 @@
+/* ================================================================
+ *  Coroutine
+ * ================================================================ */
+
+/* ================================================================
+ *  Coroutine lifecycle
+ * ================================================================ */
+
+static void bb_coro_destructor(void *ptr, tg_arena_t *arena) {
+	(void)arena;
+	bb_coro *c = ptr;
+	free(c->fstack);
+	ci_dec(c->stack);
+}
+
+static bb_coro *bb_coro_new(bb_vm *vm) {
+	bb_coro *c = ci_new(CI_BB_CORO);
+	if (!c)
+		bb_vm_error(vm, "bb_coro_new: out of memory");
+	c->vm    = vm;
+	c->flags = BB_CORO_SUSPENDED;
+	c->pc    = 0;
+	c->stop_frame = 0;
+
+	c->stack = ci_arr_new(256*3);
+
+	c->fstack_cap = 32;
+	c->fstack_pos = 0;
+	c->fstack     = b_malloc(c->fstack_cap * sizeof(bb_frame));
+
+	return c;
+}
+
+/* ================================================================
+ *  Error handling
+ * ================================================================ */
+
+static void bb_coro_error(bb_coro *c, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	fprintf(stderr, "error: ");
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+	fprintf(stderr, "\n");
+	fflush(stderr);
+
+	if (c && c->fstack_pos > 0) {
+		bb_coro_dump_stack(c, 0);
+	}
+
+	exit(1);
+}
+
+
+
+/* ================================================================
+ *  Call frame stack
+ * ================================================================ */
+
+static void bb_coro_pushcall(bb_coro *c, bb_closure *cl) {
+	if (c->fstack_pos >= c->fstack_cap)
+		bb_coro_error(c, "frame stack overflow");
+
+	if(c->fstack_pos){
+		bb_frame *current_frame = bb_coro_frame_top(c);
+		current_frame->pc = c->pc;
+	}
+
+	uint32_t base = c->stack->length;
+
+	if (!ci_arr_ensure_space(c->stack, 256))
+		bb_vm_error(c->vm, "stack: out of memory");
+	memset(c->stack->data + base, 0, 256 * sizeof(ci_ptr));
+
+	c->stack->length += 256;
+
+	bb_frame *frame = bb_coro_frame(c, c->fstack_pos);
+
+	frame->closure    = cl;
+	frame->pc     = 0;
+	frame->stack_base = base;
+
+	ci_ptr *stack   = c->stack->data + frame->stack_base;
+
+	VM_DBG("[PUSH(%u) FRAME(%p)] fstack %p -> %p [%u]. \n",
+		   c->fstack_pos, cl->fn, c->fast_stack, stack, frame->stack_base);
+
+	stack[255]    = (ci_ptr)c->vm->globals;
+	c->fast_stack = stack;
+
+	bb_cached_op *ops = bb_function_ops(cl->fn);
+
+	c->ops_base = ops;
+	c->pc   = ops;
+
+	c->fstack_pos++;
+}
+
+static void bb_coro_popcall(bb_coro *c) {
+	bb_frame *frame = bb_coro_frame_top(c);
+	bb_frame *caller = bb_coro_frame_caller(c);
+
+	c->stack->length = caller->stack_base + 256;
+
+	ci_ptr *stack   = c->stack->data + caller->stack_base;
+
+	VM_DBG("[POP(%u) FRAME(%p)] fstack %p -> %p[%u]. pop pc %p \n",
+		   c->fstack_pos, bb_coro_frame_function(frame), c->fast_stack, stack, frame->stack_base, caller->pc);
+
+	c->fast_stack = stack;
+
+	bb_cached_op *ops = bb_function_ops(bb_coro_frame_function(caller));
+
+	c->ops_base = ops;
+	c->pc   = caller->pc;
+
+	c->fstack_pos--;
+}
+
+/* ================================================================
+ *  Call interface
+ * ================================================================ */
+
+static ci_ptr bb_coro_call(bb_coro *c, bb_closure *cl, ci_ptr a, ci_ptr b, ci_ptr c_arg) {
+	c->vm->current_coro = c;
+
+	ci_ptr self = bb_closure_self(cl);
+
+	if (cl->fn->flags & BB_FN_NATIVE) {
+		if (cl->fn->flags & BB_FN_NATIVE_VAR) {
+			ci_ptr gathered[3] = { a, b, c_arg };
+			uint32_t n = !!a + !!b + !!c_arg;
+			return cl->fn->cfn_var(c, self, n, gathered);
+		}
+		if (cl->fn->flags & BB_FN_NATIVE_METHOD)
+			return cl->fn->cfn(c, self, a, b);
+
+		return cl->fn->cfn(c, a, b, c_arg);
+	}
+
+	/* bytecode call */
+	uint32_t saved_stop = c->stop_frame;
+	uint32_t saved_flags = c->flags;
+	c->stop_frame = c->fstack_pos;
+
+	bb_coro_pushcall(c, cl);
+	ci_ptr *sk = c->fast_stack;
+	sk[0] = self;
+	sk[1] = a;
+	sk[2] = b;
+	sk[3] = c_arg;
+
+	c->flags = BB_CORO_RUNNING;
+	bb_vm_execute(c);
+
+	ci_ptr result = NULL;
+	if (c->lastreturn_cnt > 0)
+		result = c->stack->data[c->lastreturn_idx];
+
+	if (c->fstack_pos > 1)
+		bb_coro_popcall(c);
+	else
+		c->fstack_pos = 0;
+
+	c->stop_frame = saved_stop;
+	c->flags = saved_flags;
+
+	return result;
+}
+
+static void bb_coro_call_var(bb_coro *c, bb_closure *cl,
+                             ci_ptr *args, uint32_t nargs,
+                             ci_ptr *rets, uint32_t nrets)
+{
+	c->vm->current_coro = c;
+
+	if (cl->fn->flags & BB_FN_NATIVE) {
+		ci_ptr self = cl->self ? cl->self : (nargs > 0 ? args[0] : NULL);
+		ci_ptr result;
+
+		if (cl->fn->flags & BB_FN_NATIVE_VAR) {
+			result = cl->fn->cfn_var(c, self, nargs, args);
+		} else if (cl->fn->flags & BB_FN_NATIVE_METHOD) {
+			result = cl->fn->cfn(c, self,
+				nargs > 0 ? args[0] : NULL,
+				nargs > 1 ? args[1] : NULL);
+		} else {
+			result = cl->fn->cfn(c,
+				nargs > 0 ? args[0] : NULL,
+				nargs > 1 ? args[1] : NULL,
+				nargs > 2 ? args[2] : NULL);
+		}
+
+		if (nrets > 0) rets[0] = result;
+		for (uint32_t i = 1; i < nrets; i++) rets[i] = NULL;
+		return;
+	}
+
+	/* bytecode call */
+	uint32_t saved_stop = c->stop_frame;
+	uint32_t saved_flags = c->flags;
+	c->stop_frame = c->fstack_pos;
+
+	bb_coro_pushcall(c, cl);
+	ci_ptr *sk = c->fast_stack;
+	sk[0] = bb_closure_self(cl);
+	for (uint32_t i = 0; i < nargs && i < cl->fn->args; i++)
+		sk[i + 1] = args[i];
+
+	c->flags = BB_CORO_RUNNING;
+	bb_vm_execute(c);
+
+	uint32_t got = c->lastreturn_cnt;
+	ci_ptr *ret_base = c->stack->data + c->lastreturn_idx;
+	for (uint32_t i = 0; i < nrets; i++)
+		rets[i] = (i < got) ? ret_base[i] : NULL;
+
+	if (c->fstack_pos > 1)
+		bb_coro_popcall(c);
+	else
+		c->fstack_pos = 0;
+
+	c->stop_frame = saved_stop;
+	c->flags = saved_flags;
+}
+
+static ci_ptr bb_coro_result(bb_coro *c, uint32_t idx) {
+	if (idx >= c->lastreturn_cnt) return NULL;
+	return c->stack->data[c->lastreturn_idx + idx];
+}
+
+static uint32_t bb_coro_nresults(bb_coro *c) {
+	return c->lastreturn_cnt;
+}
+
+static void bb_coro_yield(bb_coro *c, ci_ptr val) {
+	(void)val;
+	bb_coro_error(c, "yield: not implemented");
+}
+

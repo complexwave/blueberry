@@ -84,7 +84,7 @@ static void bb_dump_unit(bb_unit *unit) {
 }
 
 static void bb_dump_frame(bb_coro *c, uint32_t depth, bb_frame *frame, int dumpregs) {
-	bb_function *fn = frame->function;
+	bb_function *fn = bb_coro_frame_function(frame);
 	uint32_t base  = frame->stack_base;
 	uint32_t nregs = fn->regs;
 
@@ -133,7 +133,7 @@ static void bb_dump_regs(bb_coro *c) {
 
 	bb_frame *frame = bb_coro_frame_top(c);
 	uint32_t base  = frame->stack_base;
-	uint32_t nregs = frame->function->regs;
+	uint32_t nregs = bb_coro_frame_function(frame)->regs;
 
 	printf("\n--- registers (%u) ---\n", nregs);
 	for (uint32_t i = 0; i < nregs; i++) {

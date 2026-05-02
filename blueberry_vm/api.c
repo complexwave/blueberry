@@ -10,6 +10,7 @@
 #define bb_is_closure(p) CI_IS_CLOSURE(p)
 #define bb_is_map(p)     CI_IS_MAP(p)
 #define bb_is_bool(p)    CI_IS_BOOL(p)
+#define bb_is_coro(p)    CI_IS_CORO(p)
 
 /* ---- CHECK macros (return NULL on type mismatch) ---- */
 
@@ -41,6 +42,10 @@
 
 #define BB_CHECK_BOOL(a) do { \
 	if (!bb_is_bool(a)) { bb_coro_error(c, "%s: expected bool", __func__); } \
+} while(0)
+
+#define BB_CHECK_CORO(a) do { \
+	if (!bb_is_coro(a)) { bb_coro_error(c, "%s: expected coroutine", __func__); } \
 } while(0)
 
 /* BB_VARARG_OR_ARRAY — if called with a single array arg, unpack it in-place.
