@@ -47,7 +47,7 @@ typedef struct {
 	char mydata[120];
 } my_ci_object;
 
-#if !defined(CI_STRING_TEST) && !defined(CI_ARRAY_TEST) && !defined(CI_MAP_TEST)
+#if !defined(CI_STRING_TEST) && !defined(CI_ARRAY_TEST) && !defined(CI_MAP_TEST) && !defined(CI_TIMER_TEST)
 int main(void) {
 	ci_init();
 
