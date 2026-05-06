@@ -13,6 +13,8 @@ static void bb_coro_destructor(void *ptr, tg_arena_t *arena) {
 	ci_dec(c->stack);
 }
 
+bb_frame* bb_coro_pushframe(bb_coro *c, uint32_t regs);
+
 static bb_coro *bb_coro_new(bb_vm *vm) {
 	bb_coro *c = ci_new(CI_BB_CORO);
 	if (!c)
@@ -28,6 +30,10 @@ static bb_coro *bb_coro_new(bb_vm *vm) {
 	c->fstack_pos = 0;
 	c->fstack     = b_malloc(c->fstack_cap * sizeof(bb_frame));
 
+	// stores coro return result and acts as end indicator
+	bb_frame* frame = bb_coro_pushframe(c, 256);
+	frame->closure = NULL;
+	
 	return c;
 }
 
@@ -57,7 +63,7 @@ static void bb_coro_error(bb_coro *c, const char *fmt, ...) {
  *  Call frame stack
  * ================================================================ */
 
-static void bb_coro_pushcall(bb_coro *c, bb_closure *cl) {
+bb_frame* bb_coro_pushframe(bb_coro *c, uint32_t regs) {
 	if (c->fstack_pos >= c->fstack_cap)
 		bb_coro_error(c, "frame stack overflow");
 
@@ -68,22 +74,36 @@ static void bb_coro_pushcall(bb_coro *c, bb_closure *cl) {
 
 	uint32_t base = c->stack->length;
 
-	if (!ci_arr_ensure_space(c->stack, 256))
+	if (!ci_arr_ensure_space(c->stack, regs))
 		bb_vm_error(c->vm, "stack: out of memory");
-	memset(c->stack->data + base, 0, 256 * sizeof(ci_ptr));
+	
+	memset(c->stack->data + base, 0, regs * sizeof(ci_ptr));
 
-	c->stack->length += 256;
+	c->stack->length += regs;
 
 	bb_frame *frame = bb_coro_frame(c, c->fstack_pos);
 
-	frame->closure    = cl;
 	frame->pc     = 0;
 	frame->stack_base = base;
+	
+	c->fstack_pos++;
+	
+	return frame;
+}
 
+
+static void bb_coro_pushcall(bb_coro *c, bb_closure *cl) {
+	if(c->fstack_pos){
+		bb_frame *current_frame = bb_coro_frame_top(c);
+		current_frame->pc = c->pc;
+	}
+	
+	bb_frame* frame = bb_coro_pushframe(c, 256);
+	frame->closure    = cl;
+	
 	ci_ptr *stack   = c->stack->data + frame->stack_base;
-
 	VM_DBG("[PUSH(%u) FRAME(%p)] fstack %p -> %p [%u]. \n",
-		   c->fstack_pos, cl->fn, c->fast_stack, stack, frame->stack_base);
+		   c->fstack_pos-1, cl->fn, c->fast_stack, stack, frame->stack_base);
 
 	stack[255]    = (ci_ptr)c->vm->globals;
 	c->fast_stack = stack;
@@ -92,9 +112,8 @@ static void bb_coro_pushcall(bb_coro *c, bb_closure *cl) {
 
 	c->ops_base = ops;
 	c->pc   = ops;
-
-	c->fstack_pos++;
 }
+
 
 static void bb_coro_popcall(bb_coro *c) {
 	bb_frame *frame = bb_coro_frame_top(c);
@@ -106,15 +125,18 @@ static void bb_coro_popcall(bb_coro *c) {
 
 	VM_DBG("[POP(%u) FRAME(%p)] fstack %p -> %p[%u]. pop pc %p \n",
 		   c->fstack_pos, bb_coro_frame_function(frame), c->fast_stack, stack, frame->stack_base, caller->pc);
-
+	c->fstack_pos--;
+	
 	c->fast_stack = stack;
 
+	if(!caller->closure){
+		return;
+	}
+		
 	bb_cached_op *ops = bb_function_ops(bb_coro_frame_function(caller));
 
 	c->ops_base = ops;
 	c->pc   = caller->pc;
-
-	c->fstack_pos--;
 }
 
 /* ================================================================

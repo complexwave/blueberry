@@ -35,6 +35,7 @@ void ci_register_ops(uint16_t tag, uint16_t obj_size, const tg_arena_ops *ops) {
 #endif
 #include CIMAP_INCLUDE
 #include "ci_tree.c"
+#include "ci_number.c"
 
 /* ==== test ==== */
 

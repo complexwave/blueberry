@@ -73,7 +73,9 @@ static void *b_malloc(size_t size) {
 	X(LABEL)   \
 	X(LOADFN)  \
 	X(ITERINIT) \
-	X(ITERSTEP)
+	X(ITERSTEP) \
+	X(MOVETO) \
+	X(MOVEFROM)
 
 enum {
 	B__INVALID = 0,
@@ -109,6 +111,7 @@ enum {
 	B_ENC_VAR,    /* op [ reg, reg, ... ] — variable length */
 	B_ENC_VAR_STRID, /* variable, dont emit string ids to registers */
 	B_ENC_DECIDE, /* deferred — encoder pass picks RRR/RRU8/RU16 */
+	B_ENC_CALL,   /* CALL base, nargs, nrets */
 };
 
 /* ================================================================
@@ -133,6 +136,7 @@ struct b_register {
 	uint8_t  number;
 	uint8_t  type;
 	uint8_t  freed;
+	uint8_t  renamed;
 	uint32_t strlen;
 	union {
 		int64_t  integer;
@@ -263,6 +267,12 @@ struct b_opcode {
 			b_reg src1;
 			b_reg src2;
 		} decide;
+		struct {
+			b_reg    base;
+			b_reg*   all_regs;
+			uint16_t nargs;
+			uint16_t nrets;
+		} call;
 	};
 };
 
@@ -446,6 +456,8 @@ static void b_reg_tmp_continuous(b_codeblock *cb, b_reg* dst, int32_t registers_
 		dst++;
 	}
 
+	cb->free_count -= registers_required;
+	
 	return;
 
 	alloc_new:
@@ -485,14 +497,21 @@ static void b_reg_release(b_codeblock *cb, b_reg r) {
 		b_reg_free(cb, r);
 }
 
-static void b_reg_rename(b_codeblock *cb, b_reg src, b_reg dst) {
-	if (!b_reg_is_tmp(src))
-		b_error("b_reg_rename: src is not tmp (type=%u)", src->type);
-	
+
+static void b_reg_no_rename(b_codeblock *cb, b_reg reg) {
+	reg->renamed = 1;
+}
+
+static int b_reg_rename(b_codeblock *cb, b_reg src, b_reg dst) {
+	if (!b_reg_is_tmp(src) || src->renamed)
+		return 0;
+
 	b_reg_free(cb, src);
-	
+
 	src->number = dst->number;
 	src->type = dst->type;
+	src->renamed = 1;
+	return 1;
 }
 
 static b_reg b_codeblock_find(b_codeblock *cb, const char *name);
@@ -578,12 +597,17 @@ static void _dump_locals(b_codeblock *cb) {
 }
 
 /* look up identifier walking scope chain; returns B_REG_GLOBAL if not found */
-static b_reg b_codeblock_get_ident(b_codeblock *cb, const char *name) {
+static b_reg b_codeblock_get_ident(b_codeblock *cb, const char *name, uint32_t len) {
+	char buf[256];
+	if (len > 255) len = 255;
+	memcpy(buf, name, len);
+	buf[len] = '\0';
+
 	for (b_codeblock *scope = cb; scope; scope = scope->parent) {
-		b_reg r = b_codeblock_find(scope, name);
+		b_reg r = b_codeblock_find(scope, buf);
 		if (r) return r;
 	}
-	
+
 	return NULL;
 }
 
@@ -684,6 +708,18 @@ static void b_emit_ri32(b_codeblock *cb, uint8_t opnum, b_reg dst, int32_t imm) 
 	op->rri32.src1 = NULL;
 	op->rri32.imm = imm;
 
+	b_emit(cb, op);
+}
+
+static void b_emit_call_op(b_codeblock *cb, b_reg* base, uint16_t nargs, uint16_t nrets) {
+	b_opcode *op = b_opcode_new();
+	op->op  = B_CALL;
+	op->enc = B_ENC_CALL;
+	op->call.base  = base[0];
+	op->call.all_regs  = base;
+	op->call.nargs = nargs;
+	op->call.nrets = nrets;
+	
 	b_emit(cb, op);
 }
 
@@ -1067,55 +1103,6 @@ static b_reg b_emit_string_value(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	return dst;
 }
 
-static b_reg b_emit_mapaccess(b_codeblock *cb, ast_node *n, uint32_t ctx) {
-	(void)ctx;
-	uint32_t cnt = ast_node_list_length(n);
-	b_reg dst = b_consume_ast(cb, ast_node_list(n, 0));
-	b_reg map = NULL;
-
-	b_opcode *op = NULL;
-
-	for (uint32_t i = 1; i < cnt; i++) {
-		b_reg key = b_consume_ast(cb, ast_node_list(n, i));
-			
-		if(key->type == B_REG_STRING){
-			if (!op){
-				map = dst;
-				dst = b_reg_tmp(cb);
-				op = b_new_var(B_HASHACCESS);
-				op->enc = B_ENC_VAR_STRID;
-				
-				/* dst, obj, key0, key1, ... */
-				b_op_pushreg(op, dst);
-				b_op_pushreg(op, b_reg_reg(cb, map));
-			}
-			
-			b_op_pushreg(op, key);
-		} else {
-			// split hashaccess
-			if (op){
-				b_emit_var(cb, op);
-				b_reg_release(cb, map);
-			}
-
-			op = NULL;
-
-			map = dst;
-			dst = b_reg_tmp(cb);
-			b_emit_rrr(cb, B_HASHACCESS, dst, b_reg_reg(cb, map), b_reg_reg(cb, key));
-			b_reg_release(cb, map);
-			b_reg_release(cb, key);
-			
-		}
-	}
-
-	if (op){
-		b_emit_var(cb, op);
-		b_reg_release(cb, map);
-	}
-
-	return dst;
-}
 
 static b_reg b_emit_hashaccess(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	(void)ctx;
@@ -1280,43 +1267,124 @@ static b_reg b_emit_arraccess(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	return dst;
 }
 
-static b_reg b_emit_call(b_codeblock *cb, ast_node *n, uint32_t ctx) {
-	(void)ctx;
+/* ================================================================
+ *  MOVETO / MOVEFROM — contiguous register gather/scatter
+ * ================================================================
+ *
+ * Rename tmps directly into target slots where possible.
+ * Trim renamed from head and tail — only emit instruction for
+ * the middle portion that needs actual copies.
+ * If all regs are renamed, emit nothing.
+ *
+ * MOVETO/MOVEFROM [base] [cnt] [wordcnt]
+ *   [reg0, reg1, ..., regN-1]   (packed u8 per reg, padded to 4)
+ */
+static void b_emit_regmove(b_codeblock *cb, uint8_t optype, b_reg *base, b_reg *regs, uint32_t cnt) {
+	if (cnt == 0)
+		return;
 
-	/* CALL [ fn, self, arg0, arg1, ... ] */
-	/* return to [dst] */
-	b_reg dst = b_reg_tmp(cb);
-	b_reg fn;
-	b_reg self_reg;
+	uint8_t renamed[256];
+	for (uint32_t i = 0; i < cnt; i++)
+		renamed[i] = b_reg_rename(cb, regs[i], base[i]);
 
-	/* method call: obj.method(...) — split hashaccess to get self */
-	if (A_TYPE(n->args[0]->type) == A_HASHACCESS) {
-		fn = b_reg_reg(cb, b_emit_method_hashaccess(cb, n->args[0], &self_reg));
-	} else {
-		/* bare call: fn(...) — self is the function itself */
-		fn = b_reg_reg(cb, b_consume_ast(cb, n->args[0]));
-		self_reg = fn;
-	}
+	/* trim renamed from head */
+	uint32_t head = 0;
+	while (head < cnt && renamed[head])
+		head++;
 
-	b_opcode *op = b_new_var(B_CALL);
-	b_op_pushreg(op, fn);
-	b_op_pushreg(op, self_reg);
+	/* trim renamed from tail */
+	uint32_t tail = cnt;
+	while (tail > head && renamed[tail - 1])
+		tail--;
 
-	b_op_pushret(op, dst);
-	
-	/* args: null (no args), single expr, or exprlist */
-	ast_node *args = n->args[1];
-	if (args) {
-		uint32_t cnt = b_expr_cnt(args);
-		for (uint32_t i = 0; i < cnt; i++) {
-			b_reg arg = b_consume_ast(cb, b_expr_idx(args, i));
-			b_op_pushreg(op, b_reg_reg(cb, arg));
+	if (head >= tail)
+		return;
+
+	b_opcode *op = b_new_var(optype);
+	op->r.dst = base[head];
+
+	for (uint32_t i = head; i < tail; i++) {
+		if (renamed[i]) {
+			/* already in place, VM skips src==dst */
+			b_op_pushreg(op, base[i]);
+		} else {
+			b_op_pushreg(op, b_reg_reg(cb, regs[i]));
 		}
 	}
 
 	b_emit_var(cb, op);
+}
 
-	return dst;
+static void b_emit_moveto(b_codeblock *cb, b_reg* base, b_reg *regs, uint32_t cnt) {
+	for (uint32_t i = 0; i < cnt; i++)
+		b_reg_reg(cb, regs[i]);
+	
+	b_emit_regmove(cb, B_MOVETO, base, regs, cnt);
+}
+
+static void b_emit_movefrom(b_codeblock *cb, b_reg* base, b_reg *regs, uint32_t cnt) {
+	b_emit_regmove(cb, B_MOVEFROM, base, regs, cnt);
+}
+
+static b_reg b_emit_call(b_codeblock *cb, ast_node *n, uint32_t ctx) {
+	(void)ctx;
+
+	/* evaluate fn and self before allocating the window */
+	b_reg fn;
+	b_reg self_reg;
+
+	/* evaluate args into tmps before window allocation */
+	b_reg arg_regs[256];
+	uint32_t nargs = 0;
+	ast_node *args = n->args[1];
+	if (args) {
+		nargs = b_expr_cnt(args);
+	}
+
+	uint32_t nrets = 1;
+	uint32_t window_size = 2 + nargs + nrets; /* fn, self, args..., rets... */
+
+	/* release fn + self + args*/
+	uint32_t args_end = 2 + nargs;
+	
+	/* allocate contiguous window */
+	b_reg* window = malloc(sizeof(b_reg)*256);
+	b_reg_tmp_continuous(cb, window, window_size);
+
+	if (A_TYPE(n->args[0]->type) == A_HASHACCESS) {
+		fn = b_emit_method_hashaccess(cb, n->args[0], &self_reg);
+	} else {
+		fn = b_consume_ast(cb, n->args[0]);
+		self_reg = fn;
+	}
+	
+	if (args) {
+		nargs = b_expr_cnt(args);
+		
+		for (uint32_t i = 0; i < nargs; i++)
+			arg_regs[i] = b_consume_ast(cb, b_expr_idx(args, i));
+	}
+	
+	/* gather [fn, self, arg0..argN-1] into window via MOVETO */
+	b_reg gather[256];
+	gather[0] = fn;
+	gather[1] = self_reg;
+	for (uint32_t i = 0; i < nargs; i++)
+		gather[2 + i] = arg_regs[i];
+
+	b_emit_moveto(cb, window, gather, args_end);
+	
+	b_emit_call_op(cb, window, nargs, nrets);
+	
+	for (uint32_t i = 0; i < args_end; i++)
+		b_reg_release(cb, window[i]);
+
+	// returns cant be renamed as they need to be continuous block
+	for (uint32_t i = args_end; i < args_end + nrets; i++)
+		b_reg_no_rename(cb, window[i]);
+	
+	/* ret is at window[2 + nargs] */
+	return window[args_end];
 }
 
 static b_reg b_declare_one(b_codeblock *cb, ast_node *id) {
@@ -1339,12 +1407,7 @@ static b_reg b_emit_declare(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 }
 
 static b_reg b_lookup_ident(b_codeblock *cb, ast_node *id, ast_node **ast_glob) {
-	char buf[256];
-	uint32_t len = id->token.len < 255 ? id->token.len : 255;
-	memcpy(buf, id->token.data, len);
-	buf[len] = '\0';
-
-	b_reg r = b_codeblock_get_ident(cb, buf);
+	b_reg r = b_codeblock_get_ident(cb, id->token.data, id->token.len);
 	if (!r) {
 		//printf("undefined variable '%s' \n", buf);
 
@@ -1393,12 +1456,10 @@ static b_reg b_emit_identifier(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 }
 
 static void b_assign_one(b_codeblock *cb, b_reg dst, b_reg src) {
-	if (b_reg_is_tmp(src)) {
-		b_reg_rename(cb, src, dst);
-	} else {
-		b_emit_r(cb, B_MOVE, dst, src);
-		b_reg_release(cb, src);
-	}
+	if (b_reg_rename(cb, src, dst))
+		return;
+	b_emit_r(cb, B_MOVE, dst, src);
+	b_reg_release(cb, src);
 }
 
 /* emit HASHSTORE for a hash lhs target:
@@ -1418,20 +1479,10 @@ static void b_emit_hashstore(b_codeblock *cb, ast_node *ha, b_reg src) {
 	} else {
 		/* chained: hash.a.b.key — read all but last, store into last */
 		/* build a HASHACCESS for hash.a.b (all but last key) */
-		b_reg map = b_reg_reg(cb, b_consume_ast(cb, ast_node_list(ha, 0)));
-		b_reg dst = b_reg_tmp(cb);
-		
-		b_opcode *op = b_new_var(B_HASHACCESS);
-		b_op_pushreg(op, dst);
-		b_op_pushreg(op, map);
-		
-		for (uint32_t i = 1; i < cnt - 1; i++) {
-			b_op_pushreg(op, b_consume_ast(cb, ast_node_list(ha, i)));
-		}
-		b_emit_var(cb, op);
 
-		obj = dst;
-		key = b_consume_ast(cb, ast_node_list(ha, cnt - 1));
+		
+		key = b_consume_ast(cb, ci_arr_pop(ha->nodes));
+		obj = b_emit_hashaccess(cb, ha, 0);
 	}
 
 	/* HASHSTORE is RRR: map_reg, key_reg, val_reg */
@@ -1478,14 +1529,14 @@ static b_reg b_emit_assign(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	struct { ast_node *ha; b_reg tmp; } deferred[256];
 	uint32_t deferred_cnt = 0;
 	
-	/* special case: rhs is a single CALL — push all lhs as rets */
+	/* special case: rhs is a single CALL — multi-return via MOVEFROM */
 	if (rcnt == 1 && A_TYPE(b_expr_idx(rhs, 0)->type) == A_CALL) {
 		ast_node *call_node = b_expr_idx(rhs, 0);
 
-		/* emit the call */
-		b_reg call_result = b_consume_ast(cb, call_node);
+		/* emit the call — returns default single ret tmp */
+		b_reg default_ret = b_consume_ast(cb, call_node);
 
-		/* find the CALL opcode we just emitted (last VAR opcode in bytecode) */
+		/* find the CALL opcode we just emitted */
 		ci_array *bc = cb->func->bytecode;
 		b_opcode *call_op = NULL;
 		for (uint32_t i = ci_arr_len(bc); i > 0; i--) {
@@ -1493,10 +1544,15 @@ static b_reg b_emit_assign(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 			if (op->op == B_CALL) { call_op = op; break; }
 		}
 
-		// delete tmp ret emitted by call by default
-		b_reg_free(cb, (b_reg) ci_arr_pop(call_op->var.rets));
-		
-		/* push all lhs targets as rets */
+		/* patch nrets — don't free default_ret, it's inside the window */
+		(void)default_ret;
+		call_op->call.nrets = lcnt;
+
+		/* ret slots are at base + 2 + nargs, contiguous */
+
+		/* build destination reg list for MOVEFROM */
+		b_reg dst_regs[256];
+		b_reg last = NULL;
 		for (uint32_t i = 0; i < lcnt; i++) {
 			ast_node *lid = b_expr_idx(lhs, i);
 			ast_node *glob = NULL;
@@ -1509,26 +1565,29 @@ static b_reg b_emit_assign(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 					lid = glob;
 					goto call_reconsider;
 				}
-				b_op_pushret(call_op, dst);
+				dst_regs[i] = dst;
+				last = dst;
 			} else if (kind == A_HASHACCESS || kind == A_ARRACCESS) {
-				/* assign to tmp, defer hashstore/arraystore */
 				b_reg tmp = b_reg_tmp(cb);
 				deferred[deferred_cnt].ha = lid;
 				deferred[deferred_cnt].tmp = tmp;
 				deferred_cnt++;
-				b_op_pushret(call_op, tmp);
+				dst_regs[i] = tmp;
+				last = tmp;
 			} else {
 				b_error("call ret target must be identifier or map/array access");
 			}
 		}
 
-		// handle storing to hashes
-		for (uint32_t i = 0; i < deferred_cnt; i++) {
-			b_emit_hashstore(cb, deferred[i].ha, deferred[i].tmp);
-		}
+		/* scatter rets to destinations */
+		uint32_t rets_offset = call_op->call.nargs + 2;
+		b_emit_movefrom(cb, call_op->call.all_regs + rets_offset , dst_regs, lcnt);
 
-		b_op_release_rets(cb, call_op);
-		return lcnt > 0 ? (b_reg)ci_arr_index(call_op->var.rets, lcnt - 1) : NULL;
+		/* handle deferred stores */
+		for (uint32_t i = 0; i < deferred_cnt; i++)
+			b_emit_hashstore(cb, deferred[i].ha, deferred[i].tmp);
+
+		return last;
 	}
 
 	if (rcnt > lcnt)
@@ -1872,13 +1931,43 @@ static b_reg b_emit_next(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 
 
 static b_reg b_emit_assign_infix(b_codeblock *cb, ast_node *n, uint32_t ctx) {
-	b_reg src_dst = b_consume_ast(cb, n->args[0]);
-	b_reg src2 = b_consume_ast(cb, n->args[1]);
+	ast_node *lhs = n->args[0];
 
-	b_emit_any(cb, (uint8_t)ctx, src_dst, src_dst, src2);
-	b_reg_release(cb, src2);
-	
-	return src_dst;
+	/* fast path: local identifier — operate directly on its register */
+	if (A_TYPE(lhs->type) == A_IDENTIFIER) {
+		b_reg local = b_codeblock_get_ident(cb, lhs->token.data, lhs->token.len);
+		if (local) {
+			b_reg src2 = b_consume_ast(cb, n->args[1]);
+			b_emit_any(cb, (uint8_t)ctx, local, local, src2);
+			b_reg_release(cb, src2);
+			return local;
+		}
+	}
+
+	/* slow path: mutate AST to ASSIGN(lhs, OP(lhs, rhs)) */
+	static const struct { uint8_t bop; uint32_t akind; } op_map[] = {
+		{ B_ADD, A_ADD }, { B_SUB, A_SUB }, { B_MUL, A_MUL },
+		{ B_DIV, A_DIV }, { B_MOD, A_MOD }, { B_POW, A_POW },
+		{ B_BIN_OR, A_BIN_OR }, { B_BIN_AND, A_BIN_AND },
+		{ B_BIN_XOR, A_BIN_XOR }, { B_BIN_LSHIFT, A_BIN_LSHIFT },
+		{ B_BIN_RSHIFT, A_BIN_RSHIFT },
+	};
+	uint32_t akind = 0;
+	for (uint32_t i = 0; i < sizeof(op_map)/sizeof(op_map[0]); i++) {
+		if (op_map[i].bop == (uint8_t)ctx) { akind = op_map[i].akind; break; }
+	}
+
+	/* create infix node reusing n's args */
+	ast_node *op_node = b_malloc(sizeof(ast_node));
+	memset(op_node, 0, sizeof(ast_node));
+	op_node->type = akind;
+	op_node->args[0] = lhs;
+	op_node->args[1] = n->args[1];
+
+	n->type = A_ASSIGN;
+	n->args[1] = op_node;
+
+	return b_consume_ast(cb, n);
 }
 
 static b_reg b_emit_inc_dec(b_codeblock *cb, ast_node *n, uint32_t ctx) {
@@ -1914,7 +2003,12 @@ static b_reg b_emit_shortcircuit(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 		b_emit_r(cb, B_MOVE, result, lhs);
 	}
 
-	if (ctx == B_JMPF)
+	if (ctx == A_NOTNULL) {
+		b_reg chk = b_reg_tmp(cb);
+		b_emit_r(cb, B_NOTNULL, chk, result);
+		b_emit_jmpt_nr(cb, chk, lbl_end);
+		b_reg_release(cb, chk);
+	} else if (ctx == B_JMPF)
 		b_emit_jmpf_nr(cb, result, lbl_end);
 	else
 		b_emit_jmpt_nr(cb, result, lbl_end);
@@ -1929,23 +2023,29 @@ static b_reg b_emit_shortcircuit(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	return result;
 }
 
-/* short-circuit &&= / ||= — lhs is already a named reg, modify in place */
+/* short-circuit &&= / ||= — mutate to A_ASSIGN inside conditional */
 static b_reg b_emit_assign_shortcircuit(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	b_reg lbl_end = b_reg_ulabel(cb, "_sc");
 
-	b_reg dst = b_reg_reg(cb, b_consume_ast(cb, n->args[0]));
+	b_reg val = b_reg_reg(cb, b_consume_ast(cb, n->args[0]));
 
-	if (ctx == B_JMPF)
-		b_emit_jmpf_nr(cb, dst, lbl_end);
+	if (ctx == A_NOTNULL) {
+		b_reg chk = b_reg_tmp(cb);
+		b_emit_r(cb, B_NOTNULL, chk, val);
+		b_emit_jmpt_nr(cb, chk, lbl_end);
+		b_reg_release(cb, chk);
+	} else if (ctx == B_JMPF)
+		b_emit_jmpf_nr(cb, val, lbl_end);
 	else
-		b_emit_jmpt_nr(cb, dst, lbl_end);
+		b_emit_jmpt_nr(cb, val, lbl_end);
 
-	b_reg rhs = b_reg_reg(cb, b_consume_ast(cb, n->args[1]));
-	b_emit_r(cb, B_MOVE, dst, rhs);
-	b_reg_release(cb, rhs);
-	
+	b_reg_release(cb, val);
+
+	n->type = A_ASSIGN;
+	b_consume_ast(cb, n);
+
 	b_emit_label(cb, lbl_end);
-	return dst;
+	return val;
 }
 
 /* ---- dispatch table ---- */
@@ -1980,7 +2080,7 @@ static const b_dispatch_entry b_dispatch[] = {
 	{ A_METHOD_REF, b_emit_simple_infix,  B_METHODBIND },
 	{ A_AND,        b_emit_shortcircuit,       B_JMPF },
 	{ A_OR,         b_emit_shortcircuit,       B_JMPT },
-	{ A_NOTNULL,    b_emit_simple_infix,  B_NOTNULL },
+	{ A_NOTNULL,    b_emit_shortcircuit,  A_NOTNULL },
 	{ A_INC,        b_emit_inc_dec,       B_ADD },
 	{ A_DEC,        b_emit_inc_dec,       B_SUB },
 	{ A_POST_INC,   b_emit_post_inc_dec,  B_ADD },
@@ -1993,7 +2093,7 @@ static const b_dispatch_entry b_dispatch[] = {
 	{ A_ASSIGN_POW, b_emit_assign_infix,  B_POW },
 	{ A_ASSIGN_OR,  b_emit_assign_shortcircuit, B_JMPT },
 	{ A_ASSIGN_AND, b_emit_assign_shortcircuit, B_JMPF },
-	{ A_ASSIGN_NOTNULL, b_emit_assign_infix, B_NOTNULL },
+	{ A_ASSIGN_NOTNULL, b_emit_assign_shortcircuit, A_NOTNULL },
 	{ A_ASSIGN_BIN_OR,  b_emit_assign_infix, B_BIN_OR },
 	{ A_ASSIGN_BIN_AND, b_emit_assign_infix, B_BIN_AND },
 	{ A_ASSIGN_BIN_XOR, b_emit_assign_infix, B_BIN_XOR },
@@ -2127,9 +2227,31 @@ static void b_dump_bytecode(b_function *f) {
 		case B_ENC_R0:
 			b_dump_reg(op->r.dst);
 			break;
-		case B_ENC_VAR_STRID: 
+		case B_ENC_VAR_STRID:
 		case B_ENC_VAR: {
 			uint32_t vcnt = ci_arr_len(op->var.regs);
+
+			if (op->op == B_MOVETO || op->op == B_MOVEFROM) {
+				uint8_t base = op->r.dst->number;
+				uint8_t end  = base + vcnt - 1;
+				if (op->op == B_MOVETO) {
+					printf("[");
+					for (uint32_t v = 0; v < vcnt; v++) {
+						printf("%s", v ? ", " : " ");
+						b_dump_reg((b_reg)ci_arr_index(op->var.regs, v));
+					}
+					printf(" ] -> R(%u)-R(%u)", base, end);
+				} else {
+					printf("R(%u)-R(%u) -> [", base, end);
+					for (uint32_t v = 0; v < vcnt; v++) {
+						printf("%s", v ? ", " : " ");
+						b_dump_reg((b_reg)ci_arr_index(op->var.regs, v));
+					}
+					printf(" ]");
+				}
+				break;
+			}
+
 			printf("[");
 			for (uint32_t v = 0; v < vcnt; v++) {
 				printf("%s", v ? ", " : " ");
@@ -2145,6 +2267,23 @@ static void b_dump_bytecode(b_function *f) {
 				}
 				printf(" ]");
 			}
+			break;
+		}
+		case B_ENC_CALL: {
+			uint8_t base = op->call.base->number;
+			uint16_t nargs = op->call.nargs;
+			uint16_t nrets = op->call.nrets;
+			printf("fn=R(%u) self=R(%u)", base, base + 1);
+			if (nargs) {
+				printf(" [");
+				for (uint16_t a = 0; a < nargs; a++)
+					printf("%sR(%u)", a ? ", " : " ", base + 2 + a);
+				printf(" ]");
+			}
+			printf(" -> [");
+			for (uint16_t r = 0; r < nrets; r++)
+				printf("%sR(%u)", r ? ", " : " ", base + 2 + nargs + r);
+			printf(" ]");
 			break;
 		}
 		case B_ENC_DECIDE:

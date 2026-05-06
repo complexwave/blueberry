@@ -127,7 +127,7 @@ static const char *token_names[L_COUNT] = {
  * ================================================================ */
 
 /* keyword: case-insensitive + word boundary (not followed by ident char) */
-#define KW(str, id) A( skip, CAPi(A( Si(str), NOT(R("A-Za-z_0-9"))), (size_t)(id) ) )
+#define KW(str, id) CAPi(A( NOT(A(R("A-Za-z_0-9"), Si(str))), Si(str), NOT(R("A-Za-z_0-9"))), (size_t)(id) )
 
 /* operator: literal string match */
 #define OP(str, id) CAPi(S(str), (size_t)(id))

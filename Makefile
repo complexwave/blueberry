@@ -1,7 +1,7 @@
-.PHONY: parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim clean
+.PHONY: parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim ci_number_test clean
 
 CC = clang-23
-CFLAGS = -Wall -O1 -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER -DCI_DISABLE_REFCOUNTING
+CFLAGS = -Wall -O1 -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER -DCI_DISABLE_REFCOUNTING 
 #-DBB_VM_DEBUG
 
 parser:
@@ -24,6 +24,9 @@ ci_timer_test:
 
 ci_timer_sim:
 	$(CC) $(CFLAGS) -DCI_TIMER_TEST -O2 -o ci_timer_sim ci_timer_sim.c
+
+ci_number_test:
+	$(CC) $(CFLAGS) -o ci_number_test ci_number_test.c -lm
 
 clean:
 	rm -f parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim

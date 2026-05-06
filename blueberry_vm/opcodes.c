@@ -157,6 +157,6 @@ static inline ci_ptr bb_op_lt_eq(bb_coro *c, ci_ptr a, ci_ptr b) {
 }
 
 static inline ci_ptr bb_op_notnull(bb_coro *c, ci_ptr a, ci_ptr b) {
-	(void)c;
-	return a ? a : b;
+	(void)c; (void)b;
+	return CI_BOOL(a != NULL);
 }

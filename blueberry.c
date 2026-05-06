@@ -187,7 +187,7 @@ static ci_ptr bb_proto_find(bb_vm *vm, ci_ptr obj, ci_ptr key) {
 		return bb_map_proto_find(vm, (const ci_map *)obj, key);
 
 	if (CI_IS_OBJECT(obj)) {
-		ci_map *proto = (ci_map *)tg_ptr_arena(obj)->ops.prototype;
+		ci_map *proto = bb_obj_arena_prototype(obj);
 		if (proto)
 			return bb_map_proto_find(vm, proto, key);
 	}
@@ -213,7 +213,7 @@ static void bb_print_val(ci_ptr v) {
 }
 
 static ci_ptr bb_native_print(bb_coro *c, ci_ptr self, size_t n, ci_ptr *args) {
-	for(int i = 0; i < n; i++){
+	for(size_t i = 0; i < n; i++){
 		bb_print_val(args[i]);
 		printf(" ");
 	}
@@ -221,16 +221,6 @@ static ci_ptr bb_native_print(bb_coro *c, ci_ptr self, size_t n, ci_ptr *args) {
 	return NULL;
 }
 
-static ci_ptr bb_native_setprototype(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
-	(void)c; (void)a2;
-	if (!CI_IS_MAP(a0))
-		bb_error("setprototype: first argument must be a map");
-	if (a1 && !CI_IS_MAP(a1))
-		bb_error("setprototype: second argument must be a map or null");
-	ci_map *m = (ci_map *)a0;
-	m->prototype = a1;
-	return a0;
-}
 
 static ci_ptr bb_native_require(bb_coro_arg *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
 	(void)a1; (void)a2;
@@ -420,7 +410,7 @@ VM_FAST_RRR(gt, bb_op_gt)         VM_FAST_RRI(gt, bb_op_gt)
 VM_FAST_RRR(lt, bb_op_lt)         VM_FAST_RRI(lt, bb_op_lt)
 VM_FAST_RRR(gt_eq, bb_op_gt_eq)   VM_FAST_RRI(gt_eq, bb_op_gt_eq)
 VM_FAST_RRR(lt_eq, bb_op_lt_eq)   VM_FAST_RRI(lt_eq, bb_op_lt_eq)
-VM_FAST_RRR(notnull, bb_op_notnull)
+VM_FAST_RRR(notnull, bb_op_notnull) VM_FAST_RRI(notnull, bb_op_notnull)
 VM_FAST_RRR(move, bb_op_move)
 VM_FAST_RRR(hashaccess, bb_op_hashaccess_rrr)  VM_FAST_RRS(hashaccess, bb_op_hashaccess_rrr)
 VM_FAST_RRR(mapaccess, bb_op_mapaccess)
@@ -437,7 +427,8 @@ VM_FAST_VAR(newmap,     bb_op_newmap_var)
 VM_FAST_VAR(newarray,   bb_op_newarray_var)
 VM_FAST_VAR(hashaccess, bb_op_hashaccess_var)
 VM_FAST_VAR(loadnull,   bb_op_loadnull_var)
-VM_FAST_VAR(call,       bb_op_call_var)
+VM_FAST_VAR(moveto,     bb_op_moveto_var)
+VM_FAST_VAR(movefrom,   bb_op_movefrom_var)
 
 /* --- RRI-only ops (no src reg, just dst + imm32) --- */
 
@@ -526,6 +517,13 @@ VM_OP static void __vmop_nop(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_
 	BB_DISPATCH_NEXT(c);
 }
 
+VM_OP static void __vmop_opcode_error(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
+	(void)a; (void)b; (void)_c;
+
+	printf("Codegen error: no opcode\n");
+	exit(1);
+}
+
 
 VM_OP static void bb_vm_end_dispatch(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	(void)a; (void)b; (void)_c;
@@ -572,7 +570,7 @@ static void bb_fast_table_init(void) {
 	FT_RRR(B_LT, lt);         FT_RRI(B_LT, lt);
 	FT_RRR(B_GT_EQ, gt_eq);   FT_RRI(B_GT_EQ, gt_eq);
 	FT_RRR(B_LT_EQ, lt_eq);   FT_RRI(B_LT_EQ, lt_eq);
-	FT_RRR(B_NOTNULL, notnull);
+	FT_RRR(B_NOTNULL, notnull); FT_RRI(B_NOTNULL, notnull); 
 	FT_RRR(B_MOVE, move);
 	FT_RRR(B_HASHACCESS, hashaccess);  FT_RRS(B_HASHACCESS, hashaccess);
 	FT_RRR(B_MAPACCESS, mapaccess);
@@ -599,12 +597,14 @@ static void bb_fast_table_init(void) {
 	bb_fast_table[BB_ST_RRS | B_HASHSTORE]  = __vmop_hashstore_rrs;
 
 	bb_fast_table[BB_ST_VAR | B_RETURN]  = bb_op_return_var;
+	bb_fast_table[BB_ST_RRR | B_CALL]    = __vmop_call;
+	FT_VAR(B_MOVETO,     moveto);
+	FT_VAR(B_MOVEFROM,   movefrom);
 	
 	FT_VAR(B_NEWMAP,      newmap);
 	FT_VAR(B_NEWARRAY,    newarray);
 	FT_VAR(B_HASHACCESS,  hashaccess);
 	FT_VAR(B_LOADNULL,    loadnull);
-	FT_VAR(B_CALL,        call);
 
 	#undef FT_RRR
 	#undef FT_RRI
@@ -636,7 +636,13 @@ static bb_cached_op *bb_build_cached(bb_function *fn) {
 
 		bb_fast_fn f  = bb_fast_table[b0];
 		if(!f){
-			bb_error("error endoing opcode - fn not found");
+			//bb_error("error endoing opcode - fn not found");
+
+			printf("error endoing opcode - fn not found");
+			ops[wi].fn    = __vmop_opcode_error;
+			
+			wi++;
+			break;
 		}
 		ops[wi].fn    = f ? f : __vmop_nop;
 
@@ -712,6 +718,7 @@ static void bb_vm_execute(bb_coro *c) {
 #include "blueberry_vm/lib/io.c"
 #include "blueberry_vm/lib/cma.c"
 #include "blueberry_vm/lib/map.c"
+#include "blueberry_vm/lib/proto.c"
 #include "blueberry_vm/lib/callapi.c"
 
 /* ================================================================
@@ -781,14 +788,14 @@ int main(int argc, char **argv) {
 		bb_closure *print_cl = bb_vm_native_var(vm, "print", bb_native_print);
 		ci_map_put(vm->globals, print_cl->fn->name, (ci_ptr)print_cl);
 
-		bb_closure *setproto_cl = bb_vm_native(vm, "setprototype", bb_native_setprototype);
-		ci_map_put(vm->globals, setproto_cl->fn->name, (ci_ptr)setproto_cl);
-
 		bb_closure *stacktrace_cl = bb_vm_native(vm, "stacktrace", bb_native_stacktrace);
 		ci_map_put(vm->globals, stacktrace_cl->fn->name, (ci_ptr)stacktrace_cl);
 
 		bb_closure *require_cl = bb_vm_native(vm, "require", bb_native_require);
 		ci_map_put(vm->globals, require_cl->fn->name, (ci_ptr)require_cl);
+
+		bb_closure *type_cl = bb_vm_native(vm, "type", bb_native_type);
+		ci_map_put(vm->globals, type_cl->fn->name, (ci_ptr)type_cl);
 	}
 
 	/* init built-in prototypes */
@@ -800,6 +807,7 @@ int main(int argc, char **argv) {
 	bb_lib_io_init(vm);
 	bb_lib_cma_init(vm);
 	bb_lib_map_init(vm);
+	bb_lib_proto_init(vm);
 	bb_lib_callapi_init(vm);
 	bb_lib_coro_init(vm);
 

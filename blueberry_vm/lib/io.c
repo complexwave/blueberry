@@ -12,6 +12,7 @@
  *   dir_list(path)            → array of strings, or null on error
  *   dir_exists(path)          → true/false
  *   dir_create(path)          → true on success, null on error
+ *   exit(code)                → terminates process with exit code
  */
 
 #include <dirent.h>
@@ -226,6 +227,19 @@ static ci_ptr bb_io_dir_create(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2
 	return CI_BOOL(mkdir(pbuf, 0755) == 0);
 }
 
+/* ---- exit(code) ---- */
+
+static ci_ptr bb_io_exit(bb_coro_arg *c, ci_ptr code, ci_ptr a1, ci_ptr a2) {
+	(void)c; (void)a1; (void)a2;
+
+	int status = 0;
+	if (code)
+		status = (int)CI_INT(code);
+
+	exit(status);
+	return NULL; /* unreachable */
+}
+
 /* ---- registration ---- */
 
 static void bb_lib_io_init(bb_vm *vm) {
@@ -240,6 +254,7 @@ static void bb_lib_io_init(bb_vm *vm) {
 		{ "dir_list",    (bb_cfn)bb_io_dir_list    },
 		{ "dir_exists",  (bb_cfn)bb_io_dir_exists  },
 		{ "dir_create",  (bb_cfn)bb_io_dir_create  },
+		{ "exit",        (bb_cfn)bb_io_exit        },
 	};
 
 	for (size_t i = 0; i < sizeof(io_lib) / sizeof(io_lib[0]); i++) {

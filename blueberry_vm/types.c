@@ -15,10 +15,12 @@
  *   bb_proto_new_map(vm, "name", size) — create a map whose prototype is "name"
  *
  * Internal:
- *   _bb_proto_register(vm, ci_ptr name) — same as above but takes interned ptr
+ *   bb_proto_register_cistr(vm, ci_ptr name) — same as above but takes interned ptr
  */
 
-static ci_map *_bb_proto_register(bb_vm *vm, ci_ptr name) {
+#define bb_obj_arena_prototype(obj) ((ci_map *)tg_ptr_arena(obj)->ops.prototype)
+
+static ci_map *bb_proto_register_cistr(bb_vm *vm, ci_ptr name) {
 	ci_ptr existing = ci_map_find(vm->prototypes, name);
 	if (existing) {
 		bb_error("bb_proto_register: '%.*s' already registered",
@@ -48,7 +50,7 @@ static void bb_set_arena_prototype(uint16_t tag, ci_map *proto) {
 
 static ci_map *bb_proto_register(bb_vm *vm, const char *name) {
 	ci_ptr n = bb_vm_istring(vm, name, (uint32_t)strlen(name));
-	return _bb_proto_register(vm, n);
+	return bb_proto_register_cistr(vm, n);
 }
 
 static ci_map *bb_proto_get(bb_vm *vm, const char *name) {

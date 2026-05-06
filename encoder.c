@@ -23,8 +23,8 @@
 *
 *   VAR payload layouts:
 *
-*     CALL    r1=nargs r2=nrets r3=nwords  imm=fn_reg
-*             payload: [self:u8][a0:u8]...[r0:u8]...  (padded to 4-byte words)
+*     CALL    RRR: r1=base r2=nargs r3=nrets  imm=0
+*             window: stack[base..base+1+nargs+nrets] = [fn][self][args...][rets...]
 *
 *     RETURN  r1=nrets r2=0 r3=nwords
 *             payload: [r0:u8][r1:u8]...
@@ -278,6 +278,12 @@ static bc_buf *be_encode_function(b_function *f) {
 					op->r.dst->number, 0, 0, 0);
 			}
 		}
+		else if (op->enc == B_ENC_CALL) {
+			bc_emit_fixed(out, BC_SUB_RRR, op->op,
+				op->call.base->number,
+				(uint8_t)op->call.nargs,
+				(uint8_t)op->call.nrets, 0);
+		}
 		else if (op->enc == B_ENC_DECIDE) {
 			b_error("encoder: unresolved DECIDE for '%s'", b_op_names[op->op]);
 		}
@@ -295,26 +301,14 @@ static bc_buf *be_encode_function(b_function *f) {
 					bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.regs, v))->number);
 				bc_buf_pad4(out, nwords, vcnt);
 			}
-			else if (op->op == B_CALL) {
-				if (vcnt < 2) b_error("CALL: need fn + self in regs");
-				b_reg fn   = (b_reg)ci_arr_index(op->var.regs, 0);
-				b_reg self = (b_reg)ci_arr_index(op->var.regs, 1);
-				uint32_t nargs = vcnt - 2;
-				uint32_t nrets = op->var.rets ? ci_arr_len(op->var.rets) : 0;
-				uint32_t pbytes = 1 + nargs + nrets;
-				uint32_t nwords = (pbytes + 3) / 4;
-				if (nwords > 255) b_error("CALL: too many args/rets");
-				bc_emit_var_header(out, op->op,
-					(uint8_t)nargs, (uint8_t)nrets, (uint8_t)nwords,
-					(uint32_t)fn->number);
-				bc_buf_u8(out, self->number);
-				for (uint32_t v = 2; v < vcnt; v++)
+			else if (op->op == B_MOVETO || op->op == B_MOVEFROM) {
+				uint8_t base = op->r.dst->number;
+				uint32_t nwords = (vcnt + 3) / 4;
+				if (nwords > 255) b_error("%s: too many registers", b_op_names[op->op]);
+				bc_emit_var_header(out, op->op, base, (uint8_t)vcnt, (uint8_t)nwords, 0);
+				for (uint32_t v = 0; v < vcnt; v++)
 					bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.regs, v))->number);
-				if (op->var.rets) {
-					for (uint32_t v = 0; v < nrets; v++)
-						bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.rets, v))->number);
-				}
-				bc_buf_pad4(out, nwords, pbytes);
+				bc_buf_pad4(out, nwords, vcnt);
 			}
 			else if (op->op == B_NEWARRAY) {
 				if (vcnt < 1) b_error("NEWARRAY: missing dst");
@@ -356,7 +350,7 @@ static bc_buf *be_encode_function(b_function *f) {
 				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
 				b_reg src = (b_reg)ci_arr_index(op->var.regs, 1);
 				uint32_t nkeys = vcnt - 2;
-				uint32_t nwords = (nkeys + 1) / 2;
+				uint32_t nwords = (nkeys + 1) / 2 + 1;
 				if (nwords > 255) b_error("HASHACCESS: too many keys");
 				bc_emit_var_header(out, op->op,
 					dst->number, src->number, (uint8_t)nwords, 0);
@@ -367,6 +361,9 @@ static bc_buf *be_encode_function(b_function *f) {
 					bc_buf_u16(out, (uint16_t)key->interned_string_id);
 				}
 				if (nkeys % 2 != 0) bc_buf_u16(out, 0);
+				
+				bc_buf_u16(out, 0);
+				bc_buf_u16(out, 0);
 			}
 			else {
 				b_error("encoder: unhandled VAR op '%s'", b_op_names[op->op]);

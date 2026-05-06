@@ -47,8 +47,7 @@ static ci_ptr bb_coro_resume_method(bb_coro *c, ci_ptr coro_ptr, size_t nargs, c
 	 */
 
 	printf("coro:resume called with %zu args\n", nargs);
-
-
+	
 	bb_frame *current_frame = bb_coro_frame_top(coro);
 	bb_closure *cl = current_frame->closure;
 
@@ -61,12 +60,17 @@ static ci_ptr bb_coro_resume_method(bb_coro *c, ci_ptr coro_ptr, size_t nargs, c
 		sk[i] = args[i];
 
 	coro->flags = BB_CORO_RUNNING;
-
-	printf("fn %s\n", ci_str_head(cl->fn->name));
 	
 	bb_vm_execute(coro);
-
 	printf("coro:resume returned\n");
+	
+	
+	bb_frame *rets_frame = bb_coro_frame_top(coro);
+	
+	ci_ptr *rets = coro->stack->data + rets_frame->stack_base;
+	int32_t rets_cnt = CI_INT(rets[0]);
+	
+	printf("coro:resume returned %d %p\n", rets_cnt, rets);
 
 	return NULL;
 }
@@ -103,7 +107,7 @@ static ci_ptr bb_coro_new_fn(bb_coro_arg *c, ci_ptr self, ci_ptr fn_arg) {
 	}
 	
 	bb_coro *coro = bb_coro_new(c->vm);
-
+	
 	bb_coro_pushcall(coro, cl);
 	
 	return (ci_ptr)coro;
