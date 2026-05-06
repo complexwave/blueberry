@@ -1,0 +1,113 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running local_add_assign")
+var a = 10
+a += 5
+test.equal(a, 15, "local_add_assign")
+a -= 3
+test.equal(a, 12, "local_sub_assign")
+a *= 2
+test.equal(a, 24, "local_mul_assign")
+a /= 4
+test.equal(a, 6, "local_div_assign")
+a %= 4
+test.equal(a, 2, "local_mod_assign")
+
+print("running map_add_assign")
+var m = { value: 10 }
+m.value += 5
+test.equal(m.value, 15, "map_add_assign")
+m.value -= 7
+test.equal(m.value, 8, "map_sub_assign")
+m.value *= 3
+test.equal(m.value, 24, "map_mul_assign")
+m.value /= 6
+test.equal(m.value, 4, "map_div_assign")
+m.value %= 3
+test.equal(m.value, 1, "map_mod_assign")
+
+print("running nested_map_add_assign")
+var obj = { inner: { count: 100 } }
+obj.inner.count += 50
+test.equal(obj.inner.count, 150, "nested_map_add_assign")
+obj.inner.count -= 30
+test.equal(obj.inner.count, 120, "nested_map_sub_assign")
+obj.inner.count *= 2
+test.equal(obj.inner.count, 240, "nested_map_mul_assign")
+
+print("running subscript_add_assign")
+var cfg = {}
+cfg["hits"] = 0
+cfg["hits"] += 1
+test.equal(cfg["hits"], 1, "subscript_add_assign")
+cfg["hits"] += 9
+test.equal(cfg["hits"], 10, "subscript_add_assign_again")
+
+print("running notnull_assign_taken")
+var x;
+x ??= 42
+test.equal(x, 42, "local_notnull_assign_from_null")
+
+var m2 = {}
+m2.val ??= 99
+test.equal(m2.val, 99, "map_notnull_assign_from_null")
+
+print("running notnull_assign_not_taken")
+var y = 0
+y ??= 999
+test.equal(y, 0, "local_notnull_assign_keeps_zero")
+
+var m3 = { val: false }
+m3.val ??= 999
+test.equal(m3.val, false, "map_notnull_assign_keeps_false")
+
+var z = ""
+z ??= "fallback"
+test.equal(z, "", "local_notnull_assign_keeps_empty")
+
+print("running or_assign_taken")
+var b = 0
+b ||= 7
+test.equal(b, 7, "local_or_assign_from_zero")
+
+var m4 = {}
+m4.flag ||= true
+test.equal(m4.flag, true, "map_or_assign_from_null")
+
+var c = false
+c ||= "yes"
+test.equal(c, "yes", "local_or_assign_from_false")
+
+print("running or_assign_not_taken")
+var d = 1
+d ||= 999
+test.equal(d, 1, "local_or_assign_keeps_truthy")
+
+var m5 = { active: true }
+m5.active ||= false
+test.equal(m5.active, true, "map_or_assign_keeps_truthy")
+
+print("running and_assign_taken")
+var e = 1
+e &&= 42
+test.equal(e, 42, "local_and_assign_from_truthy")
+
+var m6 = { ok: true }
+m6.ok &&= "done"
+test.equal(m6.ok, "done", "map_and_assign_from_truthy")
+
+print("running and_assign_not_taken")
+var f = 0
+f &&= 999
+test.equal(f, 0, "local_and_assign_keeps_zero")
+
+var g = null
+g &&= "nope"
+test.equal(g, null, "local_and_assign_keeps_null")
+
+var m7 = { val: false }
+m7.val &&= "nope"
+test.equal(m7.val, false, "map_and_assign_keeps_false")
+
+test.done()

@@ -1,0 +1,47 @@
+test = {}
+test.total = 0
+test.passed = 0
+test.failed = 0
+test.skipped = 0
+
+fn test.pass(name) {
+	self.passed = self.passed + 1
+	print("<PASS", name, ">")
+}
+
+fn test.fail(name) {
+	self.total = self.total + 1
+	self.failed = self.failed + 1
+	print("<FAIL", name, ">")
+}
+
+fn test.skip(name) {
+	self.skipped = self.skipped + 1
+	print("<SKIP", name, ">")
+}
+
+fn test.assert(cond, name) {
+	self.total = self.total + 1
+	if cond {
+		self.pass(name)
+	} else {
+		self.fail(name)
+	}
+}
+
+fn test.equal(a, b, name) {
+	self.total = self.total + 1
+	if a == b {
+		self.pass(name)
+	} else {
+		self.fail(name)
+		print("  expected:", b, "got:", a)
+	}
+}
+
+fn test.done() {
+	print("RESULTS:", self.passed, "/", self.total, "passed,", self.skipped, "skipped")
+	if self.failed > 0 {
+		exit(1)
+	}
+}

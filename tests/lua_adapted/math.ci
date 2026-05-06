@@ -1,0 +1,295 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running math tests")
+
+// Helper functions
+fn isNaN(x) { return x != x }
+fn eq(a, b, limit) {
+  if limit == null { limit = 1e-5 }
+  return a == b || math.abs(a - b) <= limit
+}
+
+// === Basic type tests ===
+print("running type_checks")
+test.equal(type(0), "int", "type_checks_zero")
+test.equal(type(42), "int", "type_checks_int")
+test.equal(type(true), "bool", "type_checks_bool")
+test.equal(type(null), "null", "type_checks_null")
+test.equal(type("hello"), "string", "type_checks_string")
+test.equal(type([1,2,3]), "array", "type_checks_array")
+test.equal(type({}), "map", "type_checks_map")
+
+// === Arithmetic operators ===
+print("running arithmetic")
+test.equal(1 + 1, 2, "add_basic")
+test.equal(5 - 3, 2, "sub_basic")
+test.equal(3 * 4, 12, "mul_basic")
+test.equal(10 / 2, 5, "div_basic")
+test.equal(10 % 3, 1, "mod_basic")
+test.equal(2 ** 3, 8, "pow_basic")
+test.equal(2 ** 10, 1024, "pow_large")
+
+// === Operator precedence ===
+print("running precedence")
+test.equal(2 + 3 * 4, 14, "prec_mul_before_add")
+test.equal(2 ** 3 ** 2, 512, "prec_pow_right_assoc")
+test.equal(2 ** 3 * 4, 32, "prec_pow_before_mul")
+test.equal(10 - 5 - 2, 3, "prec_sub_left_assoc")
+test.equal(-2 ** 2, -4, "prec_unary_minus")
+test.equal((-2) ** 2, 4, "prec_parens_minus")
+
+// === Bitwise operators ===
+print("running bitwise")
+test.equal(~0, -1, "bitwise_not")
+test.equal(1 & 1, 1, "bitwise_and_same")
+test.equal(1 & 0, 0, "bitwise_and_diff")
+test.equal(1 | 0, 1, "bitwise_or")
+test.equal(3 ^ 1, 2, "bitwise_xor")
+test.equal(1 << 3, 8, "bitwise_shl")
+test.equal(8 >> 2, 2, "bitwise_shr")
+test.equal(0xFFFFFFFFFFFFFFFF & -1, -1, "bitwise_wide_and")
+
+// === Comparison operators ===
+print("running comparison")
+test.assert(1 < 2, "lt_basic")
+test.assert(2 > 1, "gt_basic")
+test.assert(1 <= 1, "lte_equal")
+test.assert(2 >= 1, "gte_basic")
+test.assert(1 == 1, "eq_basic")
+test.assert(1 != 2, "ne_basic")
+test.assert(!(1 > 2), "not_gt")
+
+// === String comparison ===
+print("running string_compare")
+test.assert("a" < "b", "str_lt")
+test.assert("alo" < "alo1", "str_lt_prefix")
+test.assert("" < "a", "str_empty_lt_a")
+
+// === Logical operators ===
+print("running logical")
+test.assert(true && true, "and_true_true")
+test.assert(!(true && false), "and_true_false")
+test.assert(!(false && true), "and_false_true")
+test.assert(true || false, "or_true_false")
+test.assert(false || true, "or_false_true")
+test.assert(!false, "not_false")
+test.assert(!!true, "not_not_true")
+
+// === Null coalescing ===
+print("running null_coalesce")
+test.equal(null ?? 42, 42, "nc_null_value")
+test.equal(0 ?? 42, 0, "nc_zero_value")
+test.equal(false ?? 42, false, "nc_false_value")
+
+// === Compound operators (now fixed!) ===
+print("running compound_assign")
+var x = 10
+x += 5
+test.equal(x, 15, "add_assign")
+x -= 3
+test.equal(x, 12, "sub_assign")
+x *= 2
+test.equal(x, 24, "mul_assign")
+x /= 3
+test.equal(x, 8, "div_assign")
+
+var m = {"a" => 10}
+m["a"] += 5
+test.equal(m["a"], 15, "map_subscript_add_assign")
+m.a -= 2
+test.equal(m.a, 13, "map_dot_add_assign")
+
+// === Null propagation ===
+print("running null_propagation")
+var obj = {"a" => {"b" => 5}}
+test.equal(obj.a.b, 5, "null_prop_chain_ok")
+test.equal(obj.a.c, null, "null_prop_missing_field")
+test.equal(obj.x.y.z, null, "null_prop_deep_missing")
+
+// === NaN behavior ===
+print("running nan_tests")
+var nan = 0 / 0
+test.assert(isNaN(nan), "nan_is_nan")
+test.assert(!(nan == nan), "nan_not_equal_self")
+test.assert(!(nan < 0), "nan_lt_false")
+test.assert(!(nan > 0), "nan_gt_false")
+
+// === Infinity behavior ===
+print("running infinity_tests")
+var inf = 1 / 0
+var ninf = -1 / 0
+test.assert(inf > 1000, "inf_greater")
+test.assert(ninf < -1000, "ninf_less")
+test.assert(!(inf == ninf), "inf_ne_ninf")
+
+// === Numeric string coercion ===
+print("running string_coercion")
+test.equal("2" + 1, 3, "str_num_add")
+test.equal("10" - 5, 5, "str_num_sub")
+test.equal("3" * 4, 12, "str_num_mul")
+test.equal("10" / 2, 5, "str_num_div")
+
+// === Negative numbers ===
+print("running negative")
+test.equal(-1, -1, "neg_one")
+test.equal(-0, 0, "neg_zero")
+test.equal(-(5), -5, "neg_parens")
+test.equal(0 - 5, -5, "zero_sub_five")
+
+// === Modulo with negatives ===
+print("running mod_negative")
+test.equal(-4 % 3, 2, "mod_neg_pos")
+test.equal(4 % -3, -2, "mod_pos_neg")
+test.equal(-4 % -5, -4, "mod_neg_neg")
+
+// === Zero division behavior ===
+print("running div_zero")
+var one_over_zero = 1 / 0
+test.assert(one_over_zero > 0, "div_zero_positive")
+var neg_one_over_zero = -1 / 0
+test.assert(neg_one_over_zero < 0, "div_zero_negative")
+
+// === Array operations ===
+print("running array_ops")
+var arr = [1, 2, 3, 4, 5]
+test.equal(arr[0], 1, "arr_index_0")
+test.equal(arr[4], 5, "arr_index_4")
+test.equal(arr.len(), 5, "arr_len")
+
+// === Map operations ===
+print("running map_ops")
+var map = {"x" => 10, "y" => 20}
+test.equal(map.x, 10, "map_dot_access")
+test.equal(map["y"], 20, "map_subscript_access")
+map.z = 30
+test.equal(map.z, 30, "map_dot_assign")
+map["w"] = 40
+test.equal(map["w"], 40, "map_subscript_assign")
+
+// === Boolean values ===
+print("running booleans")
+test.equal(true, true, "bool_true")
+test.equal(false, false, "bool_false")
+test.assert(!!0, "zero_truthy")
+test.assert(!!"", "empty_string_truthy")
+test.assert(!false, "false_falsy")
+test.assert(!null, "null_falsy")
+test.assert(!0, "zero_falsy_for_logic")
+
+// === Increment/Decrement ===
+print("running incr_decr")
+var i = 5
+i++
+test.equal(i, 6, "postinc")
+i--
+test.equal(i, 5, "postdec")
+
+// === Break and next ===
+print("running break_next")
+var sum = 0
+var j = 0
+while j < 10 {
+  j++
+  if j == 3 {
+    next
+  }
+  if j == 7 {
+    break
+  }
+  sum += j
+}
+test.equal(sum, 1 + 2 + 4 + 5 + 6, "break_next_sum")
+
+// === For loop ===
+print("running for_loop")
+var arr2 = [10, 20, 30]
+var count = 0
+var total = 0
+for idx, val in arr2 {
+  count++
+  total += val
+}
+test.equal(count, 3, "for_count")
+test.equal(total, 60, "for_total")
+
+// === Functions and recursion ===
+print("running recursion")
+fn fact(n) {
+  if n <= 1 { return 1 }
+  return n * fact(n - 1)
+}
+test.equal(fact(0), 1, "fact_0")
+test.equal(fact(1), 1, "fact_1")
+test.equal(fact(5), 120, "fact_5")
+
+// === Multi-return ===
+print("running multi_return")
+fn multi() {
+  return 1, 2, 3
+}
+var a, b, c = multi()
+test.equal(a, 1, "multi_1")
+test.equal(b, 2, "multi_2")
+test.equal(c, 3, "multi_3")
+
+// === Goto labels ===
+print("running goto")
+var gx = 0
+goto lbl
+gx = 99
+::lbl::
+gx += 1
+test.equal(gx, 1, "goto_skip")
+
+// === Ternary-like if expression ===
+print("running if_expr")
+var y = 0
+if 5 > 3 { y = 100 } else { y = 50 }
+test.equal(y, 100, "if_expr_true")
+y = 0
+if 5 < 3 { y = 100 } else { y = 50 }
+test.equal(y, 50, "if_expr_false")
+
+// === Short-circuit AND ===
+print("running short_circuit_and")
+var z = 0
+var result_and = false && (z = 1)
+test.equal(z, 0, "short_circuit_and_no_eval")
+result_and = true && (z = 2)
+test.equal(z, 2, "short_circuit_and_eval")
+
+// === Short-circuit OR ===
+print("running short_circuit_or")
+z = 0
+var result_or = true || (z = 1)
+test.equal(z, 0, "short_circuit_or_no_eval")
+result_or = false || (z = 2)
+test.equal(z, 2, "short_circuit_or_eval")
+
+// === Do-while loop ===
+print("running do_while")
+var dw_count = 0
+do {
+  dw_count++
+} while dw_count < 3
+test.equal(dw_count, 3, "do_while_basic")
+
+// === Anonymous functions ===
+print("running anon_func")
+var double = fn(x) { return x * 2 }
+test.equal(double(5), 10, "anon_func_call")
+
+// === Method calls ===
+print("running methods")
+var proto = {}
+fn proto.greet(name) {
+  return self.greeting.copy().append(name)
+}
+proto.greeting = "Hello, "
+var inst = {}
+setprototype(inst, proto)
+var greeting = inst.greet("World")
+test.assert(greeting.len() > 0, "method_call_ok")
+
+test.done()

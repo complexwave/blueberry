@@ -1,0 +1,166 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running string tests")
+
+// === String comparisons ===
+print("running string_comparisons")
+test.assert("alo" < "alo1", "str_lt_alo_alo1")
+test.assert("" < "a", "str_empty_lt_a")
+test.assert("alo" < "alo" + "x", "str_lt_prefix")
+test.assert("abc" <= "abc", "str_lte_equal")
+test.assert("xyz" > "abc", "str_gt_xyz_abc")
+test.assert("abc" >= "abc", "str_gte_equal")
+test.assert("a" != "b", "str_ne")
+
+// === String length ===
+print("running string_length")
+test.equal("".len(), 0, "len_empty")
+test.equal("hello".len(), 5, "len_hello")
+test.equal("a".len(), 1, "len_single")
+test.equal("test123".len(), 7, "len_mixed")
+test.equal("     ".len(), 5, "len_spaces")
+
+// === String concatenation ===
+print("running string_concat")
+var s1 = "hello"
+var s2 = "world"
+var concat = s1.copy().append(s2)
+test.equal(concat, "helloworld", "concat_basic")
+
+var s3 = "foo"
+var s4 = "bar"
+var s5 = "baz"
+var result = s3.copy().append(s4).append(s5)
+test.equal(result, "foobarbaz", "concat_chained")
+
+// === String equality ===
+print("running string_equality")
+test.assert("abc" == "abc", "str_eq_same")
+test.assert(!("abc" == "abd"), "str_ne_diff")
+test.equal("test", "test", "str_equal_check")
+
+// === Empty string ===
+print("running empty_string")
+var empty = ""
+test.equal(empty.len(), 0, "empty_len")
+test.assert(empty == "", "empty_eq")
+test.assert(empty != "a", "empty_ne_a")
+
+// === String with numbers (coercion) ===
+print("running string_numbers")
+test.assert("123" > "100", "str_num_gt")
+test.assert("9" > "10", "str_num_lexical_gt")
+test.equal("42", "42", "str_num_equal")
+
+// === String in conditionals ===
+print("running string_conditionals")
+var non_empty = "hello"
+var empty_str = ""
+test.assert(non_empty, "str_truthy")
+test.assert(empty_str, "str_empty_also_truthy")
+
+// === String assignment and mutation ===
+print("running string_assign")
+var str = "initial"
+test.equal(str, "initial", "str_initial")
+var new_str = str.copy().append("_modified")
+test.equal(new_str, "initial_modified", "str_modified")
+test.equal(str, "initial", "str_original_unchanged")
+
+// === Multiple strings ===
+print("running string_multiple")
+var a = "first"
+var b = "second"
+var c = "third"
+test.equal(a, "first", "str_a")
+test.equal(b, "second", "str_b")
+test.equal(c, "third", "str_c")
+
+// === String in map ===
+print("running string_in_map")
+var dict = {
+  "key1" => "value1",
+  "key2" => "value2"
+}
+test.equal(dict["key1"], "value1", "dict_key1")
+test.equal(dict["key2"], "value2", "dict_key2")
+test.equal(dict.key1, "value1", "dict_dot_key1")
+
+// === String comparison chain ===
+print("running string_chain_compare")
+test.assert("a" < "b", "chain_a_lt_b")
+test.assert("b" < "c", "chain_b_lt_c")
+test.assert("a" < "c", "chain_a_lt_c")
+
+// === String operations in loops ===
+print("running string_in_loops")
+var count = 0
+var arr = ["a", "b", "c"]
+for idx, val in arr {
+  count = count + 1
+  test.assert(val.len() > 0, "str_in_loop")
+}
+test.equal(count, 3, "str_loop_count")
+
+// === String comparison with type ===
+print("running string_type_check")
+test.equal(type("hello"), "string", "type_is_string")
+test.assert(type("") == "string", "type_empty_is_string")
+
+// === String concatenation in expression ===
+print("running string_expr_concat")
+var prefix = "test_"
+var name = "case"
+var combined = prefix.copy().append(name)
+test.equal(combined, "test_case", "concat_expr")
+
+// === Case sensitivity ===
+print("running string_case_sensitivity")
+test.assert("Hello" != "hello", "case_sensitive_H_h")
+test.assert("ABC" != "abc", "case_sensitive_ABC_abc")
+test.assert("Test" == "Test", "case_sensitive_same")
+
+// === String padding check ===
+print("running string_padding")
+var padded = "  text  "
+test.equal(padded.len(), 8, "padded_len")
+test.assert(padded != "text", "padded_ne_unpadded")
+
+// === String in array ===
+print("running string_in_array")
+var strs = ["first", "second", "third"]
+test.equal(strs[0], "first", "arr_str_0")
+test.equal(strs[1], "second", "arr_str_1")
+test.equal(strs[2], "third", "arr_str_2")
+test.equal(strs.len(), 3, "arr_len")
+
+// === String literals ===
+print("running string_literals")
+test.equal("literal", "literal", "str_literal_basic")
+test.assert("" == "", "str_literal_empty")
+test.equal("single", "single", "str_literal_word")
+
+// === String in function ===
+print("running string_in_function")
+fn greet(name) {
+  return "Hello, ".copy().append(name)
+}
+var greeting = greet("World")
+test.assert(greeting.len() > 5, "greet_len")
+
+// === String comparison and assignment ===
+print("running string_comparison_assign")
+var x = "abc"
+var y = "abc"
+var z = x
+test.assert(x == y, "str_compare_x_y")
+test.assert(y == z, "str_compare_y_z")
+
+// === Null vs empty string ===
+print("running string_null_check")
+var nullable = ""
+test.assert(nullable != null, "str_ne_null")
+test.equal(nullable, "", "str_eq_empty")
+
+test.done()

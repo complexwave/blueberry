@@ -1,0 +1,125 @@
+// Tests that fail — save for later inspection
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// ERROR: HASHACCESS: key must be a string id
+// nested property access crashes with HASHACCESS error
+print("DRAFT: nested_property_access")
+// var outer = {}
+// outer.inner = {}
+// outer.inner.value = 42
+// var m10 = outer.inner.value
+// test.equal(m10, 42, "nested_property_access")
+test.skip("nested_property_access")
+
+// ERROR: HASHACCESS: key must be a string id
+// subscript access crashes
+print("DRAFT: subscript_access")
+var config = {}
+config["name"] = "test"
+config["debug"] = fn() {
+	return self["name"]
+}
+var m4 = config["debug"]()
+test.equal(m4, "test", "subscript_access")
+
+// ERROR: CALL: nil callee — setprototype causes crash
+print("DRAFT: prototype_chain")
+// var proto_base = {}
+// proto_base.value = 100
+// var proto_child = {}
+// setprototype(proto_child, proto_base)
+// var m7 = proto_child.value
+// test.equal(m7, 100, "prototype_chain: inherit property")
+test.skip("prototype_chain_nil_callee")
+
+// ERROR: CALL: nil callee — setprototype with method lookup
+print("DRAFT: prototype_inheritance")
+// var animal = {}
+// animal.name = "creature"
+// animal.speak = fn() {
+//	return self.name
+// }
+// var dog = {}
+// dog.name = "dog"
+// setprototype(dog, animal)
+// var m6 = dog.speak()
+// test.equal(m6, "dog", "prototype_inheritance: method with override")
+test.skip("prototype_inheritance_nil_callee")
+
+// ERROR: CALL: nil callee — setprototype with self.id lookup
+print("DRAFT: self_receiver")
+// var receiver_test = {}
+// receiver_test.id = 1
+// var proto_obj = {}
+// proto_obj.get_id = fn() {
+//	return self.id
+// }
+// setprototype(receiver_test, proto_obj)
+// var m8 = receiver_test.get_id()
+// test.equal(m8, 1, "self_receiver: self is receiver not proto")
+test.skip("self_receiver_nil_callee")
+
+// ERROR: CALL: nil callee — setprototype returns map
+print("DRAFT: setprototype_returns_obj")
+// var base = {}
+// base.msg = "hello"
+// var m9 = setprototype({}, base)
+// var m9msg = m9.msg
+// test.equal(m9msg, "hello", "setprototype_returns_obj")
+test.skip("setprototype_returns_obj_nil_callee")
+
+// ERROR: CALL: nil callee — three level chain
+print("DRAFT: three_level_chain")
+// var level1 = {}
+// level1.a = 10
+// var level2 = {}
+// level2.b = 20
+// setprototype(level2, level1)
+// var level3 = {}
+// level3.c = 30
+// setprototype(level3, level2)
+// var m12a = level3.a
+// var m12b = level3.b
+// var m12c = level3.c
+// test.equal(m12a, 10, "three_level_chain: level1 property")
+// test.equal(m12b, 20, "three_level_chain: level2 property")
+// test.equal(m12c, 30, "three_level_chain: level3 property")
+test.skip("three_level_chain_nil_callee")
+
+// ERROR: CALL: nil callee — setprototype with method chaining
+print("DRAFT: method_chaining_simple")
+// var rect = {}
+// rect.w = 10
+// rect.h = 5
+// rect.scale = fn(factor) {
+//	self.w = self.w * factor
+//	self.h = self.h * factor
+//	return self
+// }
+// var m5 = rect.scale(2)
+// var m5w = m5.w
+// var m5h = m5.h
+// test.equal(m5w, 20, "method_chaining_simple: width")
+// test.equal(m5h, 10, "method_chaining_simple: height")
+test.skip("method_chaining_simple_nil_callee")
+
+// ERROR: CALL: nil callee — method_shadow_override
+print("DRAFT: method_shadow_override")
+// var parent = {}
+// parent.compute = fn() {
+//	return 1
+// }
+// var child = {}
+// child.compute = fn() {
+//	return 2
+// }
+// setprototype(child, parent)
+// var m11p = parent.compute()
+// var m11c = child.compute()
+// test.equal(m11p, 1, "method_shadow_override: parent")
+// test.equal(m11c, 2, "method_shadow_override: child shadow")
+test.skip("method_shadow_override_nil_callee")
+
+test.done()

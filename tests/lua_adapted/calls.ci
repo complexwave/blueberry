@@ -1,0 +1,213 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running function calls tests")
+
+// === Type testing ===
+print("running type_checks")
+test.equal(type(1 < 2), "bool", "type_bool")
+test.equal(type(true), "bool", "type_true")
+test.equal(type(false), "bool", "type_false")
+test.equal(type(null), "null", "type_null")
+test.equal(type(-3), "int", "type_int")
+test.equal(type("x"), "string", "type_string")
+test.equal(type([]), "array", "type_array")
+test.equal(type({}), "map", "type_map")
+test.equal(type(type), "fn", "type_function")
+
+// === Function recursion ===
+print("running recursion")
+fn fact(n) {
+  if n == 0 { return 1 }
+  return n * fact(n - 1)
+}
+test.equal(fact(0), 1, "fact_0")
+test.equal(fact(1), 1, "fact_1")
+test.equal(fact(5), 120, "fact_5")
+test.equal(fact(10), 3628800, "fact_10")
+
+// === Named function declarations ===
+print("running named_functions")
+fn add(a, b) { return a + b }
+test.equal(add(1, 2), 3, "add_1_2")
+test.equal(add(10, 20), 30, "add_10_20")
+
+fn multiply(x, y) { return x * y }
+test.equal(multiply(3, 4), 12, "multiply_3_4")
+test.equal(multiply(7, 8), 56, "multiply_7_8")
+
+// === Anonymous functions ===
+print("running anonymous_functions")
+var square = fn(x) { return x * x }
+test.equal(square(5), 25, "anon_square_5")
+test.equal(square(10), 100, "anon_square_10")
+
+var cube = fn(x) { return x * x * x }
+test.equal(cube(3), 27, "anon_cube_3")
+
+// === Functions in maps (objects) ===
+print("running functions_in_maps")
+var obj = {}
+fn obj.get_x() { return self.x }
+obj.x = 42
+test.equal(obj.get_x(), 42, "obj_method_get_x")
+
+fn obj.set_x(val) { self.x = val }
+obj.set_x(100)
+test.equal(obj.x, 100, "obj_method_set_x")
+
+// === Dotted function declaration ===
+print("running dotted_declaration")
+var point = {}
+fn point.distance() { return self.x * self.x + self.y * self.y }
+point.x = 3
+point.y = 4
+test.equal(point.distance(), 25, "point_distance")
+
+// === Method calls with self ===
+print("running method_calls")
+var obj2 = {}
+fn obj2.add_value(v) { self.total = self.total + v; return self }
+obj2.total = 0
+var result = obj2.add_value(5)
+test.equal(obj2.total, 5, "method_chain_first")
+result = obj2.add_value(10)
+test.equal(obj2.total, 15, "method_chain_second")
+
+// === Nested map functions ===
+print("running nested_map_functions")
+var a = {}
+a.b = {}
+fn a.b.func() { return 42 }
+test.equal(a.b.func(), 42, "nested_map_func")
+
+fn a.b.add(x, y) { return x + y }
+test.equal(a.b.add(2, 3), 5, "nested_map_add")
+
+// === Multi-return ===
+print("running multi_return")
+fn pair(x, y) { return x, y }
+var first, second = pair(10, 20)
+test.equal(first, 10, "multi_return_first")
+test.equal(second, 20, "multi_return_second")
+
+fn triple() { return 1, 2, 3 }
+var t1, t2, t3 = triple()
+test.equal(t1, 1, "triple_1")
+test.equal(t2, 2, "triple_2")
+test.equal(t3, 3, "triple_3")
+
+// === Partial capture of multi-return ===
+print("running partial_multi_return")
+var only_first, _ = pair(100, 200)
+test.equal(only_first, 100, "partial_first")
+
+// === Functions returning functions ===
+print("running function_returning_function")
+fn make_multiplier(factor) {
+  return fn(x) { return x * factor }
+}
+var times_3 = make_multiplier(3)
+test.equal(times_3(5), 15, "closure_like_multiply")
+
+// === Function with no arguments ===
+print("running no_args")
+fn get_constant() { return 42 }
+test.equal(get_constant(), 42, "no_args_call")
+
+// === Function with default behavior ===
+print("running function_variants")
+fn maybe_add(a, b) {
+  if b == null { return a }
+  return a + b
+}
+test.equal(maybe_add(5), 5, "maybe_add_one_arg")
+test.equal(maybe_add(5, 3), 8, "maybe_add_two_args")
+
+// === Recursive helper ===
+print("running recursive_helper")
+fn fibonacci(n) {
+  if n <= 1 { return n }
+  return fibonacci(n - 1) + fibonacci(n - 2)
+}
+test.equal(fibonacci(0), 0, "fib_0")
+test.equal(fibonacci(1), 1, "fib_1")
+test.equal(fibonacci(5), 5, "fib_5")
+test.equal(fibonacci(6), 8, "fib_6")
+
+// === Mutual recursion ===
+print("running mutual_recursion")
+fn is_even(n) {
+  if n == 0 { return true }
+  return is_odd(n - 1)
+}
+fn is_odd(n) {
+  if n == 0 { return false }
+  return is_even(n - 1)
+}
+test.equal(is_even(0), true, "is_even_0")
+test.equal(is_even(4), true, "is_even_4")
+test.equal(is_odd(0), false, "is_odd_0")
+test.equal(is_odd(3), true, "is_odd_3")
+
+// === Function with side effects ===
+print("running side_effects")
+var counter = 0
+fn increment_counter() {
+  counter = counter + 1
+  return counter
+}
+test.equal(increment_counter(), 1, "side_effect_1")
+test.equal(increment_counter(), 2, "side_effect_2")
+test.equal(counter, 2, "side_effect_final")
+
+// === Map object with multiple methods ===
+print("running object_methods")
+var shape = {}
+shape.width = 10
+shape.height = 5
+fn shape.area() { return self.width * self.height }
+fn shape.perimeter() { return 2 * (self.width + self.height) }
+test.equal(shape.area(), 50, "shape_area")
+test.equal(shape.perimeter(), 30, "shape_perimeter")
+
+// === Prototype pattern ===
+print("running prototype_pattern")
+var Animal = {}
+fn Animal.speak(msg) { print(self.name) }
+var dog = {}
+setprototype(dog, Animal)
+dog.name = "Dog"
+test.pass("prototype_pattern")
+
+// === Function call in expression ===
+print("running func_in_expr")
+var value = 5 + add(3, 2)
+test.equal(value, 10, "func_in_expr_add")
+
+var product = multiply(2, 3) * 2
+test.equal(product, 12, "func_in_expr_multiply")
+
+// === Nested function calls ===
+print("running nested_calls")
+fn outer(x) { return x + 1 }
+fn inner(x) { return outer(x) * 2 }
+test.equal(inner(5), 12, "nested_calls")
+
+var nested_result = square(add(2, 3))
+test.equal(nested_result, 25, "nested_square_add")
+
+// === Array of functions ===
+print("running array_of_functions")
+var fn_add = fn(x) { return x + 1 }
+var fn_mul = fn(x) { return x * 2 }
+test.equal(fn_add(5), 6, "array_func_0")
+test.equal(fn_mul(5), 10, "array_func_1")
+
+// === Function identity ===
+print("running function_identity")
+var f1 = fn(x) { return x + 1 }
+var f2 = f1
+test.equal(f1(5), f2(5), "function_same_result")
+
+test.done()

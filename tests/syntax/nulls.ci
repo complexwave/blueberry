@@ -1,0 +1,9 @@
+
+
+var h = require("tests/test_helpers.ci")
+h()
+
+var result;
+
+var val = 5
+result = 0 ?? val

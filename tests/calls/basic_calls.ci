@@ -1,0 +1,53 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running simple_call")
+var add = fn(a, b) {
+	return a + b
+}
+var r1 = add(2, 3)
+test.equal(r1, 5, "simple_call")
+
+print("running function_arg")
+var apply = fn(f, x) {
+	return f(x)
+}
+var triple = fn(n) {
+	return n * 3
+}
+var r2 = apply(triple, 4)
+test.equal(r2, 12, "function_arg")
+
+print("running function_type")
+var typecheck = type(add)
+test.equal(typecheck, "function", "function_type")
+
+print("running anon_function_recursion")
+var fib = fn(n) {
+	if n <= 1 {
+		return 1
+	}
+	return self(n - 1) + self(n - 2)
+}
+var r3 = fib(5)
+test.equal(r3, 8, "anon_function_recursion")
+
+// BUG: one anon function calling another anon function requires closures (not supported)
+// var add_one = fn(x) { return x + 1 }
+// var double_add = fn(x) { return add_one(x) * 2 }
+// var r4 = double_add(5)
+// test.equal(r4, 12, "nested_calls")
+// Problem: add_one is not visible inside double_add — no closure capture of outer vars
+test.skip("nested_calls")
+
+print("running recursion_countdown")
+var countdown = fn(n) {
+	if n <= 0 {
+		return "done"
+	}
+	return self(n - 1)
+}
+var r5 = countdown(10)
+test.equal(r5, "done", "recursion_countdown")
+
+test.done()

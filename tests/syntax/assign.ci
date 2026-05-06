@@ -1,0 +1,153 @@
+// Assignment tests — basic assign, compound assign, map field assign
+// Tests compound assign on locals and on map fields (hash access path)
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// === basic var + assign ===
+print("running var_assign_add")
+var a = 1
+a = a + 1
+test.equal(a, 2, "var_assign_add")
+
+print("running var_assign_sub")
+a = a - 1
+test.equal(a, 1, "var_assign_sub")
+
+print("running var_assign_mul")
+a = a * 5
+test.equal(a, 5, "var_assign_mul")
+
+print("running var_assign_div")
+a = a / 5
+test.equal(a, 1, "var_assign_div")
+
+print("running var_assign_mod")
+a = 10
+a = a % 3
+test.equal(a, 1, "var_assign_mod")
+
+// === compound assign on locals ===
+print("running local_add_assign")
+var b = 1
+b += 1
+test.equal(b, 2, "local_add_assign")
+
+print("running local_sub_assign")
+b -= 1
+test.equal(b, 1, "local_sub_assign")
+
+print("running local_mul_assign")
+b *= 10
+test.equal(b, 10, "local_mul_assign")
+
+print("running local_div_assign")
+b /= 2
+test.equal(b, 5, "local_div_assign")
+
+print("running local_mod_assign")
+b %= 3
+test.equal(b, 2, "local_mod_assign")
+
+print("running local_pow_assign")
+var c = 2
+c **= 3
+test.equal(c, 8, "local_pow_assign")
+
+print("running local_lshift_assign")
+var d = 0b1100
+d <<= 2
+test.equal(d, 48, "local_lshift_assign")
+
+print("running local_rshift_assign")
+d >>= 2
+test.equal(d, 12, "local_rshift_assign")
+
+print("running local_bitor_assign")
+d |= 3
+test.equal(d, 15, "local_bitor_assign")
+
+print("running local_bitand_assign")
+d &= 6
+test.equal(d, 6, "local_bitand_assign")
+
+print("running local_bitxor_assign")
+d ^= 3
+test.equal(d, 5, "local_bitxor_assign")
+
+// logical compound assign
+print("running local_or_assign_null")
+var e = null
+e ||= 42
+test.equal(e, 42, "local_or_assign_null")
+
+print("running local_or_assign_truthy")
+e ||= 99
+test.equal(e, 42, "local_or_assign_truthy")
+
+// BUG: ??= crashes VM ("error endoing opcode - fn not found")
+//print("running local_notnull_assign_null")
+//var f = null
+//f ??= 7
+//test.equal(f, 7, "local_notnull_assign_null")
+//f ??= 99
+//test.equal(f, 7, "local_notnull_assign_nonnull")
+test.fail("local_notnull_assign_null_SKIP_BUG")
+test.fail("local_notnull_assign_nonnull_SKIP_BUG")
+
+print("running local_and_assign_falsy")
+var g = 0
+g &&= 5
+test.equal(g, 0, "local_and_assign_falsy")
+
+print("running local_and_assign_truthy")
+g = 1
+g &&= 5
+test.equal(g, 5, "local_and_assign_truthy")
+
+// === map field assign (manual — works) ===
+print("running map_field_manual_add")
+var m = {}
+m.key = 0
+m.key = m.key + 1
+test.equal(m.key, 1, "map_field_manual_add")
+
+print("running map_field_manual_sub")
+m.key = m.key - 1
+test.equal(m.key, 0, "map_field_manual_sub")
+
+print("running map_field_manual_mul")
+m.key = 10
+m.key = m.key * 3
+test.equal(m.key, 30, "map_field_manual_mul")
+
+// === compound assign on map fields — BUG: doesn't store ===
+// m.val += 1 evaluates but doesn't write back to the map field
+print("running map_field_add_assign")
+m.val = 1
+m.val += 1
+// test.equal(m.val, 2, "map_field_add_assign")
+test.fail("map_field_add_assign_BUG_no_store")
+
+print("running map_field_sub_assign")
+// m.val -= 1
+test.fail("map_field_sub_assign_BUG_no_store")
+
+print("running map_field_mul_assign")
+// m.val *= 10
+test.fail("map_field_mul_assign_BUG_no_store")
+
+print("running map_field_div_assign")
+// m.val /= 2
+test.fail("map_field_div_assign_BUG_no_store")
+
+print("running map_field_mod_assign")
+// m.val %= 3
+test.fail("map_field_mod_assign_BUG_no_store")
+
+// === compound assign on subscript — untested (likely same bug) ===
+// m2["x"] += 5
+test.fail("map_subscript_add_assign_BUG_no_store")
+test.fail("map_subscript_sub_assign_BUG_no_store")
+
+test.done()

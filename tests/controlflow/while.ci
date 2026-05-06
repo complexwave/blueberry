@@ -1,0 +1,216 @@
+// Control flow: while loop tests
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running while_basic tests")
+
+// --- basic while loop ---
+var x = 0
+var count = 0
+while x < 5 {
+	count = count + 1
+	x = x + 1
+}
+test.equal(count, 5, "while_basic_loop_count")
+test.equal(x, 5, "while_basic_loop_final_value")
+
+// --- while with condition check ---
+print("running while_condition tests")
+x = 10
+count = 0
+while x > 0 {
+	count = count + 1
+	x = x - 1
+}
+test.equal(count, 10, "while_countdown")
+test.equal(x, 0, "while_countdown_final")
+
+// --- while false never executes ---
+print("running while_false tests")
+count = 0
+while false {
+	count = count + 1
+}
+test.equal(count, 0, "while_false_skips")
+
+// --- while break ---
+print("running while_break tests")
+x = 0
+count = 0
+while x < 100 {
+	count = count + 1
+	if count == 5 {
+		break
+	}
+	x = x + 1
+}
+test.equal(count, 5, "while_break_at_five")
+test.equal(x, 4, "while_break_exits_loop")
+
+// --- while with next (continue) ---
+print("running while_next tests")
+x = 0
+var sum = 0
+while x < 10 {
+	x = x + 1
+	if x % 2 == 0 {
+		next
+	}
+	sum = sum + x
+}
+test.equal(x, 10, "while_next_completes")
+test.equal(sum, 25, "while_next_skips_evens")  // 1+3+5+7+9=25
+
+// --- nested while loops ---
+print("running nested_while tests")
+x = 0
+count = 0
+while x < 3 {
+	var y = 0
+	while y < 2 {
+		count = count + 1
+		y = y + 1
+	}
+	x = x + 1
+}
+test.equal(count, 6, "nested_while_count")  // 3 outer * 2 inner
+
+// --- while with multiple conditions ---
+print("running while_conditions tests")
+x = 0
+var y = 10
+count = 0
+while x < 5 && y > 5 {
+	count = count + 1
+	x = x + 1
+}
+test.equal(count, 5, "while_and_condition")
+
+x = 0
+y = 10
+count = 0
+while x < 100 || y > 5 {
+	count = count + 1
+	if count >= 3 {
+		break
+	}
+	x = x + 1
+}
+test.equal(count, 3, "while_or_condition_break")
+
+// --- while with break in nested if ---
+print("running while_break_nested tests")
+x = 0
+count = 0
+while x < 100 {
+	if x == 5 {
+		break
+	}
+	count = count + 1
+	x = x + 1
+}
+test.equal(count, 5, "while_break_in_if")
+
+// --- while with post-decrement in condition ---
+print("running while_post_decrement tests")
+x = 10
+count = 0
+while x-- {
+	count = count + 1
+}
+test.equal(count, 10, "while_post_decrement_count")
+test.equal(x, -1, "while_post_decrement_final")
+
+// --- while with large count (stress test) ---
+print("running while_large_count tests")
+x = 100
+count = 0
+while x-- {
+	count = count + 1
+}
+test.equal(count, 100, "while_large_count_100")
+test.equal(x, -1, "while_large_count_final")
+
+// --- while with very large count ---
+print("running while_very_large_count tests")
+x = 10000
+count = 0
+while x-- {
+	count = count + 1
+}
+test.equal(count, 10000, "while_very_large_count_10000")
+test.equal(x, -1, "while_very_large_count_final")
+
+// --- while with multiple breaks ---
+print("running while_multiple_breaks tests")
+x = 0
+count = 0
+var result = 0
+while x < 100 {
+	x = x + 1
+	if x == 2 {
+		result = 1
+		break
+	}
+	count = count + 1
+}
+test.equal(x, 2, "while_break_at_two")
+test.equal(result, 1, "while_break_flag_set")
+test.equal(count, 1, "while_break_count_before")
+
+// --- while with next in if ---
+print("running while_next_in_if tests")
+x = 0
+count = 0
+var processed = 0
+while x < 10 {
+	x = x + 1
+	if x < 5 {
+		next
+	}
+	processed = processed + 1
+	count = count + 1
+}
+test.equal(processed, 6, "while_next_skip_early")
+test.equal(count, 6, "while_next_count")
+
+// --- while with nested break/next ---
+print("running while_nested_loop_control tests")
+x = 0
+count = 0
+while x < 5 {
+	var y = 0
+	while y < 5 {
+		if y == 2 {
+			break  // breaks inner loop only
+		}
+		count = count + 1
+		y = y + 1
+	}
+	x = x + 1
+}
+test.equal(count, 10, "while_nested_break_inner")  // 5 outer * 2 inner (breaks at y=2)
+
+// --- while with assignment in condition (if supported) ---
+print("running while_with_assignment tests")
+var arr = [1, 2, 3, 4, 5]
+x = 0
+count = 0
+while x < arr.len() {
+	count = count + 1
+	x = x + 1
+}
+test.equal(count, 5, "while_array_length_condition")
+
+// --- while modifying condition variable ---
+print("running while_modify_condition tests")
+x = 5
+count = 0
+while x > 0 {
+	count = count + 1
+	x = x - 1
+}
+test.equal(count, 5, "while_decrement_condition")
+test.equal(x, 0, "while_condition_becomes_zero")
+
+test.done()

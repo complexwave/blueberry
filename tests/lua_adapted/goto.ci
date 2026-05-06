@@ -1,0 +1,160 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running goto tests")
+
+// === Simple goto ===
+print("running simple_goto")
+var x = 0
+goto l1
+x = 99
+::l1::
+x = x + 1
+test.equal(x, 1, "simple_goto_skip")
+
+// === Goto with assignment ===
+print("running goto_assign")
+var y = 0
+goto l2
+y = 50
+::l2::
+y = y + 10
+test.equal(y, 10, "goto_assign")
+
+// === Multiple labels ===
+print("running multiple_labels")
+var z = 0
+goto l3a
+z = 1
+::l3a::
+z = z + 1
+if z < 10 { goto l3b }
+z = z + 100
+::l3b::
+z = z + 1
+test.equal(z, 3, "multiple_labels")
+
+// === Goto in conditional ===
+print("running goto_conditional")
+var a = 0
+if true { goto l4 }
+a = 99
+::l4::
+a = a + 5
+test.equal(a, 5, "goto_conditional_true")
+
+a = 0
+if false { goto l5 }
+a = a + 1
+::l5::
+a = a + 1
+test.equal(a, 2, "goto_conditional_false")
+
+// === Goto with while loop ===
+print("running goto_while")
+var b = 0
+var iter = 0
+while iter < 5 {
+  iter++
+  b = b + iter
+  if iter == 3 { goto l6 }
+}
+b = b + 100
+::l6::
+b = b + 1
+test.equal(b, 1 + 2 + 3 + 1, "goto_while_break")
+
+// === Goto forward ===
+print("running goto_forward")
+var c = 0
+c = c + 1
+goto l7
+c = c + 100
+c = c + 100
+::l7::
+c = c + 10
+test.equal(c, 1 + 10, "goto_forward")
+
+// === Goto backward ===
+print("running goto_backward")
+var d = 0
+::l8a::
+d = d + 1
+if d < 3 { goto l8a }
+test.equal(d, 3, "goto_backward_loop")
+
+// === Nested goto blocks ===
+print("running nested_goto")
+var e = 0
+{
+  e = e + 1
+  goto l9
+  e = e + 100
+}
+e = e + 10
+::l9::
+e = e + 1
+test.equal(e, 1 + 10 + 1, "nested_goto")
+
+// === Goto with do-while ===
+print("running goto_do_while")
+var f = 0
+var count = 0
+do {
+  count++
+  f = f + 1
+  if count == 2 { goto l10 }
+} while count < 5
+f = f + 100
+::l10::
+f = f + 1
+test.equal(f, 1 + 1 + 1, "goto_do_while_break")
+
+// === Goto across if-else ===
+print("running goto_if_else")
+var g = 0
+if g == 0 {
+  g = g + 1
+  goto l11
+  g = g + 100
+} else {
+  g = g + 50
+}
+g = g + 10
+::l11::
+g = g + 1
+test.equal(g, 1 + 10 + 1, "goto_if_else")
+
+// === Label at end ===
+print("running goto_end")
+var h_var = 0
+h_var = h_var + 5
+goto l12
+h_var = h_var + 100
+::l12::
+
+test.equal(h_var, 5, "goto_to_end")
+
+// === Consecutive labels ===
+print("running consecutive_labels")
+var i = 0
+::l13a::
+::l13b::
+i = i + 1
+test.equal(i, 1, "consecutive_labels")
+
+// === Goto in loop with break ===
+print("running goto_with_break")
+var j = 0
+var k = 0
+while k < 10 {
+  k++
+  if k == 2 { goto l14 }
+  j = j + 1
+}
+j = j + 100
+::l14::
+j = j + 1
+test.equal(j, 1 + 1, "goto_with_break")
+
+test.done()

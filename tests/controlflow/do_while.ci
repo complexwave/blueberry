@@ -1,0 +1,169 @@
+// Control flow: do-while loop tests
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running do_while_basic tests")
+
+// --- basic do-while ---
+var x = 0
+var count = 0
+do {
+	count = count + 1
+	x = x + 1
+} while x < 5
+
+test.equal(count, 5, "do_while_basic_count")
+test.equal(x, 5, "do_while_basic_final")
+
+// --- do-while with false condition (executes once) ---
+print("running do_while_false tests")
+count = 0
+do {
+	count = count + 1
+} while false
+
+test.equal(count, 1, "do_while_false_executes_once")
+
+// --- do-while countdown ---
+print("running do_while_countdown tests")
+x = 5
+count = 0
+do {
+	count = count + 1
+	x = x - 1
+} while x > 0
+
+test.equal(count, 5, "do_while_countdown_count")
+test.equal(x, 0, "do_while_countdown_final")
+
+// --- do-while with break ---
+print("running do_while_break tests")
+x = 0
+count = 0
+do {
+	count = count + 1
+	if count == 3 {
+		break
+	}
+	x = x + 1
+} while x < 100
+
+test.equal(count, 3, "do_while_break_count")
+test.equal(x, 2, "do_while_break_value")
+
+// --- do-while with next (continue) ---
+print("running do_while_next tests")
+x = 0
+var sum = 0
+count = 0
+do {
+	count = count + 1
+	x = x + 1
+	if x % 2 == 0 {
+		next
+	}
+	sum = sum + x
+} while x < 10
+
+test.equal(count, 10, "do_while_next_iterations")
+test.equal(sum, 25, "do_while_next_sum")  // 1+3+5+7+9=25
+test.equal(x, 10, "do_while_next_final")
+
+// --- nested do-while ---
+print("running nested_do_while tests")
+x = 0
+count = 0
+do {
+	var y = 0
+	do {
+		count = count + 1
+		y = y + 1
+	} while y < 2
+	x = x + 1
+} while x < 3
+
+test.equal(count, 6, "nested_do_while_count")
+test.equal(x, 3, "nested_do_while_x")
+
+// --- do-while with complex condition ---
+print("running do_while_complex tests")
+x = 0
+var y = 5
+count = 0
+do {
+	count = count + 1
+	x = x + 1
+} while x < 3 && y > 2
+
+test.equal(count, 3, "do_while_and_condition")
+
+// --- do-while executes body before checking condition ---
+print("running do_while_order tests")
+x = 100
+count = 0
+do {
+	count = count + 1
+	if count > 5 {
+		break
+	}
+} while x < 10  // condition is false but body executed at least once
+
+test.equal(count, 1, "do_while_body_first")  // executes once, then condition fails
+
+// --- do-while with break in nested if ---
+print("running do_while_break_in_if tests")
+x = 0
+count = 0
+do {
+	x = x + 1
+	if x == 5 {
+		break
+	}
+	count = count + 1
+} while x < 100
+
+test.equal(x, 5, "do_while_break_if_x")
+test.equal(count, 4, "do_while_break_if_count")
+
+// --- do-while with next in nested if ---
+print("running do_while_next_in_if tests")
+x = 0
+count = 0
+var processed = 0
+do {
+	x = x + 1
+	if x < 5 {
+		next
+	}
+	processed = processed + 1
+	count = count + 1
+} while x < 10
+
+test.equal(processed, 6, "do_while_next_processed")
+test.equal(count, 6, "do_while_next_count")
+
+// --- do-while with array ---
+print("running do_while_array tests")
+var arr = [1, 2, 3, 4, 5]
+x = 0
+count = 0
+do {
+	count = count + 1
+	x = x + 1
+} while x < arr.len()
+
+test.equal(count, 5, "do_while_array_len")
+
+// --- do-while multiple iterations ---
+print("running do_while_multiple tests")
+x = 0
+count = 0
+do {
+	count = count + 1
+	x = x + 2
+} while x < 10
+
+test.equal(count, 5, "do_while_multiple_iterations")  // 0,2,4,6,8,10
+test.equal(x, 10, "do_while_multiple_final")
+
+test.done()

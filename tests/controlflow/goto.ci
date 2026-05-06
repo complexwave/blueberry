@@ -1,0 +1,200 @@
+// Control flow: goto and labels tests
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running goto_basic tests")
+
+// --- basic goto forward ---
+var x = 0
+goto skip
+x = 1
+:skip:
+x = 2
+test.equal(x, 2, "goto_skip_forward")
+
+// --- basic goto backward ---
+print("running goto_backward tests")
+x = 0
+var count = 0
+:loop:
+count = count + 1
+x = x + 1
+if x < 3 {
+	goto loop
+}
+test.equal(x, 3, "goto_backward_loop")
+test.equal(count, 3, "goto_backward_count")
+
+// --- goto with label in sequence ---
+print("running goto_sequence tests")
+x = 0
+goto l1
+x = 1  // skipped
+:l1:
+x = 2
+goto l2
+x = 3  // skipped
+:l2:
+x = 4
+test.equal(x, 4, "goto_multiple_labels")
+
+// --- goto in if statement ---
+print("running goto_in_if tests")
+x = 0
+if true {
+	goto early_exit
+	x = 1
+}
+:early_exit:
+x = 2
+test.equal(x, 2, "goto_in_if_true")
+
+x = 0
+if false {
+	goto skip2
+	x = 1
+} else {
+	goto skip2
+	x = 2
+}
+:skip2:
+x = 3
+test.equal(x, 3, "goto_in_if_else")
+
+// --- goto in while loop ---
+print("running goto_in_while tests")
+x = 0
+count = 0
+while true {
+	count = count + 1
+	x = x + 1
+	if x == 3 {
+		goto exit_loop
+	}
+}
+:exit_loop:
+test.equal(x, 3, "goto_exit_while")
+test.equal(count, 3, "goto_exit_while_count")
+
+// --- goto in nested loops ---
+print("running goto_nested tests")
+x = 0
+count = 0
+var y = 0
+while x < 3 {
+	y = 0
+	while y < 3 {
+		count = count + 1
+		y = y + 1
+		if count == 4 {
+			goto outer_exit
+		}
+	}
+	x = x + 1
+}
+:outer_exit:
+test.equal(count, 4, "goto_from_nested_loop")
+
+// --- goto to skip code ---
+print("running goto_skip_code tests")
+x = 0
+var a = 1
+var b = 2
+var c = 3
+if a > 0 {
+	goto skip_middle
+	b = 20
+}
+:skip_middle:
+c = 30
+test.equal(b, 2, "goto_skip_middle_b")
+test.equal(c, 30, "goto_skip_middle_c")
+
+// --- multiple gotos from same point ---
+print("running goto_multiple_targets tests")
+x = 1
+if x == 1 {
+	goto target_a
+} else if x == 2 {
+	goto target_b
+}
+:target_a:
+x = 10
+goto done
+:target_b:
+x = 20
+:done:
+test.equal(x, 10, "goto_multiple_targets_a")
+
+x = 2
+if x == 1 {
+	goto target2_a
+} else if x == 2 {
+	goto target2_b
+}
+:target2_a:
+x = 10
+goto done2
+:target2_b:
+x = 20
+:done2:
+test.equal(x, 20, "goto_multiple_targets_b")
+
+// --- goto creating simple state machine ---
+print("running goto_state_machine tests")
+x = 0
+var state = "start"
+:state_start:
+if state == "start" {
+	x = x + 1
+	state = "next"
+	goto state_next
+}
+:state_next:
+if state == "next" {
+	x = x + 10
+	state = "end"
+	goto state_end
+}
+:state_end:
+if state == "end" {
+	x = x + 100
+}
+test.equal(x, 111, "goto_state_machine")
+
+// --- goto with variable modifications ---
+print("running goto_with_vars tests")
+x = 0
+var result = 0
+goto check
+x = 100
+:check:
+result = x + 1
+test.equal(result, 1, "goto_var_not_modified")
+
+// --- goto in do-while ---
+print("running goto_in_do_while tests")
+x = 0
+count = 0
+do {
+	count = count + 1
+	x = x + 1
+	if x == 2 {
+		goto exit_dowhile
+	}
+} while x < 100
+:exit_dowhile:
+test.equal(x, 2, "goto_exit_do_while")
+test.equal(count, 2, "goto_exit_do_while_count")
+
+// --- label at end of function (no code after) ---
+print("running goto_label_end tests")
+x = 0
+if true {
+	goto the_end
+	x = 1
+}
+:the_end:
+test.equal(x, 0, "goto_label_at_end")
+
+test.done()

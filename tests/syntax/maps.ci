@@ -1,0 +1,62 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running basic_map_creation")
+var m = {}
+test.assert(type(m) == "map", "basic_map_creation")
+
+print("running dot_assign_and_read")
+var obj = {}
+obj.name = "test"
+test.equal(obj.name, "test", "dot_assign_and_read")
+
+print("running multiple_fields")
+var person = {}
+person.age = 25
+person.city = "NYC"
+person.active = true
+test.equal(person.age, 25, "multiple_fields: age")
+test.equal(person.city, "NYC", "multiple_fields: city")
+test.equal(person.active, true, "multiple_fields: active")
+
+print("running overwrite_field")
+var counter = {}
+counter.value = 10
+counter.value = 20
+test.equal(counter.value, 20, "overwrite_field")
+
+print("running map_with_mixed_types")
+var mixed = {}
+mixed.str = "hello"
+mixed.num = 42
+mixed.bool = true
+mixed.nul = null
+test.equal(mixed.str, "hello", "map_with_mixed_types: string")
+test.equal(mixed.num, 42, "map_with_mixed_types: number")
+test.equal(mixed.bool, true, "map_with_mixed_types: bool")
+test.equal(mixed.nul, null, "map_with_mixed_types: null")
+
+print("running dynamic_access_with_var")
+var cfg = {}
+cfg["port"] = 8080
+test.equal(cfg["port"], 8080, "dynamic_access_with_var")
+
+
+var data = {}
+data.key1 = 100
+var k = "key1"
+var result = data[k]
+test.equal(result, 100, "dynamic_access_with_var")
+
+
+print("subscript_access")
+var config = {}
+config["name"] = "test"
+
+config["debug"] = fn(config) {
+	return config["name"]
+}
+var m4 = config["debug"](config)
+test.equal(m4, "test", "subscript_access")
+
+test.done()
