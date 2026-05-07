@@ -1,0 +1,62 @@
+// merkletrees benchmark
+
+fn MakeTree(depth) {
+    if depth > 0 {
+        return { left: MakeTree(depth - 1), right: MakeTree(depth - 1) }
+    }
+    return { value: 1 }
+}
+
+fn CalHash(tree) {
+    if !tree.hash {
+        if tree.value {
+            tree.hash = tree.value
+        } else {
+            CalHash(tree.left)
+            CalHash(tree.right)
+            tree.hash = tree.left.hash + tree.right.hash
+        }
+    }
+}
+
+fn Check(tree) {
+    if tree.hash {
+        if tree.value {
+            return true
+        }
+        return Check(tree.left) && Check(tree.right)
+    }
+    return false
+}
+
+var N = str2int(argv[0])
+var mindepth = 4
+var maxdepth = mindepth + 2
+if maxdepth < N {
+    maxdepth = N
+}
+
+var stretchdepth = maxdepth + 1
+var stretchtree = MakeTree(stretchdepth)
+CalHash(stretchtree)
+print("stretch tree of depth", stretchdepth, "root hash:", stretchtree.hash, "check:", Check(stretchtree))
+
+var longlivedtree = MakeTree(maxdepth)
+
+var depth = mindepth
+while depth <= maxdepth {
+    var iterations = 1 << (maxdepth - depth + mindepth)
+    var sum = 0
+    var i = 0
+    while i < iterations {
+        var t = MakeTree(depth)
+        CalHash(t)
+        sum = sum + t.hash
+        i = i + 1
+    }
+    print(iterations, "trees of depth", depth, "root hash sum:", sum)
+    depth = depth + 2
+}
+
+CalHash(longlivedtree)
+print("long lived tree of depth", maxdepth, "root hash:", longlivedtree.hash, "check:", Check(longlivedtree))

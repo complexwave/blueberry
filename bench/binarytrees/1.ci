@@ -1,0 +1,46 @@
+// binarytrees benchmark
+
+fn BottomUpTree(depth) {
+    if depth > 0 {
+        return [self(depth - 1), self(depth - 1)]
+    }
+    return [null, null]
+}
+
+fn ItemCheck(tree) {
+    if tree[0] {
+        return 1 + self(tree[0]) + self(tree[1])
+    }
+    return 1
+}
+
+var N = str2int(argv[0])
+var mindepth = 4
+var maxdepth = mindepth + 2
+
+if maxdepth < N {
+    maxdepth = N
+}
+
+var stretchdepth = maxdepth + 1
+var stretchtree = BottomUpTree(stretchdepth)
+print("stretch tree of depth", stretchdepth, "check:", ItemCheck(stretchtree))
+
+var longlivedtree = BottomUpTree(maxdepth)
+
+var depth = mindepth
+
+while depth <= maxdepth {
+    var iterations = 1 << (maxdepth - depth + mindepth)
+    var check = 0
+    var i = 0
+    print(iterations)
+    while i < iterations {
+        check = check + ItemCheck(BottomUpTree(depth))
+        i = i + 1
+    }
+    print(iterations, "trees of depth", depth, "check:", check)
+    depth = depth + 2
+}
+
+print("long lived tree of depth", maxdepth, "check:", ItemCheck(longlivedtree))
