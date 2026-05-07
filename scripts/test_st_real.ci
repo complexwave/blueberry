@@ -1,0 +1,15 @@
+fn inner(x) {
+  return x + 1;
+}
+
+fn outer(y) {
+  z = inner(y);
+  return z;
+}
+
+fn main() {
+  a = 5;
+  b = outer(a);
+  stacktrace();
+  return b;
+}

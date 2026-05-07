@@ -1,0 +1,5 @@
+// Comprehensive branching and loop control flow tests
+var test_count = 0;
+var pass_count = 0;
+
+print("hi")

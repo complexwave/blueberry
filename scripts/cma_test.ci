@@ -1,0 +1,65 @@
+// === cma lib test ===
+
+// --- P: literal string ---
+var p = cma.P("hello")
+print(cma.match(p, "hello world"))
+print(cma.match(p, "goodbye"))
+
+// --- Pi: case-insensitive ---
+var pi = cma.Pi("hello")
+print(cma.match(pi, "HELLO world"))
+
+// --- R: character range ---
+var digit = cma.R("0-9")
+print(cma.match(digit, "5abc"))
+print(cma.match(digit, "abc"))
+
+// --- S: character set ---
+var vowels = cma.S("aeiou")
+print(cma.match(vowels, "apple"))
+print(cma.match(vowels, "xyz"))
+
+// --- seq: sequence ---
+var hello_world = cma.seq([cma.P("hello"), cma.P(" "), cma.P("world")])
+print(cma.match(hello_world, "hello world"))
+print(cma.match(hello_world, "hello earth"))
+
+// --- alt: ordered choice ---
+var greeting = cma.alt([cma.P("hello"), cma.P("hi"), cma.P("hey")])
+print(cma.match(greeting, "hey there"))
+print(cma.match(greeting, "goodbye"))
+
+// --- rep: repetition ---
+var digits = cma.rep(1, 99, cma.R("0-9"))
+print(cma.match(digits, "12345abc"))
+print(cma.match(digits, "abc"))
+
+// --- neg: negation ---
+var not_digit = cma.neg(cma.R("0-9"))
+print(cma.match(not_digit, "abc"))
+print(cma.match(not_digit, "123"))
+
+// --- cap: captures ---
+var word = cma.rep(1, 99, cma.R("a-zA-Z"))
+var cap_word = cma.cap(word)
+var pat = cma.seq([cap_word, cma.P(" "), cap_word])
+var result = cma.match(pat, "hello world")
+print(result)
+print(result[0])
+print(result[1])
+
+// --- endl ---
+var exact = cma.seq([cma.P("hello"), cma.endl()])
+print(cma.match(exact, "hello"))
+print(cma.match(exact, "hello world"))
+
+// --- capn: named capture ---
+var named = cma.seq([cma.capn(word, "first"), cma.P(" "), cma.capn(word, "second")])
+var nr = cma.match(named, "foo bar")
+print(nr)
+print(nr[0])
+print(nr[1])
+
+// --- varargs: SEQ/ALT (commented out — varargs not yet working) ---
+// var va = cma.SEQ(cma.P("a"), cma.P("b"))
+// print(cma.match(va, "ab"))

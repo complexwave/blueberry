@@ -1,0 +1,200 @@
+// Comprehensive branching and loop control flow tests
+var test_count = 0;
+var pass_count = 0;
+
+// Test 1: if statement (true condition)
+var test1_val = 0;
+if (5 > 3) {
+	test1_val = 1;
+}
+test_count++;
+if (test1_val == 1) {
+	print("test1_if: pass");
+	pass_count++;
+} else {
+	print("test1_if: fail");
+}
+
+// Test 2: if statement (false condition)
+var test2_val = 1;
+if (2 > 5) {
+	test2_val = 99;
+}
+test_count++;
+if (test2_val == 1) {
+	print("test2_if_false: pass");
+	pass_count++;
+} else {
+	print("test2_if_false: fail");
+}
+
+// Test 3: if-else (true branch)
+var test3_val = 0;
+if (10 == 10) {
+	test3_val = 1;
+} else {
+	test3_val = 2;
+}
+test_count++;
+if (test3_val == 1) {
+	print("test3_ifelse_true: pass");
+	pass_count++;
+} else {
+	print("test3_ifelse_true: fail");
+}
+
+// Test 4: if-else (false branch)
+var test4_val = 0;
+if (3 > 7) {
+	test4_val = 1;
+} else {
+	test4_val = 2;
+}
+test_count++;
+if (test4_val == 2) {
+	print("test4_ifelse_false: pass");
+	pass_count++;
+} else {
+	print("test4_ifelse_false: fail");
+}
+
+// Test 5: while loop
+var test5_count = 0;
+var i = 0;
+while (i < 4) {
+	test5_count++;
+	i++;
+}
+test_count++;
+if (test5_count == 4) {
+	print("test5_while: pass");
+	pass_count++;
+} else {
+	print("test5_while: fail");
+}
+
+// Test 6: do-while loop
+var test6_count = 0;
+var j = 0;
+do {
+	test6_count++;
+	j++;
+} while (j < 3);
+test_count++;
+if (test6_count == 3) {
+	print("test6_dowhile: pass");
+	pass_count++;
+} else {
+	print("test6_dowhile: fail");
+}
+
+// Test 7: break statement
+var test7_count = 0;
+var k = 0;
+while (k < 100) {
+	test7_count++;
+	if (test7_count == 5) {
+		break;
+	}
+	k++;
+}
+test_count++;
+if (test7_count == 5) {
+	print("test7_break: pass");
+	pass_count++;
+} else {
+	print("test7_break: fail");
+}
+
+// Test 8: next (continue) statement
+var test8_count = 0;
+var m = 0;
+while (m < 6) {
+	m++;
+	if (m == 3 || m == 5) {
+		next;
+	}
+	test8_count++;
+}
+test_count++;
+if (test8_count == 4) {
+	print("test8_next: pass");
+	pass_count++;
+} else {
+	print("test8_next: fail");
+}
+
+// Test 9: goto statement (forward jump)
+var test9_val = 0;
+test9_val = 1;
+goto test9_skip;
+test9_val = 999;
+:test9_skip:;
+test_count++;
+if (test9_val == 1) {
+	print("test9_goto: pass");
+	pass_count++;
+} else {
+	print("test9_goto: fail");
+}
+
+// Test 10: goto statement (backward jump / loop)
+var test10_count = 0;
+:test10_loop:;
+test10_count++;
+if (test10_count < 3) {
+	goto test10_loop;
+}
+test_count++;
+if (test10_count == 3) {
+	print("test10_goto_loop: pass");
+	pass_count++;
+} else {
+	print("test10_goto_loop: fail");
+}
+
+// Test 11: nested if in while with break
+var test11_count = 0;
+var n = 0;
+while (n < 20) {
+	n++;
+	if (n > 2) {
+		if (n == 5) {
+			break;
+		}
+	}
+	test11_count++;
+}
+test_count++;
+if (test11_count == 4) {
+	print("test11_nested_if_break: pass");
+	pass_count++;
+} else {
+	print("test11_nested_if_break: fail");
+}
+
+// Test 12: nested if in while with next
+var test12_count = 0;
+var p = 0;
+while (p < 5) {
+	p++;
+	if (p == 2) {
+		if (1 == 1) {
+			next;
+		}
+	}
+	test12_count++;
+}
+test_count++;
+if (test12_count == 4) {
+	print("test12_nested_if_next: pass");
+	pass_count++;
+} else {
+	print("test12_nested_if_next: fail");
+}
+
+// Summary
+print("---");
+print("Results:");
+print(pass_count);
+print(test_count);

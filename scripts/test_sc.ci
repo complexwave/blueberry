@@ -1,0 +1,81 @@
+var r
+var side
+var x
+var dummy
+
+r = true && true
+if r == true { print("PASS") } else { print("FAIL: true&&true") }
+
+r = false && true
+if r == false { print("PASS") } else { print("FAIL: false&&true") }
+
+r = true && false
+if r == false { print("PASS") } else { print("FAIL: true&&false") }
+
+r = false && false
+if r == false { print("PASS") } else { print("FAIL: false&&false") }
+
+r = true || false
+if r == true { print("PASS") } else { print("FAIL: true||false") }
+
+r = false || true
+if r == true { print("PASS") } else { print("FAIL: false||true") }
+
+r = false || false
+if r == false { print("PASS") } else { print("FAIL: false||false") }
+
+r = 1 && 99
+if r == 99 { print("PASS") } else { print("FAIL: 1&&99") }
+
+r = null || 42
+if r == 42 { print("PASS") } else { print("FAIL: null||42") }
+
+r = null && 99
+if r == null { print("PASS") } else { print("FAIL: null&&99") }
+
+r = 5 || 99
+if r == 5 { print("PASS") } else { print("FAIL: 5||99") }
+
+side = 0
+dummy = false && (side = 1)
+if side == 0 { print("PASS") } else { print("FAIL: &&shortcircuit") }
+
+side = 0
+dummy = true || (side = 1)
+if side == 0 { print("PASS") } else { print("FAIL: ||shortcircuit") }
+
+side = 0
+dummy = true && (side = 1)
+if side == 1 { print("PASS") } else { print("FAIL: &&rhs executes") }
+
+side = 0
+dummy = false || (side = 1)
+if side == 1 { print("PASS") } else { print("FAIL: ||rhs executes") }
+
+r = false || false || 42
+if r == 42 { print("PASS") } else { print("FAIL: chained ||") }
+
+r = true && true && 7
+if r == 7 { print("PASS") } else { print("FAIL: chained &&") }
+
+r = false && true && 99
+if r == false { print("PASS") } else { print("FAIL: &&chain shortcircuit") }
+
+r = true || false || 99
+if r == true { print("PASS") } else { print("FAIL: ||chain shortcircuit") }
+
+x = 5
+x &&= 10
+if x == 10 { print("PASS") } else { print("FAIL: &&= truthy") }
+
+x = null
+x &&= 10
+if x == null { print("PASS") } else { print("FAIL: &&= falsy") }
+
+x = null
+x ||= 99
+if x == 99 { print("PASS") } else { print("FAIL: ||= falsy") }
+
+x = 5
+x ||= 99
+if x == 5 { print("PASS") } else { print("FAIL: ||= truthy") }

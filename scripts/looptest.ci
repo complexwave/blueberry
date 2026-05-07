@@ -1,0 +1,15 @@
+
+var a = "string"
+
+var i = 5;
+
+:label:;
+	
+while(i){
+	print(i);
+	
+	i--;
+	goto label;
+	
+	print(2);
+}

@@ -1,0 +1,9 @@
+var a; a = function (a,b,c) { return a + b }
+var r; r = a(10, 20, 30)
+print(r)
+
+var multi; multi = function (x) { return x, x+1, x+2 }
+var p, q, s; p, q, s = multi(10)
+print(p)
+print(q)
+print(s)

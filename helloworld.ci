@@ -1,0 +1,41 @@
+// Blueberry — quick taste
+
+var name = "Blueberry"
+var greeting = "Hello from ".copy().append(name).append("!")
+print(greeting)
+
+// arrays are 0-indexed
+var nums = [10, 20, 30]
+nums.push(40)
+for i, v in nums {
+    print(i, v)
+}
+
+// maps
+var config = { host: "localhost", port: 8080 }
+config.debug = true
+print(config.host, config.port, config.debug)
+
+// prototype OOP
+Vec = {}
+fn Vec.new(x, y) {
+    var v = {}
+    
+    proto.set(v, self)
+	
+    v.x = x
+    v.y = y
+    
+    return v
+}
+fn Vec.len2() {
+    return self.x * self.x + self.y * self.y
+}
+fn Vec.add(other) {
+    return Vec.new(self.x + other.x, self.y + other.y)
+}
+
+var a = Vec.new(3, 4)
+var b = Vec.new(1, 2)
+var c = a.add(b)
+print("vec:", c.x, c.y, "len2:", c.len2())

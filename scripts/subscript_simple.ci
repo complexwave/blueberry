@@ -1,0 +1,8 @@
+// Simple subscript test
+var map = {};
+print("created map");
+
+map["key1"] = 42;
+print("assigned to map");
+
+print(map["key1"]);

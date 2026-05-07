@@ -1,0 +1,13 @@
+var i = 5;
+
+while(i) {
+	print(i);
+
+	if (i == 3) {
+		next;
+	}
+
+	i--;
+}
+
+print("done");

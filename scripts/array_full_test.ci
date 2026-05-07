@@ -1,0 +1,58 @@
+
+var t = {}
+t.pass = 0
+t.fail = 0
+
+// === len ===
+var a = [1, 2, 3]
+if(a.len() == 3){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: len basic") }
+if([].len() == 0){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: len empty") }
+
+// === push ===
+a.push(4)
+if(a.len() == 4){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: push len") }
+if(a[3] == 4){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: push val") }
+
+// === pop ===
+var v = a.pop()
+if(v == 4){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: pop val") }
+if(a.len() == 3){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: pop len") }
+
+// === unshift / shift ===
+a.unshift(0)
+if(a[0] == 0){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: unshift val") }
+v = a.shift()
+if(v == 0){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: shift val") }
+if(a[0] == 1){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: shift first") }
+
+// === resize ===
+a.resize(6)
+if(a.len() == 6){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: resize grow") }
+if(!a[5]){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: resize null") }
+a.resize(2)
+if(a.len() == 2){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: resize shrink") }
+
+// === size ===
+if(a.size() >= a.len()){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: size") }
+
+// === OOB read ===
+var c = []
+if(!c[0]){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: oob 0") }
+if(!c[99]){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: oob 99") }
+
+// === OOB write auto-extends ===
+c[3] = 99
+if(c.len() == 4){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: extend len") }
+if(!c[0]){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: extend null") }
+if(c[3] == 99){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: extend val") }
+
+// === null propagation ===
+var np = {}
+if(!np.x){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: null prop") }
+if(!np.x.y.z){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: null chain") }
+
+// === results ===
+print("--- part1 ---")
+print(t.pass)
+print(t.fail)
+if(!t.fail){ print("ALL PASS") } else { print("SOME FAILED") }

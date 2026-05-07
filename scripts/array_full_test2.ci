@@ -1,0 +1,113 @@
+
+var t = {}
+t.pass = 0
+t.fail = 0
+
+// === offset stress: push 100 then shift 100 ===
+var g = []
+var i = 0
+while(i < 100){
+	g.push(i)
+	i = i + 1
+}
+if(g.len() == 100){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: pre-shift len") }
+
+var shift_ok = 1
+i = 0
+while(i < 100){
+	var sv = g.shift()
+	if(sv != i){
+		shift_ok = 0
+	}
+	i = i + 1
+}
+if(shift_ok){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: shift sequence") }
+if(g.len() == 0){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: post-shift len") }
+
+// === unshift 100 back ===
+i = 0
+while(i < 100){
+	g.unshift(i)
+	i = i + 1
+}
+if(g.len() == 100){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: post-unshift len") }
+if(g[0] == 99){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: unshift first") }
+if(g[99] == 0){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: unshift last") }
+
+// === queue pattern: unshift + pop, size bounded ===
+var q = []
+i = 0
+while(i < 200){
+	q.unshift(i)
+	if(q.len() > 5){
+		q.pop()
+	}
+	i = i + 1
+}
+if(q.len() == 5){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: queue len") }
+if(q.size() < 100){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: queue size bounded") }
+
+// === stack pattern: push + pop order ===
+var st = []
+i = 0
+while(i < 200){
+	st.push(i)
+	i = i + 1
+}
+var stack_ok = 1
+i = 0
+while(i < 200){
+	var pv = st.pop()
+	if(pv != 199 - i){
+		stack_ok = 0
+	}
+	i = i + 1
+}
+if(stack_ok){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: stack order") }
+if(st.len() == 0){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: stack empty") }
+
+// === FIFO: push + shift ===
+var fifo = []
+i = 0
+while(i < 100){
+	fifo.push(i)
+	i = i + 1
+}
+var fifo_ok = 1
+i = 0
+while(i < 100){
+	var fv = fifo.shift()
+	if(fv != i){
+		fifo_ok = 0
+	}
+	i = i + 1
+}
+if(fifo_ok){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: fifo order") }
+if(fifo.len() == 0){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: fifo empty") }
+
+// === mixed shift/unshift offset wrapping ===
+var m = [1, 2, 3, 4, 5]
+m.shift()
+m.shift()
+m.unshift(20)
+m.unshift(10)
+if(m[0] == 10){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: wrap 0") }
+if(m[1] == 20){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: wrap 1") }
+if(m[2] == 3){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: wrap 2") }
+if(m[3] == 4){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: wrap 3") }
+if(m[4] == 5){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: wrap 4") }
+
+// === null propagation ===
+var np = {}
+if(!np.x){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: null prop 1") }
+if(!np.x.y.z){ t.pass = t.pass + 1 } else { t.fail = t.fail + 1; print("FAIL: null prop chain") }
+
+// === results ===
+print("---")
+print(t.pass)
+print(t.fail)
+if(!t.fail){
+	print("ALL PASS")
+} else {
+	print("SOME FAILED")
+}

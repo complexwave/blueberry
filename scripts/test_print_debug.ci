@@ -1,0 +1,10 @@
+fn inner(x) {
+  print("inner called");
+  return x + 1;
+}
+
+fn main() {
+  a = 5;
+  b = inner(a);
+  return b;
+}

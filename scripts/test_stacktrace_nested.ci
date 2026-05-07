@@ -1,0 +1,20 @@
+fn level3(x) {
+  print("in level3");
+  stacktrace();
+  return x + 10;
+}
+
+fn level2(y) {
+  z = level3(y);
+  return z;
+}
+
+fn level1(a) {
+  b = level2(a);
+  return b;
+}
+
+fn main() {
+  result = level1(5);
+  return result;
+}

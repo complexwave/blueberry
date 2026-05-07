@@ -1,0 +1,9 @@
+fn test() {
+  stacktrace();
+  return 42;
+}
+
+fn main() {
+  x = test();
+  return x;
+}

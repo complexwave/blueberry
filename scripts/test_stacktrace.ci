@@ -1,0 +1,24 @@
+fn level3(x) {
+  print("level3 called with:");
+  print(x);
+  stacktrace();
+  return x + 10;
+}
+
+fn level2(y) {
+  z = level3(y);
+  return z;
+}
+
+fn level1(a) {
+  b = level2(a);
+  return b;
+}
+
+fn main() {
+  print("Starting test");
+  result = level1(5);
+  print("Result:");
+  print(result);
+  return result;
+}

@@ -1,0 +1,11 @@
+fn test(n) {
+  x = n + 1;
+  return x;
+}
+
+fn main() {
+  a = 5;
+  b = test(a);
+  print(b);
+  return b;
+}

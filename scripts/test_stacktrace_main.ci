@@ -1,0 +1,6 @@
+fn main() {
+  print("calling stacktrace");
+  stacktrace();
+  print("done");
+  return 42;
+}

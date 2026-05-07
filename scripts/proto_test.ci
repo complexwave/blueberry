@@ -1,0 +1,61 @@
+
+// === array prototype methods ===
+
+var arr = [1, 2, 3]
+
+// len
+var n = arr.len()
+print(n)       // 3
+
+// push
+arr.push(4)
+print(arr.len()) // 4
+
+// pop
+var last = arr.pop()
+print(last)      // 4
+print(arr.len()) // 3
+
+// unshift
+arr.unshift(0)
+print(arr.len()) // 4
+
+// shift
+var first = arr.shift()
+print(first)     // 0
+print(arr.len()) // 3
+
+// resize (grow)
+arr.resize(5)
+print(arr.len()) // 5
+
+// resize (shrink)
+arr.resize(2)
+print(arr.len()) // 2
+
+// === null propagation ===
+
+var m = {}
+var x = m.nonexistent
+print(x)          // null
+
+var y = m.a.b.c
+print(y)          // null
+
+// === method bind on array ===
+
+var arr2 = [10, 20, 30]
+var bound = arr2<-len
+var r = bound()
+print(r)          // 3
+
+// === prototype chain still works for maps ===
+
+var base = {}
+base.greet = function(){
+	print("hello from base")
+};
+
+var child = {}
+setprototype(child, base)
+child.greet()

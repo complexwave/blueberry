@@ -1,0 +1,9 @@
+fn inner(x) {
+  stacktrace();
+  return x + 1;
+}
+
+fn main() {
+  a = inner(5);
+  return a;
+}

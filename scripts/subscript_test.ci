@@ -1,0 +1,119 @@
+// Test subscript assignment: array[idx] = val, map["key"] = val
+
+var pass = 0;
+var total = 0;
+
+// Test 1: Array subscript assignment
+var arr = [10, 20, 30];
+total++;
+arr[0] = 100;
+if (arr[0] == 100) {
+	print("test1_array_subscript: pass");
+	pass++;
+} else {
+	print("test1_array_subscript: fail");
+}
+
+// Test 2: Array subscript assignment to middle element
+total++;
+arr[1] = 200;
+if (arr[1] == 200) {
+	print("test2_array_middle: pass");
+	pass++;
+} else {
+	print("test2_array_middle: fail");
+}
+
+// Test 3: Array subscript assignment to last element
+total++;
+arr[2] = 300;
+if (arr[2] == 300) {
+	print("test3_array_last: pass");
+	pass++;
+} else {
+	print("test3_array_last: fail");
+}
+
+// Test 4: Map subscript assignment
+var map = {};
+total++;
+map["key1"] = 42;
+if (map["key1"] == 42) {
+	print("test4_map_subscript: pass");
+	pass++;
+} else {
+	print("test4_map_subscript: fail");
+}
+
+// Test 5: Map subscript assignment (multiple keys)
+total++;
+map["key2"] = 99;
+if (map["key2"] == 99) {
+	print("test5_map_multiple: pass");
+	pass++;
+} else {
+	print("test5_map_multiple: fail");
+}
+
+// Test 6: Map subscript assignment (overwrite)
+total++;
+map["key1"] = 100;
+if (map["key1"] == 100) {
+	print("test6_map_overwrite: pass");
+	pass++;
+} else {
+	print("test6_map_overwrite: fail");
+}
+
+// Test 7: Array subscript assignment in expression
+var x = 0;
+total++;
+x = (arr[0] = 555);
+if (x == 555 && arr[0] == 555) {
+	print("test7_array_expr: pass");
+	pass++;
+} else {
+	print("test7_array_expr: fail");
+}
+
+// Test 8: Map subscript assignment in expression
+var y = 0;
+total++;
+y = (map["test"] = 777);
+if (y == 777 && map["test"] == 777) {
+	print("test8_map_expr: pass");
+	pass++;
+} else {
+	print("test8_map_expr: fail");
+}
+
+// Test 9: Nested array access (read then write)
+var arr2 = [1, 2, 3];
+total++;
+var val = arr2[1];
+arr2[1] = val + 10;
+if (arr2[1] == 12) {
+	print("test9_nested_read_write: pass");
+	pass++;
+} else {
+	print("test9_nested_read_write: fail");
+}
+
+// Test 10: Array subscript in loop
+var arr3 = [0, 0, 0, 0];
+var i = 0;
+total++;
+while (i < 4) {
+	arr3[i] = i * 10;
+	i++;
+}
+if (arr3[0] == 0 && arr3[1] == 10 && arr3[2] == 20 && arr3[3] == 30) {
+	print("test10_array_loop: pass");
+	pass++;
+} else {
+	print("test10_array_loop: fail");
+}
+
+print("---");
+print(pass);
+print(total);

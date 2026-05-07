@@ -1,0 +1,67 @@
+
+// prototype chain test
+
+var base = {}
+base.greet = function(){
+	print("hello from base")
+	return 1;
+}
+base.name = "base_obj"
+
+var child = {}
+child.own = "child_only"
+setprototype(child, base)
+
+// 1) child inherits base.greet
+child.greet()
+
+// 2) child inherits base.name
+print(child.name)
+
+// 3) child's own property
+print(child.own)
+
+// 4) override: child shadows base
+child.greet = function(){
+	print("hello from child")
+	return 2;
+}
+child.greet()
+
+// 5) base.greet still works
+base.greet()
+
+// 6) grandchild — two-level chain
+var grandchild = {}
+setprototype(grandchild, child)
+
+// inherits child.greet (shadowed)
+grandchild.greet()
+
+// inherits child.own
+print(grandchild.own)
+
+// inherits base.name (through child -> base)
+print(grandchild.name)
+
+// 7) grandchild own property
+grandchild.id = 42
+print(grandchild.id)
+
+// 8) self is the receiver, not the prototype
+base.who = function(){
+	print(self)
+}
+var obj_a = {}
+setprototype(obj_a, base)
+var obj_b = {}
+setprototype(obj_b, base)
+
+obj_a.who()
+obj_b.who()
+
+// 9) setprototype returns the map
+var r = setprototype({}, base)
+r.greet()
+
+print("all done")

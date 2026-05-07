@@ -1,0 +1,13 @@
+var m, a,b;
+
+m = {};
+
+a = m.a.b.c.1;
+
+a = m.key.key.key.key;
+
+b = 1
+
+a = m.key.key.1.key.key.key;
+
+global.p

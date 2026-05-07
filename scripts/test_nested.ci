@@ -1,0 +1,16 @@
+fn inner(x) {
+  print(x);
+  return x + 1;
+}
+
+fn outer(y) {
+  z = inner(y);
+  return z;
+}
+
+fn main() {
+  a = 42;
+  b = outer(a);
+  print(b);
+  return b;
+}

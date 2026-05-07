@@ -1,0 +1,36 @@
+// fibonacci example
+fun fib(n) {
+  if n <= 1 {
+    return n
+  }
+  return fib(n - 1) + fib(n - 2)
+}
+
+var x = 10
+var result = fib(x)
+
+# hash comment
+while x > 0 {
+  x = x - 1
+}
+
+var arr = [1, 2, 3]
+var obj = {name => "hello", value => 0xFF}
+true false null undef
+
+x++
+x--
+x ** 2
+a && b || c
+a << 2 >> 1
+a != b
+a >= b
+a <= b
+obj.name
+obj->method
+obj<-ref
+goto done
+break
+continue
+next
+for do require

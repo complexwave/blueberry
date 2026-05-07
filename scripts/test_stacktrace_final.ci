@@ -1,0 +1,6 @@
+fn main() {
+  print("Before stacktrace:");
+  stacktrace();
+  print("After stacktrace");
+  return 0;
+}

@@ -1,0 +1,5 @@
+/* Test globals table access with register 255 */
+var a;
+
+a = global.x;
+a = global.foo.bar;

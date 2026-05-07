@@ -1,0 +1,15 @@
+
+
+-- this and dir listing.
+var data = io.read_file("filename")
+
+print(data)
+
+io.write_file("filename")
+
+lua lfs style.
+no need to implement lot of complex functions for now.
+
+return false when error, no need for messages for now.
+
+

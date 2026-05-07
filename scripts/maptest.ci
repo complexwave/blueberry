@@ -1,0 +1,5 @@
+var m, a;
+
+m = { key : 1, key2 : 2 };
+
+a = m.key

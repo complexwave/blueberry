@@ -1,0 +1,12 @@
+fn test() {
+  print("in test");
+  stacktrace();
+  return 42;
+}
+
+fn main() {
+  print("in main");
+  x = test();
+  print("back in main");
+  return x;
+}

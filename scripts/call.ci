@@ -1,0 +1,13 @@
+
+print(coro)
+
+var b = {};
+print(b);
+
+var a = function(){
+	return 1;
+}
+
+print(b)
+a()
+print(b)

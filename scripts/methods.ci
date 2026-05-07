@@ -1,0 +1,57 @@
+
+
+var obj = {};
+
+obj.method = function(a){
+	print("called")
+	print(a)
+	
+	print(self)
+	
+	// self should be the function itself for bare calls
+	// self - object of method calls
+	
+	return 5;
+}
+
+obj.check = function(required_self){
+	print(self)
+	print(required_self)
+	print(self)
+	
+	print(self != required_self)
+	
+	if self != required_self {
+		print(self != required_self)
+		print("failed")
+	} else {
+		print("pass")
+	}
+	
+	return
+}
+print(1)
+
+print(obj.method)
+
+var b = obj.method("method");
+
+print(obj.method)
+print(obj)
+print(2)
+var bare = obj.method
+
+print(bare)
+
+bare("bare");
+
+var nested = {}
+
+nested.o = obj
+
+print(nested)
+print(obj)
+
+print("read")
+nested.o.check(obj) // self should be obj, not nested
+print("exit")

@@ -1,0 +1,27 @@
+
+
+var m = {}
+
+m.identity = "m1"
+
+m.key = function(){
+	print(self.identity)
+};
+
+
+var a = m<-key
+
+var m2 = {}
+
+m2.identity = "m2"
+
+
+m2.copy = m->key // no prototype chain get
+m2.copy2 = m.key
+
+m2.bind = m<-key
+
+
+m2.copy()
+m2.copy2()
+m2.bind()
