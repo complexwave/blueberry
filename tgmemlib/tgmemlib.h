@@ -159,6 +159,29 @@ void *tg_alloc(tg_allocator_t *alloc, uint16_t tag);
 void tg_free(void *ptr);
 
 /*
+ * tg_alloc_linked — allocate `count` contiguous object slots.
+ * Sorts freelist to find adjacent free slots; falls back to bump pointer,
+ * then to a new arena.  Returns pointer to first slot, or NULL on failure.
+ * Caller manages the multi-slot lifetime (typically via destructor).
+ */
+void *tg_alloc_linked(tg_allocator_t *alloc, uint16_t tag, int count);
+
+/*
+ * TG_SLOT_COUNT(byte_size, obj_size) — round up byte_size to number of slots.
+ */
+#define TG_SLOT_COUNT(byte_size, obj_size) \
+	(((byte_size) + (obj_size) - 1) / (obj_size))
+
+/*
+ * tg_free_linked — return extra linked slots from a destructor.
+ * Takes total byte size of the extended struct (e.g. sizeof(my_big_struct)).
+ * Frees (slots - 1) starting at ptr + obj_size — the first slot is already
+ * being freed by the tg_free() that called the destructor.
+ * No destructors called.
+ */
+void tg_free_linked(void *ptr, size_t byte_size);
+
+/*
  * tg_cleanup — free empty arenas for a given type.
  * Always keeps at least one arena. Returns number of arenas freed.
  */

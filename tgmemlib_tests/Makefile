@@ -1,13 +1,13 @@
 CC      = gcc
-CFLAGS  = -O2 -g -Wall -Wextra -I..
+CFLAGS  = -O2 -g -Wall -Wextra -I../tgmemlib
 
-TESTS   = test_basic test_arena_chain test_pattern test_stress test_edge test_ptr_arena test_heavy
+TESTS   = test_basic test_arena_chain test_pattern test_stress test_edge test_ptr_arena test_heavy test_linked test_linked_edge
 
 .PHONY: all test clean
 
 all: test
 
-$(TESTS): %: %.c ../tgmemlib.c ../tgmemlib.h
+$(TESTS): %: %.c ../tgmemlib/tgmemlib.c ../tgmemlib/tgmemlib.h
 	$(CC) $(CFLAGS) -o $@ $<
 
 test: $(TESTS)
