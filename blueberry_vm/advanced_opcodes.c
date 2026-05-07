@@ -328,26 +328,46 @@ static void bb_op_newarray_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, u
 }
 
 /* HASHACCESS: a=dst, b=src, list=strids (2 per word); */
-static void bb_op_hashaccess_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8_t *list) {
+static inline void bb_op_hashaccess_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8_t *list) {
 	ci_ptr *stack = c->fast_stack;
 	bb_function *fn = bb_coro_frame_function(bb_coro_frame_top(c));
-	uint32_t dst_reg = (uint32_t)a;
-	uint32_t src_reg = (uint32_t)b;
+	vm_dipatch_arg dst_reg = a;
 
 	uint16_t *strings = (uint16_t *)list;
 
-	ci_ptr current = stack[src_reg];
-
-	while(*strings) {
-		if (!current) break;
-		if (*strings >= fn->unit->str_count)
-			bb_coro_error(c, "HASHACCESS: string index %u out of range", *strings);
+	ci_ptr current = stack[b];
+	
+	ci_ptr* strtable = fn->unit->str2intern;
+	
+	while(1) {
+		ci_ptr key = strtable[*strings];
+		ci_ptr map = current;
 		
-		current = bb_proto_find(c->vm, current, fn->unit->str2intern[*strings]);
+		//if (*strings >= fn->unit->str_count)
+			//bb_coro_error(c, "HASHACCESS: string index %u out of range", *strings);
 		
+		if(CI_IS_MAP(current)){
+			ci_map_kv* kv = ci_map_find_kv(map, key);
+			
+			if(kv){ 
+				current = kv->val;
+				goto lookup_next;
+			}
+		} else {
+			goto full_lookup;
+		}
+		
+		full_lookup:
+			current = bb_proto_find(c->vm, map, key);
+			if (!current) break;
+			
+		
+		lookup_next:
 		strings++;
+		if (!*strings) break;
 	}
 
+	retval:
 	ci_inc(current);
 	ci_dec(stack[dst_reg]);
 	stack[dst_reg] = current;

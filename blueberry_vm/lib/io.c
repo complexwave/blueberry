@@ -240,6 +240,26 @@ static ci_ptr bb_io_exit(bb_coro_arg *c, ci_ptr code, ci_ptr a1, ci_ptr a2) {
 	return NULL; /* unreachable */
 }
 
+/* ---- str2int(s) ---- */
+
+static ci_ptr bb_io_str2int(bb_coro_arg *c, ci_ptr s, ci_ptr a1, ci_ptr a2) {
+	(void)c; (void)a1; (void)a2;
+	BB_CHECK_STRING(s);
+
+	char buf[64];
+	size_t len = ci_str_len(s);
+	if (len >= sizeof(buf)) len = sizeof(buf) - 1;
+	memcpy(buf, ci_str_head(s), len);
+	buf[len] = '\0';
+
+	char *end;
+	long long val = strtoll(buf, &end, 10);
+	if (end == buf)
+		return NULL;
+
+	return CI_PACKINT((intptr_t)val);
+}
+
 /* ---- registration ---- */
 
 static void bb_lib_io_init(bb_vm *vm) {
@@ -255,6 +275,7 @@ static void bb_lib_io_init(bb_vm *vm) {
 		{ "dir_exists",  (bb_cfn)bb_io_dir_exists  },
 		{ "dir_create",  (bb_cfn)bb_io_dir_create  },
 		{ "exit",        (bb_cfn)bb_io_exit        },
+		{ "str2int",     (bb_cfn)bb_io_str2int     },
 	};
 
 	for (size_t i = 0; i < sizeof(io_lib) / sizeof(io_lib[0]); i++) {

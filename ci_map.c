@@ -423,7 +423,7 @@ int ci_map_set(ci_map *m, ci_ptr key, ci_ptr val) {
  * Get (lookup)
  * ============================================================ */
 // this one is fast but ptr only
-ci_map_kv *ci_map_find_kv(const ci_map *m, ci_ptr key) {
+inline ci_map_kv *ci_map_find_kv(const ci_map *m, ci_ptr key) {
 	ci_map_kv *kvs    = ci_map__kvs(m);
 	uint8_t   *preidx = ci_map__preindex(m);
 	uint32_t   mask   = m->divmask;
@@ -481,7 +481,7 @@ ci_map_kv *ci_map_find_kv(const ci_map *m, ci_ptr key) {
 	return NULL;
 }
 
-ci_ptr ci_map_get(const ci_map *m, ci_ptr key) {
+ci_ptr inline ci_map_get(const ci_map *m, ci_ptr key) {
 	ci_map_kv *kv = ci_map_find_kv(m, key);
 	if(kv) return kv->val;
 	return NULL;

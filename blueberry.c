@@ -167,7 +167,7 @@ static bb_closure *bb_vm_native_var(bb_vm *vm, const char *name, bb_cfn_var cfn)
  *  Prototype-chain lookup
  * ================================================================ */
 
-static ci_ptr bb_map_proto_find(bb_vm *vm, const ci_map *m, ci_ptr key) {
+static inline ci_ptr bb_map_proto_find(bb_vm *vm, const ci_map *m, ci_ptr key) {
 	(void)vm;
 	for (const ci_map *cur = m; cur; cur = (const ci_map *)cur->prototype) {
 		ci_ptr val = ci_map_find(cur, key);
@@ -178,7 +178,7 @@ static ci_ptr bb_map_proto_find(bb_vm *vm, const ci_map *m, ci_ptr key) {
 }
 
 /* generic prototype lookup: NULL→null, map→walk proto chain, all others→arena ops */
-static ci_ptr bb_proto_find(bb_vm *vm, ci_ptr obj, ci_ptr key) {
+static inline ci_ptr bb_proto_find(bb_vm *vm, ci_ptr obj, ci_ptr key) {
 	(void)vm;
 
 	if (!obj)
