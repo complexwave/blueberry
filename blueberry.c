@@ -18,6 +18,7 @@
 #include "encoder.c"
 #else
 #include "ciobj.c"
+#include "ci_number.c"
 #endif
 
 
@@ -208,6 +209,11 @@ static void bb_print_val(ci_ptr v) {
 		printf("%s", v == CI_BOOL(1) ? "true" : "false");
 	else if (CI_IS_ANY_STR(v))
 		printf("%.*s", (int)ci_str_len(v), (char *)ci_str_head(v));
+	else if (CI_IS_NUMBER(v)) {
+		printf("<number:%p:", (void *)v);
+		ci_number_print(v);
+		printf(">");
+	}
 	else
 		printf("<obj:%p>", (void *)v);
 }
@@ -297,6 +303,7 @@ static ci_ptr bb_native_stacktrace(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) 
 #include "blueberry_vm/proto/string.c"
 #include "blueberry_vm/proto/btree.c"
 #include "blueberry_vm/proto/coro.c"
+#include "blueberry_vm/proto/number.c"
 #include "blueberry_vm/opcodes.c"
 
 
@@ -429,6 +436,32 @@ VM_FAST_VAR(hashaccess, bb_op_hashaccess_var)
 VM_FAST_VAR(loadnull,   bb_op_loadnull_var)
 VM_FAST_VAR(moveto,     bb_op_moveto_var)
 VM_FAST_VAR(movefrom,   bb_op_movefrom_var)
+
+/* --- VAR loadint (64-bit, boxed) --- */
+
+VM_OP static void __vmop_loadint_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
+	(void)b;
+	VM_OP_ACCESS_STACK;
+	uint8_t *payload = (uint8_t *)_c;
+	uint64_t u;
+	memcpy(&u, payload, 8);
+	ci_number *n = ci_number_new(CI_NUM_I128);
+	n->i128 = (__int128)(int64_t)u;
+	VM_OP_SET_STACK(a, (ci_ptr)n);
+	BB_DISPATCH_NEXT(c);
+}
+
+/* --- VAR loaddouble (64-bit float) --- */
+
+VM_OP static void __vmop_loaddouble_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
+	(void)b;
+	VM_OP_ACCESS_STACK;
+	uint8_t *payload = (uint8_t *)_c;
+	ci_number *n = ci_number_new(CI_NUM_F64);
+	memcpy(&n->f64, payload, sizeof(double));
+	VM_OP_SET_STACK(a, (ci_ptr)n);
+	BB_DISPATCH_NEXT(c);
+}
 
 /* --- RRI-only ops (no src reg, just dst + imm32) --- */
 
@@ -606,6 +639,9 @@ static void bb_fast_table_init(void) {
 	FT_VAR(B_HASHACCESS,  hashaccess);
 	FT_VAR(B_LOADNULL,    loadnull);
 
+	bb_fast_table[BB_ST_VAR | B_LOADINT]    = __vmop_loadint_var;
+	bb_fast_table[BB_ST_VAR | B_LOADDOUBLE] = __vmop_loaddouble_var;
+
 	#undef FT_RRR
 	#undef FT_RRI
 	#undef FT_RRS
@@ -720,6 +756,7 @@ static void bb_vm_execute(bb_coro *c) {
 #include "blueberry_vm/lib/map.c"
 #include "blueberry_vm/lib/proto.c"
 #include "blueberry_vm/lib/callapi.c"
+#include "blueberry_vm/lib/math.c"
 
 /* ================================================================
  *  Compile .ci to .cbc
@@ -752,6 +789,7 @@ int main(int argc, char **argv) {
 	ci_arr_register();
 	ci_map_register();
 	ci_tree_register();
+	ci_number_register();
 	bb_vm_types_register();
 	bb_fast_table_init();
 
@@ -802,6 +840,7 @@ int main(int argc, char **argv) {
 	bb_proto_array_init(vm);
 	bb_proto_string_init(vm);
 	bb_proto_btree_init(vm);
+	bb_proto_number_init(vm);
 
 	/* init stdlib */
 	bb_lib_io_init(vm);
@@ -810,6 +849,7 @@ int main(int argc, char **argv) {
 	bb_lib_proto_init(vm);
 	bb_lib_callapi_init(vm);
 	bb_lib_coro_init(vm);
+	bb_lib_math_init(vm);
 
 	/* expose script arguments as global argv array */
 	{

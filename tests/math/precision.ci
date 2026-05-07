@@ -1,0 +1,63 @@
+// math.precision — getter/setter and effect on comparison operators
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// === getter/setter ===
+
+print("running precision_default")
+var old = math.precision()
+test.assert(math.cmp(old, 0.000000001) == 0, "precision_default")
+
+print("running precision_set_get")
+math.precision(0.001)
+var cur = math.precision()
+test.assert(math.cmp(cur, 0.001) == 0, "precision_set_get")
+
+print("running precision_set_returns_old")
+math.precision(0.0)
+math.precision(0.5)
+var prev = math.precision(0.1)
+test.assert(math.cmp(prev, 0.5) == 0, "precision_set_returns_old")
+
+// reset
+math.precision(0.0)
+
+// === effect on math.cmp ===
+
+print("running cmp_exact_not_equal")
+// without epsilon, 1.0 and 1.0001 are different
+test.assert(math.cmp(1.0, 1.0001) != 0, "cmp_exact_not_equal")
+
+print("running cmp_eps_equal")
+// with epsilon, they should be equal
+test.assert(math.cmp(1.0, 1.0001, 0.001) == 0, "cmp_eps_equal")
+
+print("running cmp_eps_still_different")
+// but 1.0 vs 2.0 still different even with epsilon
+test.assert(math.cmp(1.0, 2.0, 0.001) != 0, "cmp_eps_still_different")
+
+// === global precision affects math.cmp default ===
+
+print("running global_precision_affects_cmp")
+math.precision(0.01)
+// 1.0 vs 1.005 — relative diff is 0.005, which is < 0.01 * 1.005
+test.assert(math.cmp(1.0, 1.005) == 0, "global_precision_affects_cmp")
+
+print("running global_precision_still_separates")
+// 1.0 vs 1.1 — relative diff 0.1 > 0.01 * 1.1
+test.assert(math.cmp(1.0, 1.1) != 0, "global_precision_still_separates")
+
+print("running explicit_eps_overrides_global")
+// explicit eps=0 should override global precision
+math.precision(1.0)
+test.assert(math.cmp(1.0, 1.5, 0.0) != 0, "explicit_eps_overrides_global")
+
+// === cleanup: restore default ===
+
+math.precision(0.000000001)
+
+print("running precision_restored")
+test.assert(math.cmp(math.precision(), 0.000000001) == 0, "precision_restored")
+
+test.done()

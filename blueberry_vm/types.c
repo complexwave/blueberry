@@ -20,20 +20,15 @@
 
 #define bb_obj_arena_prototype(obj) ((ci_map *)tg_ptr_arena(obj)->ops.prototype)
 
-static ci_map *bb_proto_register_cistr(bb_vm *vm, ci_ptr name) {
+static void bb_proto_register_cistr(bb_vm *vm, ci_map *proto, ci_ptr name) {
 	ci_ptr existing = ci_map_find(vm->prototypes, name);
 	if (existing) {
 		bb_error("bb_proto_register: '%.*s' already registered",
 		         (int)ci_str_len(name), (char *)ci_str_head(name));
 	}
 
-	ci_map *m = ci_map_ident_new(8);
-	ci_nocnt(m);
-
-	ci_map_put(m, BB_CSTR(vm, "typename"), name);
-	ci_map_put(vm->prototypes, name, (ci_ptr)m);
-
-	return m;
+	ci_map_put(proto, BB_CSTR(vm, "typename"), name);
+	ci_map_put(vm->prototypes, name, (ci_ptr)proto);
 }
 
 /*
@@ -50,7 +45,12 @@ static void bb_set_arena_prototype(uint16_t tag, ci_map *proto) {
 
 static ci_map *bb_proto_register(bb_vm *vm, const char *name) {
 	ci_ptr n = bb_vm_istring(vm, name, (uint32_t)strlen(name));
-	return bb_proto_register_cistr(vm, n);
+	
+	ci_map *m = ci_map_ident_new(16);
+	ci_nocnt(m);
+	
+	bb_proto_register_cistr(vm, m, n);
+	return m;
 }
 
 static ci_map *bb_proto_get(bb_vm *vm, const char *name) {
@@ -69,4 +69,24 @@ static ci_map *bb_proto_new_map(bb_vm *vm, const char *name, uint32_t size) {
 	m->prototype = (ci_ptr)proto;
 
 	return m;
+}
+
+static bb_metaproto *bb_proto_register_meta(bb_vm *vm, const char *name) {
+	bb_metaproto *mp = tg_alloc_linked(ci_alloc, CI_MAP, sizeof(bb_metaproto));
+	if (!mp) return NULL;
+
+	ci_map *m = &mp->map;
+	if (!ci_map_init(m, 16)) return NULL;
+	m->hashcmp = ci_hashcmp_identity;
+	m->gc.flags |= CI_TAG_METAPROTO;
+	ci_nocnt(m);
+
+	mp->op_add = NULL;
+	mp->op_sub = NULL;
+	mp->op_mul = NULL;
+	mp->op_div = NULL;
+
+	ci_ptr n = bb_vm_istring(vm, name, (uint32_t)strlen(name));
+	bb_proto_register_cistr(vm, m, n);
+	return mp;
 }

@@ -12,7 +12,7 @@
 static int test_linked_basic(void) {
     tg_allocator_t *alloc = tg_allocator_new();
     tg_allocator_register_type(alloc, 0, 32);
-    void *p = tg_alloc_linked(alloc, 0, 3);
+    void *p = tg_alloc_linked(alloc, 0, 3 * 32);
     if (!p) { tg_allocator_destroy(alloc); FAIL("linked_basic", "returned NULL"); }
 
     tg_arena_t *ar = tg_ptr_arena(p);
@@ -45,7 +45,7 @@ static int test_linked_livecount(void) {
     tg_arena_t *ar = tg_ptr_arena(a);
     if (ar->live_count != 1) { tg_allocator_destroy(alloc); FAIL("linked_livecount", "count != 1 after single alloc"); }
 
-    void *p = tg_alloc_linked(alloc, 0, 4);
+    void *p = tg_alloc_linked(alloc, 0, 4 * 16);
     if (!p) { tg_allocator_destroy(alloc); FAIL("linked_livecount", "linked alloc NULL"); }
     if (ar->live_count != 5) { tg_allocator_destroy(alloc); FAIL("linked_livecount", "count != 5 after linked alloc"); }
 
@@ -86,7 +86,7 @@ static int test_linked_from_freelist(void) {
     tg_free(objs[4]);
 
     /* now ask for 3 contiguous — sort should find a run within [3..7] */
-    void *linked = tg_alloc_linked(alloc, 0, 3);
+    void *linked = tg_alloc_linked(alloc, 0, 3 * 16);
     if (!linked) { tg_allocator_destroy(alloc); FAIL("linked_from_freelist", "linked alloc NULL"); }
 
     /* verify contiguity */
@@ -112,7 +112,7 @@ static int test_linked_single(void) {
     tg_allocator_t *alloc = tg_allocator_new();
     tg_allocator_register_type(alloc, 0, 24);
 
-    void *p = tg_alloc_linked(alloc, 0, 1);
+    void *p = tg_alloc_linked(alloc, 0, 1 * 24);
     if (!p) { tg_allocator_destroy(alloc); FAIL("linked_single", "returned NULL"); }
 
     tg_arena_t *ar = tg_ptr_arena(p);
@@ -148,7 +148,7 @@ static int test_linked_new_arena(void) {
         tg_free(objs[i]);
 
     /* request 2 contiguous — freelist has no adjacent pair, bump exhausted → new arena */
-    void *linked = tg_alloc_linked(alloc, 0, 2);
+    void *linked = tg_alloc_linked(alloc, 0, 2 * 16);
     if (!linked) { free(objs); tg_allocator_destroy(alloc); FAIL("linked_new_arena", "returned NULL"); }
 
     /* should be in a different arena */
@@ -166,7 +166,7 @@ static int test_free_linked_reuse(void) {
     tg_allocator_t *alloc = tg_allocator_new();
     tg_allocator_register_type(alloc, 0, 16);
 
-    void *p = tg_alloc_linked(alloc, 0, 3);
+    void *p = tg_alloc_linked(alloc, 0, 3 * 16);
     if (!p) { tg_allocator_destroy(alloc); FAIL("free_linked_reuse", "alloc NULL"); }
 
     /* free_linked returns extra 2, tg_free returns first */

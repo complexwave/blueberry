@@ -251,10 +251,29 @@ static bc_buf *be_encode_function(b_function *f) {
 				0, op->rri32.imm);
 		}
 		else if (op->enc == B_ENC_RI) {
-			bc_emit_fixed(out, BC_SUB_RRI, op->op,
-				op->rri32.dst->number,
-				op->rri32.dst->number,
-				0, op->rri32.imm);
+			int64_t imm = op->rri32.imm;
+			if (imm >= INT32_MIN && imm <= INT32_MAX) {
+				bc_emit_fixed(out, BC_SUB_RRI, op->op,
+					op->rri32.dst->number,
+					op->rri32.dst->number,
+					0, (uint32_t)imm);
+			} else {
+				if (op->op != B_LOADINT)
+					b_error("64-bit imm supported only on LOADINT");
+				uint64_t u = (uint64_t)imm;
+				bc_emit_var_header(out, op->op,
+					op->rri32.dst->number, 0, 2, 0);
+				bc_buf_u32(out, (uint32_t)u);
+				bc_buf_u32(out, (uint32_t)(u >> 32));
+			}
+		}
+		else if (op->enc == B_ENC_RD) {
+			uint64_t u;
+			memcpy(&u, &op->rd.imm, sizeof(double));
+			bc_emit_var_header(out, op->op,
+				op->rd.dst->number, 0, 2, 0);
+			bc_buf_u32(out, (uint32_t)u);
+			bc_buf_u32(out, (uint32_t)(u >> 32));
 		}
 		else if (op->enc == B_ENC_R) {
 			if (op->op == B_JMPF || op->op == B_JMPT) {
@@ -636,6 +655,20 @@ static void bc_dump(const uint8_t *data, uint32_t len,
 						const char *ks = (sid < str_cnt) ? strs[sid] : "?";
 						printf("[\"%s\"]", ks);
 					}
+				} else if (opnum == B_LOADDOUBLE) {
+					double d;
+					memcpy(&d, payload, sizeof(double));
+					printf("r%u, %g", r1, d);
+				} else if (opnum == B_LOADINT) {
+					uint64_t u = (uint32_t)payload[0]
+					           | ((uint64_t)payload[1] << 8)
+					           | ((uint64_t)payload[2] << 16)
+					           | ((uint64_t)payload[3] << 24)
+					           | ((uint64_t)payload[4] << 32)
+					           | ((uint64_t)payload[5] << 40)
+					           | ((uint64_t)payload[6] << 48)
+					           | ((uint64_t)payload[7] << 56);
+					printf("r%u, %lld", r1, (long long)(int64_t)u);
 				} else {
 					printf("r%u, r%u  // +%u words", r1, r2, nwords);
 					for (uint32_t w = 0; w < nwords; w += 2) {

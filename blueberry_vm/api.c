@@ -11,6 +11,7 @@
 #define bb_is_map(p)     CI_IS_MAP(p)
 #define bb_is_bool(p)    CI_IS_BOOL(p)
 #define bb_is_coro(p)    CI_IS_CORO(p)
+#define bb_is_number(p)  (CI_IS_INT(p) || CI_IS_NUMBER(p))
 
 /* ---- CHECK macros (return NULL on type mismatch) ---- */
 
@@ -30,6 +31,10 @@
 
 #define BB_CHECK_INT(a) do { \
 	if (!bb_is_int(a)) { bb_coro_error(c, "%s: expected int", __func__); } \
+} while(0)
+
+#define BB_CHECK_NUMBER(a) do { \
+	if (!bb_is_number(a)) { bb_coro_error(c, "%s: expected number", __func__); } \
 } while(0)
 
 #define BB_CHECK_CLOSURE(a) do { \

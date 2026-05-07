@@ -1,0 +1,255 @@
+// Integer arithmetic tests — tagged ints, overflow autoboxing, all operators
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// helper: compare numbers (boxed or tagged) by value
+fn eq(a, b, name) {
+	test.assert(math.cmp(a, b) == 0, name)
+}
+
+// === basic arithmetic ===
+
+print("running int_add")
+test.equal(1 + 2, 3, "int_add")
+
+print("running int_sub")
+test.equal(10 - 3, 7, "int_sub")
+
+print("running int_mul")
+test.equal(6 * 7, 42, "int_mul")
+
+print("running int_div")
+test.equal(10 / 3, 3, "int_div")
+
+print("running int_mod")
+test.equal(10 % 3, 1, "int_mod")
+
+print("running int_pow")
+test.equal(2 ** 10, 1024, "int_pow")
+
+print("running int_neg")
+test.equal(-5, 0 - 5, "int_neg")
+
+// === identity / zero ===
+
+print("running add_zero")
+test.equal(42 + 0, 42, "add_zero")
+
+print("running sub_zero")
+test.equal(42 - 0, 42, "sub_zero")
+
+print("running mul_one")
+test.equal(42 * 1, 42, "mul_one")
+
+print("running mul_zero")
+test.equal(42 * 0, 0, "mul_zero")
+
+print("running div_one")
+test.equal(42 / 1, 42, "div_one")
+
+print("running mod_one")
+test.equal(42 % 1, 0, "mod_one")
+
+// === negative operands ===
+
+print("running neg_add")
+test.equal(-3 + -7, -10, "neg_add")
+
+print("running neg_sub")
+test.equal(-3 - -7, 4, "neg_sub")
+
+print("running neg_mul")
+test.equal(-3 * 7, -21, "neg_mul")
+
+print("running neg_mul_neg")
+test.equal(-3 * -7, 21, "neg_mul_neg")
+
+print("running neg_div")
+test.equal(-10 / 3, -3, "neg_div")
+
+print("running neg_mod")
+test.equal(-10 % 3, -1, "neg_mod")
+
+// === bitwise on tagged ints ===
+
+print("running bit_and")
+test.equal(0xFF & 0x0F, 0x0F, "bit_and")
+
+print("running bit_or")
+test.equal(0xF0 | 0x0F, 0xFF, "bit_or")
+
+print("running bit_xor")
+test.equal(0xFF ^ 0x0F, 0xF0, "bit_xor")
+
+print("running bit_inv")
+test.equal(~0, -1, "bit_inv")
+
+print("running bit_lshift")
+test.equal(1 << 10, 1024, "bit_lshift")
+
+print("running bit_rshift")
+test.equal(1024 >> 10, 1, "bit_rshift")
+
+print("running bit_rshift_neg")
+test.equal(-1024 >> 10, -1, "bit_rshift_neg")
+
+// === comparison ===
+
+print("running cmp_eq")
+test.assert(1 == 1, "cmp_eq")
+
+print("running cmp_neq")
+test.assert(1 != 2, "cmp_neq")
+
+print("running cmp_lt")
+test.assert(1 < 2, "cmp_lt")
+
+print("running cmp_gt")
+test.assert(2 > 1, "cmp_gt")
+
+print("running cmp_lte")
+test.assert(1 <= 1, "cmp_lte")
+
+print("running cmp_lte_less")
+test.assert(1 <= 2, "cmp_lte_less")
+
+print("running cmp_gte")
+test.assert(1 >= 1, "cmp_gte")
+
+print("running cmp_gte_greater")
+test.assert(2 >= 1, "cmp_gte_greater")
+
+print("running cmp_neg_lt")
+test.assert(-5 < 0, "cmp_neg_lt")
+
+print("running cmp_neg_gt")
+test.assert(0 > -5, "cmp_neg_gt")
+
+// === overflow autoboxing ===
+
+print("running overflow_add")
+var max_tagged = (1 << 62) - 1
+var overflowed = max_tagged + 1
+test.assert(math.boxed(overflowed), "overflow_add")
+
+print("running overflow_sub")
+var min_neg = 0 - (1 << 62)
+var underflowed = min_neg - 1
+test.assert(math.boxed(underflowed), "overflow_sub")
+
+print("running overflow_mul")
+var big = 1000000000000000
+var bigger = big * big
+test.assert(math.boxed(bigger), "overflow_mul")
+
+print("running overflow_stays_tagged")
+var safe_big = 1 << 61
+test.assert(!math.boxed(safe_big), "overflow_stays_tagged")
+
+// === shift overflow/unbox ===
+
+print("running lshift_overflow_boxes")
+var shifted = number(1) << 64
+test.assert(math.boxed(shifted), "lshift_overflow_boxes")
+
+print("running rshift_unboxes")
+var boxed_big = number(1) << 64
+var small = boxed_big >> 64
+test.assert(!math.boxed(small), "rshift_unboxes")
+test.equal(small, 1, "rshift_unboxes_value")
+
+print("running lshift_small_stays_unboxed")
+var n = number(1) << 10
+test.assert(!math.boxed(n), "lshift_small_stays_unboxed")
+test.equal(n, 1024, "lshift_small_stays_unboxed_value")
+
+// === boxed int arithmetic (use math.cmp for value compare) ===
+
+print("running boxed_add")
+eq(number(100) + number(200), 300, "boxed_add")
+
+print("running boxed_sub")
+eq(number(100) - number(200), -100, "boxed_sub")
+
+print("running boxed_mul")
+eq(number(100) * number(200), 20000, "boxed_mul")
+
+print("running boxed_div")
+eq(number(200) / number(100), 2, "boxed_div")
+
+print("running boxed_mod")
+eq(number(10) % number(3), 1, "boxed_mod")
+
+// === mixed tagged + boxed ===
+
+print("running mixed_add_boxed_left")
+eq(number(10) + 5, 15, "mixed_add_boxed_left")
+
+print("running mixed_add_boxed_right")
+eq(5 + number(10), 15, "mixed_add_boxed_right")
+
+print("running mixed_sub")
+eq(number(10) - 3, 7, "mixed_sub")
+
+print("running mixed_mul")
+eq(number(6) * 7, 42, "mixed_mul")
+
+print("running mixed_div")
+eq(number(42) / 7, 6, "mixed_div")
+
+print("running mixed_mod")
+eq(number(10) % 3, 1, "mixed_mod")
+
+// === boxed bitwise ===
+
+print("running boxed_bit_and")
+eq(number(0xFF) & number(0x0F), 0x0F, "boxed_bit_and")
+
+print("running boxed_bit_or")
+eq(number(0xF0) | number(0x0F), 0xFF, "boxed_bit_or")
+
+print("running boxed_bit_xor")
+eq(number(0xFF) ^ number(0x0F), 0xF0, "boxed_bit_xor")
+
+print("running boxed_bit_inv")
+eq(~number(0), -1, "boxed_bit_inv")
+
+// === mixed bitwise (tagged + boxed) ===
+
+print("running mixed_bit_and")
+eq(0xFF & number(0x0F), 0x0F, "mixed_bit_and")
+
+print("running mixed_bit_or")
+eq(0xF0 | number(0x0F), 0xFF, "mixed_bit_or")
+
+print("running mixed_bit_xor")
+eq(0xFF ^ number(0x0F), 0xF0, "mixed_bit_xor")
+
+// === 64-bit values (need boxed) ===
+
+print("running bit64_roundtrip")
+var v64 = number(1) << 63
+var back = v64 >> 63
+test.equal(back, 1, "bit64_roundtrip")
+test.assert(!math.boxed(back), "bit64_roundtrip_unboxed")
+
+print("running bit64_and_mask")
+var full64 = (number(1) << 64) - number(1)
+var low32 = full64 & number(0xFFFFFFFF)
+eq(low32, 0xFFFFFFFF, "bit64_and_mask")
+
+// === 128-bit range ===
+
+print("running i128_shift_roundtrip")
+var v128 = number(1) << 126
+var v_back = v128 >> 126
+test.equal(v_back, 1, "i128_shift_roundtrip")
+
+print("running i128_mul_shift")
+var base = number(1) << 64
+var doubled = base * number(2)
+var halved = doubled >> 1
+eq(halved, base, "i128_mul_shift")
+
+test.done()

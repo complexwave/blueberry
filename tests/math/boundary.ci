@@ -1,0 +1,64 @@
+// 63/64-bit boundary tests — tagged int limits and boxing transitions
+//
+// LOADINT: i32 range → tagged (CI_PACKINT), larger → boxed ci_number i128
+// ci_number_int(): unboxes back to tagged if result fits intptr_t
+// So literals > INT32_MAX are always boxed, but arithmetic results
+// can be tagged up to 62-bit signed range.
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// === literal loading boundary (i32) ===
+
+print("running literal_i32_max_tagged")
+var m = 2147483647
+test.equal(math.boxed(m), false, "literal_i32_max_tagged")
+
+print("running literal_over_i32_boxed")
+var big = 2147483648
+test.equal(math.boxed(big), true, "literal_over_i32_boxed")
+test.equal(math.type(big), "int", "literal_over_i32_type")
+
+print("running literal_neg_i32_tagged")
+var nm = -2147483647
+test.equal(math.boxed(nm), false, "literal_neg_i32_tagged")
+
+// === arithmetic can unbox boxed results ===
+
+print("running boxed_add_unboxes")
+var a = 2147483648
+var b = 1
+var r = a - a
+test.equal(math.boxed(r), false, "boxed_add_unboxes")
+test.equal(r, 0, "boxed_add_unboxes_value")
+
+print("running boxed_sub_to_small")
+r = a - 2147483647
+test.equal(math.boxed(r), false, "boxed_sub_to_small")
+test.equal(r, 1, "boxed_sub_to_small_value")
+
+print("running boxed_div_to_small")
+r = a / a
+test.equal(math.boxed(r), false, "boxed_div_to_small")
+test.equal(r, 1, "boxed_div_to_small_value")
+
+// === overflow stays boxed ===
+
+print("running big_mul_stays_boxed")
+var big2 = 1000000000000000
+r = big2 * big2
+test.equal(math.boxed(r), true, "big_mul_stays_boxed")
+test.equal(math.type(r), "int", "big_mul_stays_boxed_type")
+
+// === neg boundary ===
+
+print("running neg_small_stays_tagged")
+r = -42
+test.equal(math.boxed(r), false, "neg_small_stays_tagged")
+
+// -1e15 fits intptr_t so neg unboxes it back to tagged — correct!
+print("running neg_boxed_unboxes")
+r = -big2
+test.equal(math.boxed(r), false, "neg_boxed_unboxes")
+
+test.done()

@@ -17,7 +17,7 @@ decoder:
 	$(CC) $(CFLAGS) -o decoder decoder.c cma/cma.c
 
 blueberry:
-	$(CC) $(CFLAGS) -o blueberry blueberry.c cma/cma.c
+	$(CC) $(CFLAGS) -o blueberry blueberry.c cma/cma.c -lm
 
 ci_timer_test:
 	$(CC) $(CFLAGS) -DCI_TIMER_TEST -DCI_AUTONOW -o ci_timer_test ci_timer_test.c

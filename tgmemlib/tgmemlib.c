@@ -256,7 +256,8 @@ void tg_free(void *ptr) {
 	ar->live_count--;
 }
 
-void *tg_alloc_linked(tg_allocator_t *alloc, uint16_t tag, int count) {
+void *tg_alloc_linked(tg_allocator_t *alloc, uint16_t tag, size_t byte_size) {
+	int count = TG_SLOT_COUNT(byte_size, alloc->obj_sizes[tag]);
 	assert(count >= 1);
 
 	/* try existing head arena */

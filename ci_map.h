@@ -77,8 +77,18 @@ typedef struct {
 #define CI_IS_MAP(ptr)      CI_CHECK_MASK_FAMILY(ptr, CI_MAP_TAG | CI_OBJECT, CI_MAP_FAMILY)
 
 #ifndef CI_MAP_LOAD_FACTOR
-#define CI_MAP_LOAD_FACTOR  0.7
+#define CI_MAP_LOAD_FACTOR  0.8
 #endif
+
+// gchdr has 16bit flags. 0-7 are reserved for user use
+
+// 0-3 are reserved for map itself
+// 4-7 are for use by classes that suibclass map like ci_prototye
+#define CI_MAP_USER_FLAG1 (1 << 4)
+#define CI_MAP_USER_FLAG2 (1 << 5)
+#define CI_MAP_USER_FLAG3 (1 << 6)
+#define CI_MAP_USER_FLAG4 (1 << 7)
+
 
 /* ============================================================
  * Inline accessors

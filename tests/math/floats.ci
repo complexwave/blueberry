@@ -1,0 +1,188 @@
+// Float arithmetic tests — doubles, int-to-float promotion, precision
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// helper: compare floats with default epsilon
+fn feq(a, b, name) {
+	test.assert(math.cmp(a, b) == 0, name)
+}
+
+// === basic float arithmetic ===
+
+print("running float_add")
+feq(3.14 + 2.0, 5.14, "float_add")
+
+print("running float_sub")
+feq(3.14 - 2.0, 1.14, "float_sub")
+
+print("running float_mul")
+feq(3.14 * 2.0, 6.28, "float_mul")
+
+print("running float_div")
+feq(6.28 / 2.0, 3.14, "float_div")
+
+// === float identity ===
+
+print("running float_add_zero")
+feq(3.14 + 0.0, 3.14, "float_add_zero")
+
+print("running float_sub_zero")
+feq(3.14 - 0.0, 3.14, "float_sub_zero")
+
+print("running float_mul_one")
+feq(3.14 * 1.0, 3.14, "float_mul_one")
+
+print("running float_div_one")
+feq(3.14 / 1.0, 3.14, "float_div_one")
+
+print("running float_mul_zero")
+feq(3.14 * 0.0, 0.0, "float_mul_zero")
+
+// === negative floats ===
+
+print("running float_neg_add")
+feq(-3.14 + -2.0, -5.14, "float_neg_add")
+
+print("running float_neg_mul")
+feq(-3.14 * 2.0, -6.28, "float_neg_mul")
+
+print("running float_neg_mul_neg")
+feq(-3.14 * -2.0, 6.28, "float_neg_mul_neg")
+
+print("running float_neg_div")
+feq(-6.28 / 2.0, -3.14, "float_neg_div")
+
+// === int + float promotion (tagged int + double) ===
+
+print("running promo_int_add_float")
+feq(1 + 3.14, 4.14, "promo_int_add_float")
+
+print("running promo_float_add_int")
+feq(3.14 + 1, 4.14, "promo_float_add_int")
+
+print("running promo_int_sub_float")
+feq(10 - 3.14, 6.86, "promo_int_sub_float")
+
+print("running promo_float_sub_int")
+feq(3.14 - 1, 2.14, "promo_float_sub_int")
+
+print("running promo_int_mul_float")
+feq(2 * 3.14, 6.28, "promo_int_mul_float")
+
+print("running promo_float_mul_int")
+feq(3.14 * 2, 6.28, "promo_float_mul_int")
+
+print("running promo_int_div_float")
+var div_r = 10 / 3.14
+test.assert(math.cmp(div_r, 3.18, 0.01) == 0, "promo_int_div_float")
+
+print("running promo_float_div_int")
+feq(3.14 / 2, 1.57, "promo_float_div_int")
+
+// === boxed int + float promotion ===
+
+print("running promo_boxed_add_float")
+feq(number(10) + 3.14, 13.14, "promo_boxed_add_float")
+
+print("running promo_float_add_boxed")
+feq(3.14 + number(10), 13.14, "promo_float_add_boxed")
+
+print("running promo_boxed_mul_float")
+feq(number(10) * 3.14, 31.4, "promo_boxed_mul_float")
+
+print("running promo_float_mul_boxed")
+feq(3.14 * number(10), 31.4, "promo_float_mul_boxed")
+
+print("running promo_boxed_sub_float")
+feq(number(10) - 3.14, 6.86, "promo_boxed_sub_float")
+
+print("running promo_boxed_div_float")
+var div_r2 = number(10) / 3.14
+test.assert(math.cmp(div_r2, 3.18, 0.01) == 0, "promo_boxed_div_float")
+
+// === float mod ===
+
+print("running float_mod")
+feq(10.5 % 3.0, 1.5, "float_mod")
+
+print("running float_mod_promo")
+feq(10 % 3.14, 0.58, "float_mod_promo")
+
+// === float is always boxed ===
+
+print("running float_is_boxed")
+test.assert(math.boxed(3.14), "float_is_boxed")
+
+print("running float_result_is_boxed")
+var fr = 3.14 + 2.0
+test.assert(math.boxed(fr), "float_result_is_boxed")
+
+print("running promo_result_is_boxed")
+var pr = 1 + 3.14
+test.assert(math.boxed(pr), "promo_result_is_boxed")
+
+// === math.cmp with floats ===
+
+print("running cmp_float_lt")
+test.equal(math.cmp(1.0, 2.0), -1, "cmp_float_lt")
+
+print("running cmp_float_gt")
+test.equal(math.cmp(2.0, 1.0), 1, "cmp_float_gt")
+
+print("running cmp_float_eq")
+test.equal(math.cmp(3.14, 3.14), 0, "cmp_float_eq")
+
+print("running cmp_float_near")
+test.equal(math.cmp(1.0000000001, 1.0), 0, "cmp_float_near")
+
+print("running cmp_float_not_near")
+test.equal(math.cmp(1.001, 1.0), 1, "cmp_float_not_near")
+
+// === math.cmp int vs float promotion ===
+
+print("running cmp_int_float")
+test.equal(math.cmp(1, 1.0), 0, "cmp_int_float")
+
+print("running cmp_float_int")
+test.equal(math.cmp(3.14, 3), 1, "cmp_float_int")
+
+print("running cmp_boxed_float")
+test.equal(math.cmp(number(10), 10.0), 0, "cmp_boxed_float")
+
+// === bitwise on floats (converts to int) ===
+
+// helper for int value compare (like integers.ci)
+fn eq(a, b, name) {
+	test.assert(math.cmp(a, b) == 0, name)
+}
+
+print("running float_bit_and")
+eq(3.9 & 1.1, 1, "float_bit_and")
+
+print("running float_bit_or")
+eq(3.0 | 1.0, 3, "float_bit_or")
+
+print("running float_bit_xor")
+eq(3.0 ^ 1.0, 2, "float_bit_xor")
+
+print("running float_bit_inv")
+eq(~0.0, -1, "float_bit_inv")
+
+print("running float_bit_lshift")
+eq(1.0 << 10, 1024, "float_bit_lshift")
+
+print("running float_bit_rshift")
+eq(1024.0 >> 10, 1, "float_bit_rshift")
+
+
+
+// === small float values ===
+
+print("running float_small_add")
+feq(0.1 + 0.2, 0.3, "float_small_add")
+
+print("running float_small_mul")
+feq(0.001 * 1000.0, 1.0, "float_small_mul")
+
+test.done()

@@ -1,0 +1,156 @@
+// Comparison operator tests — lt/gt/le/ge via cmp metamethod dispatch
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// === tagged int comparisons (fast path, no metamethod) ===
+
+print("running int_lt")
+test.assert(1 < 2, "int_lt")
+
+print("running int_lt_neg")
+test.assert(-5 < 0, "int_lt_neg")
+
+print("running int_lt_false")
+test.assert(!(3 < 2), "int_lt_false")
+
+print("running int_gt")
+test.assert(2 > 1, "int_gt")
+
+print("running int_gt_neg")
+test.assert(0 > -5, "int_gt_neg")
+
+print("running int_gt_false")
+test.assert(!(2 > 3), "int_gt_false")
+
+print("running int_le_less")
+test.assert(4 <= 5, "int_le_less")
+
+print("running int_le_eq")
+test.assert(5 <= 5, "int_le_eq")
+
+print("running int_le_false")
+test.assert(!(6 <= 5), "int_le_false")
+
+print("running int_ge_greater")
+test.assert(6 >= 5, "int_ge_greater")
+
+print("running int_ge_eq")
+test.assert(5 >= 5, "int_ge_eq")
+
+print("running int_ge_false")
+test.assert(!(4 >= 5), "int_ge_false")
+
+// === float comparisons (metamethod dispatch through op_cmp) ===
+
+print("running float_lt")
+test.assert(1.5 < 2.5, "float_lt")
+
+print("running float_lt_false")
+test.assert(!(3.0 < 2.0), "float_lt_false")
+
+print("running float_gt")
+test.assert(2.5 > 1.5, "float_gt")
+
+print("running float_gt_false")
+test.assert(!(1.0 > 2.0), "float_gt_false")
+
+print("running float_le_less")
+test.assert(1.5 <= 2.5, "float_le_less")
+
+print("running float_le_eq")
+test.assert(1.5 <= 1.5, "float_le_eq")
+
+print("running float_le_false")
+test.assert(!(3.5 <= 2.5), "float_le_false")
+
+print("running float_ge_greater")
+test.assert(2.5 >= 1.5, "float_ge_greater")
+
+print("running float_ge_eq")
+test.assert(1.5 >= 1.5, "float_ge_eq")
+
+print("running float_ge_false")
+test.assert(!(0.5 >= 1.5), "float_ge_false")
+
+// === boxed number comparisons ===
+
+print("running boxed_lt")
+test.assert(number(1) < number(2), "boxed_lt")
+
+print("running boxed_gt")
+test.assert(number(2) > number(1), "boxed_gt")
+
+print("running boxed_le")
+test.assert(number(3) <= number(3), "boxed_le")
+
+print("running boxed_ge")
+test.assert(number(3) >= number(3), "boxed_ge")
+
+// === cross-type: tagged int vs float ===
+
+print("running cross_int_float_lt")
+test.assert(1 < 1.5, "cross_int_float_lt")
+
+print("running cross_float_int_lt")
+test.assert(0.5 < 1, "cross_float_int_lt")
+
+print("running cross_int_float_gt")
+test.assert(2 > 1.5, "cross_int_float_gt")
+
+print("running cross_float_int_gt")
+test.assert(1.5 > 1, "cross_float_int_gt")
+
+print("running cross_int_float_le")
+test.assert(5 <= 5.0, "cross_int_float_le")
+
+print("running cross_float_int_ge")
+test.assert(5.0 >= 5, "cross_float_int_ge")
+
+// === cross-type: tagged int vs boxed ===
+
+print("running cross_int_boxed_lt")
+test.assert(1 < number(2), "cross_int_boxed_lt")
+
+print("running cross_boxed_int_gt")
+test.assert(number(2) > 1, "cross_boxed_int_gt")
+
+print("running cross_int_boxed_le")
+test.assert(5 <= number(5), "cross_int_boxed_le")
+
+print("running cross_boxed_int_ge")
+test.assert(number(5) >= 5, "cross_boxed_int_ge")
+
+// === math.precision — global cmp precision affects operators ===
+
+print("running precision_get_default")
+test.assert(math.cmp(math.precision(), 0.0) == 0, "precision_get_default")
+
+print("running precision_set_returns_old")
+var old = math.precision(0.1)
+test.assert(math.cmp(old, 0.0) == 0, "precision_set_returns_old")
+
+// with precision=0.1, values within 10% are equal
+print("running precision_le_near")
+test.assert(1.05 <= 1.0, "precision_le_near")
+
+print("running precision_ge_near")
+test.assert(1.0 >= 1.05, "precision_ge_near")
+
+print("running precision_lt_far")
+test.assert(0.5 < 1.0, "precision_lt_far")
+
+print("running precision_gt_far")
+test.assert(1.0 > 0.5, "precision_gt_far")
+
+// restore precision
+math.precision(0)
+
+print("running precision_restored")
+test.assert(math.cmp(math.precision(), 0.0) == 0, "precision_restored")
+
+// after restore, near values are no longer equal
+print("running precision_off_not_le")
+test.assert(!(1.05 <= 1.0), "precision_off_not_le")
+
+test.done()

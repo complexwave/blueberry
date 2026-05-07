@@ -159,12 +159,13 @@ void *tg_alloc(tg_allocator_t *alloc, uint16_t tag);
 void tg_free(void *ptr);
 
 /*
- * tg_alloc_linked — allocate `count` contiguous object slots.
+ * tg_alloc_linked — allocate contiguous slots for `byte_size` bytes.
+ * Computes slot count from byte_size and the tag's obj_size.
  * Sorts freelist to find adjacent free slots; falls back to bump pointer,
  * then to a new arena.  Returns pointer to first slot, or NULL on failure.
  * Caller manages the multi-slot lifetime (typically via destructor).
  */
-void *tg_alloc_linked(tg_allocator_t *alloc, uint16_t tag, int count);
+void *tg_alloc_linked(tg_allocator_t *alloc, uint16_t tag, size_t byte_size);
 
 /*
  * TG_SLOT_COUNT(byte_size, obj_size) — round up byte_size to number of slots.

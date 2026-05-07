@@ -1,0 +1,280 @@
+// math namespace library tests — all functions + constants
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// helper: float equality via math.cmp with epsilon
+fn feq(a, b, name) {
+	test.assert(math.cmp(a, b) == 0, name)
+}
+
+// === constants ===
+
+print("running const_pi")
+feq(math.pi, 3.14159265358979, "const_pi")
+
+print("running const_e")
+feq(math.e, 2.71828182845904, "const_e")
+
+print("running const_inf")
+test.assert(math.isinf(math.inf), "const_inf")
+
+print("running const_nan")
+test.assert(math.isnan(math.nan), "const_nan")
+
+print("running const_huge")
+test.assert(math.isinf(math.huge), "const_huge")
+
+// === math.type ===
+
+print("running type_tagged_int")
+test.equal(math.type(42), "int", "type_tagged_int")
+
+print("running type_float")
+test.equal(math.type(3.14), "float", "type_float")
+
+print("running type_boxed_int")
+test.equal(math.type(number(100)), "int", "type_boxed_int")
+
+print("running type_string_null")
+test.equal(math.type("hello"), null, "type_string_null")
+
+print("running type_null_null")
+test.equal(math.type(null), null, "type_null_null")
+
+// === tier 1: core trig ===
+
+print("running sin_zero")
+feq(math.sin(0.0), 0.0, "sin_zero")
+
+print("running sin_pi_half")
+feq(math.sin(math.pi / 2.0), 1.0, "sin_pi_half")
+
+print("running cos_zero")
+feq(math.cos(0.0), 1.0, "cos_zero")
+
+print("running cos_pi")
+feq(math.cos(math.pi), -1.0, "cos_pi")
+
+print("running tan_zero")
+feq(math.tan(0.0), 0.0, "tan_zero")
+
+print("running asin_one")
+feq(math.asin(1.0), math.pi / 2.0, "asin_one")
+
+print("running acos_one")
+feq(math.acos(1.0), 0.0, "acos_one")
+
+print("running atan_one")
+feq(math.atan(1.0), math.pi / 4.0, "atan_one")
+
+print("running atan_two_arg")
+feq(math.atan(1.0, 1.0), math.pi / 4.0, "atan_two_arg")
+
+// === tier 1: exp/log/sqrt ===
+
+print("running sqrt_four")
+feq(math.sqrt(4.0), 2.0, "sqrt_four")
+
+print("running sqrt_two")
+feq(math.sqrt(2.0), 1.41421356237, "sqrt_two")
+
+print("running exp_zero")
+feq(math.exp(0.0), 1.0, "exp_zero")
+
+print("running exp_one")
+feq(math.exp(1.0), math.e, "exp_one")
+
+print("running log_one")
+feq(math.log(1.0), 0.0, "log_one")
+
+print("running log_e")
+feq(math.log(math.e), 1.0, "log_e")
+
+// === tier 1: rounding + abs ===
+
+print("running floor_positive")
+feq(math.floor(3.7), 3.0, "floor_positive")
+
+print("running floor_negative")
+feq(math.floor(-3.2), -4.0, "floor_negative")
+
+print("running ceil_positive")
+feq(math.ceil(3.2), 4.0, "ceil_positive")
+
+print("running ceil_negative")
+feq(math.ceil(-3.7), -3.0, "ceil_negative")
+
+print("running abs_positive")
+feq(math.abs(5.0), 5.0, "abs_positive")
+
+print("running abs_negative")
+feq(math.abs(-5.0), 5.0, "abs_negative")
+
+print("running abs_int")
+feq(math.abs(-42), 42.0, "abs_int")
+
+// === tier 2: log variants ===
+
+print("running log2_eight")
+feq(math.log2(8.0), 3.0, "log2_eight")
+
+print("running log10_thousand")
+feq(math.log10(1000.0), 3.0, "log10_thousand")
+
+// === tier 2: cbrt, exp2 ===
+
+print("running cbrt_27")
+feq(math.cbrt(27.0), 3.0, "cbrt_27")
+
+print("running cbrt_neg")
+feq(math.cbrt(-8.0), -2.0, "cbrt_neg")
+
+print("running exp2_three")
+feq(math.exp2(3.0), 8.0, "exp2_three")
+
+// === tier 2: rounding ===
+
+print("running trunc_positive")
+feq(math.trunc(3.7), 3.0, "trunc_positive")
+
+print("running trunc_negative")
+feq(math.trunc(-3.7), -3.0, "trunc_negative")
+
+print("running round_up")
+feq(math.round(3.5), 4.0, "round_up")
+
+print("running round_down")
+feq(math.round(3.4), 3.0, "round_down")
+
+// === tier 2: two-arg ===
+
+print("running hypot_3_4")
+feq(math.hypot(3.0, 4.0), 5.0, "hypot_3_4")
+
+print("running pow_2_10")
+feq(math.pow(2.0, 10.0), 1024.0, "pow_2_10")
+
+print("running pow_fractional")
+feq(math.pow(4.0, 0.5), 2.0, "pow_fractional")
+
+print("running fmod_10_3")
+feq(math.fmod(10.0, 3.0), 1.0, "fmod_10_3")
+
+// === tier 2: sign, deg, rad ===
+
+print("running sign_positive")
+test.equal(math.sign(42.0), 1, "sign_positive")
+
+print("running sign_negative")
+test.equal(math.sign(-3.14), -1, "sign_negative")
+
+print("running sign_zero")
+test.equal(math.sign(0.0), 0, "sign_zero")
+
+print("running deg_pi")
+feq(math.deg(math.pi), 180.0, "deg_pi")
+
+print("running rad_180")
+feq(math.rad(180.0), math.pi, "rad_180")
+
+print("running deg_rad_roundtrip")
+feq(math.rad(math.deg(1.0)), 1.0, "deg_rad_roundtrip")
+
+// === tier 3: predicates ===
+
+print("running isnan_true")
+test.assert(math.isnan(math.nan), "isnan_true")
+
+print("running isnan_false")
+test.assert(!math.isnan(1.0), "isnan_false")
+
+print("running isinf_true")
+test.assert(math.isinf(math.inf), "isinf_true")
+
+print("running isinf_false")
+test.assert(!math.isinf(1.0), "isinf_false")
+
+print("running isfinite_true")
+test.assert(math.isfinite(1.0), "isfinite_true")
+
+print("running isfinite_inf_false")
+test.assert(!math.isfinite(math.inf), "isfinite_inf_false")
+
+print("running isfinite_nan_false")
+test.assert(!math.isfinite(math.nan), "isfinite_nan_false")
+
+// === tier 3: clamp ===
+
+print("running clamp_in_range")
+feq(math.clamp(3.0, 0.0, 5.0), 3.0, "clamp_in_range")
+
+print("running clamp_below")
+feq(math.clamp(-1.0, 0.0, 5.0), 0.0, "clamp_below")
+
+print("running clamp_above")
+feq(math.clamp(10.0, 0.0, 5.0), 5.0, "clamp_above")
+
+// === tier 3: min / max ===
+
+print("running min_basic")
+feq(math.min(3, 1, 4, 1, 5), 1.0, "min_basic")
+
+print("running min_single")
+feq(math.min(42), 42.0, "min_single")
+
+print("running min_negative")
+feq(math.min(-3, -1, -4), -4.0, "min_negative")
+
+print("running max_basic")
+feq(math.max(3, 1, 4, 1, 5), 5.0, "max_basic")
+
+print("running max_single")
+feq(math.max(42), 42.0, "max_single")
+
+print("running max_negative")
+feq(math.max(-3, -1, -4), -1.0, "max_negative")
+
+// === existing: boxed, cmp, precision ===
+
+print("running boxed_tagged")
+test.equal(math.boxed(42), false, "boxed_tagged")
+
+print("running boxed_number")
+test.equal(math.boxed(3.14), true, "boxed_number")
+
+print("running cmp_equal")
+test.equal(math.cmp(1.0, 1.0), 0, "cmp_equal")
+
+print("running cmp_less")
+test.equal(math.cmp(1.0, 2.0), -1, "cmp_less")
+
+print("running cmp_greater")
+test.equal(math.cmp(2.0, 1.0), 1, "cmp_greater")
+
+// === int args work for all functions ===
+
+print("running sin_int_arg")
+feq(math.sin(0), 0.0, "sin_int_arg")
+
+print("running sqrt_int_arg")
+feq(math.sqrt(9), 3.0, "sqrt_int_arg")
+
+print("running log2_int_arg")
+feq(math.log2(8), 3.0, "log2_int_arg")
+
+print("running abs_int_arg")
+feq(math.abs(-7), 7.0, "abs_int_arg")
+
+// === trig identities ===
+
+print("running sin_cos_identity")
+var x = 1.23
+var s = math.sin(x)
+var c = math.cos(x)
+feq(s * s + c * c, 1.0, "sin_cos_identity")
+
+print("running atan_tan_roundtrip")
+feq(math.atan(math.tan(0.5)), 0.5, "atan_tan_roundtrip")
+
+test.done()

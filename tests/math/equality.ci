@@ -1,0 +1,156 @@
+// Equality and comparison tests — documents current behavior and gaps
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// === tagged int equality (pointer identity, works) ===
+
+print("running int_eq")
+test.assert(5 == 5, "int_eq")
+
+print("running int_neq")
+test.assert(5 != 6, "int_neq")
+
+print("running int_eq_zero")
+test.assert(0 == 0, "int_eq_zero")
+
+print("running int_eq_neg")
+test.assert(-1 == -1, "int_eq_neg")
+
+print("running int_neq_neg")
+test.assert(-1 != 1, "int_neq_neg")
+
+// === tagged int comparison (works) ===
+
+print("running int_lt")
+test.assert(1 < 2, "int_lt")
+
+print("running int_gt")
+test.assert(2 > 1, "int_gt")
+
+print("running int_le_eq")
+test.assert(5 <= 5, "int_le_eq")
+
+print("running int_le_less")
+test.assert(4 <= 5, "int_le_less")
+
+print("running int_ge_eq")
+test.assert(5 >= 5, "int_ge_eq")
+
+print("running int_ge_greater")
+test.assert(6 >= 5, "int_ge_greater")
+
+// === boxed number equality — pointer identity, different objects ===
+
+print("running boxed_eq_same_obj")
+var n = number(42)
+test.assert(n == n, "boxed_eq_same_obj")
+
+print("running boxed_eq_diff_obj")
+test.assert(number(42) == number(42), "boxed_eq_diff_obj")
+
+print("running boxed_eq_tagged")
+test.assert(number(5) == 5, "boxed_eq_tagged")
+
+print("running float_eq_same_val")
+test.assert(3.14 == 3.14, "float_eq_same_val")
+
+// === use math.cmp as workaround for value equality ===
+
+print("running cmp_boxed_eq")
+test.assert(math.cmp(number(42), number(42)) == 0, "cmp_boxed_eq")
+
+print("running cmp_boxed_tagged")
+test.assert(math.cmp(number(5), 5) == 0, "cmp_boxed_tagged")
+
+print("running cmp_tagged_boxed")
+test.assert(math.cmp(5, number(5)) == 0, "cmp_tagged_boxed")
+
+print("running cmp_float_same")
+test.assert(math.cmp(3.14, 3.14) == 0, "cmp_float_same")
+
+print("running cmp_float_int")
+test.assert(math.cmp(5.0, 5) == 0, "cmp_float_int")
+
+print("running cmp_int_float")
+test.assert(math.cmp(5, 5.0) == 0, "cmp_int_float")
+
+// === math.cmp ordering ===
+
+print("running cmp_lt")
+test.equal(math.cmp(1, 2), -1, "cmp_lt")
+
+print("running cmp_gt")
+test.equal(math.cmp(2, 1), 1, "cmp_gt")
+
+print("running cmp_eq")
+test.equal(math.cmp(5, 5), 0, "cmp_eq")
+
+print("running cmp_float_lt")
+test.equal(math.cmp(1.5, 2.5), -1, "cmp_float_lt")
+
+print("running cmp_float_gt")
+test.equal(math.cmp(2.5, 1.5), 1, "cmp_float_gt")
+
+print("running cmp_neg_lt")
+test.equal(math.cmp(-10, 10), -1, "cmp_neg_lt")
+
+print("running cmp_boxed_lt")
+test.equal(math.cmp(number(1), number(2)), -1, "cmp_boxed_lt")
+
+print("running cmp_boxed_gt")
+test.equal(math.cmp(number(2), number(1)), 1, "cmp_boxed_gt")
+
+// === float/boxed comparison operators ===
+
+print("running float_lt")
+test.assert(1.5 < 2.5, "float_lt")
+
+print("running float_gt")
+test.assert(2.5 > 1.5, "float_gt")
+
+print("running float_le")
+test.assert(1.5 <= 1.5, "float_le")
+
+print("running float_ge")
+test.assert(1.5 >= 1.5, "float_ge")
+
+print("running boxed_lt")
+test.assert(number(1) < number(2), "boxed_lt")
+
+print("running boxed_gt")
+test.assert(number(2) > number(1), "boxed_gt")
+
+print("running boxed_eq_value")
+test.assert(number(42) == number(42), "boxed_eq_value")
+
+print("running float_eq_value")
+test.assert(3.14 == 3.14, "float_eq_value")
+
+print("running mixed_eq_value")
+test.assert(number(5) == 5, "mixed_eq_value")
+
+print("running cross_type_cmp")
+test.assert(5.0 <= 5, "cross_type_cmp")
+
+// === math.cmp epsilon edge cases ===
+
+print("running eps_default_near")
+test.equal(math.cmp(1.0000000001, 1.0), 0, "eps_default_near")
+
+print("running eps_default_far")
+test.equal(math.cmp(1.001, 1.0), 1, "eps_default_far")
+
+print("running eps_custom_loose")
+test.equal(math.cmp(1.05, 1.0, 0.1), 0, "eps_custom_loose")
+
+print("running eps_custom_tight")
+test.equal(math.cmp(1.05, 1.0, 0.01), 1, "eps_custom_tight")
+
+print("running eps_zero_exact")
+test.equal(math.cmp(3.14, 3.14, 0.0), 0, "eps_zero_exact")
+
+print("running eps_zero_diff")
+test.equal(math.cmp(3.14, 3.15, 0.0), -1, "eps_zero_diff")
+
+test.done()

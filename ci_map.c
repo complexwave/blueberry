@@ -241,14 +241,11 @@ static size_t ci_map__space_size(uint32_t buckets) {
 	     + sizeof(uint8_t)   * buckets * CI_MAP_PREINDEX_MULT + 128;
 }
 
-ci_map *ci_map_new(uint32_t nbuckets) {
+static inline ci_map *ci_map_init(ci_map *m, uint32_t nbuckets) {
 	if (nbuckets < CI_MAP_MIN_BUCKETS) {
 		nbuckets = CI_MAP_MIN_BUCKETS;
 	}
 	nbuckets = ci_map__round_up2(nbuckets);
-
-	ci_map *m = ci_new(CI_MAP);
-	if (!m) return NULL;
 
 	size_t sz = ci_map__space_size(nbuckets);
 	void *mem = calloc(1, sz);
@@ -264,6 +261,13 @@ ci_map *ci_map_new(uint32_t nbuckets) {
 	m->prototype  = NULL;
 	m->hashcmp    = ci_default_hashcmp;
 	return m;
+}
+
+ci_map *ci_map_new(uint32_t nbuckets) {
+	ci_map *m = ci_new(CI_MAP);
+	if (!m) return NULL;
+	
+	return ci_map_init(m, nbuckets);
 }
 
 ci_map *ci_map_ident_new(uint32_t nbuckets) {

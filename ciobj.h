@@ -119,7 +119,8 @@ typedef void* ci_ptr;
 // 010 - false
 // 110 - true
 
-#define CI_BOOL(v)  (ci_ptr)(uintptr_t)( ((!!(uintptr_t)(v)) << 2) | 0x02 )
+#define CI_BOOL(v)      (ci_ptr)(uintptr_t)( ((!!(uintptr_t)(v)) << 2) | 0x02 )
+#define CI_BOOL_INV(v)  (ci_ptr)(uintptr_t)( ((uintptr_t)(v)) ^ 0x04 )
 
 #define CI_IS_FALSY(p)  ( (uintptr_t)(p) <= 2 )
 

@@ -31,6 +31,7 @@ static void *b_malloc(size_t size) {
 
 #define B_OPCODES(X) \
 	X(LOADINT) \
+	X(LOADDOUBLE) \
 	X(LOADSTR) \
 	X(LOADNULL)\
 	X(LOADTRUE)\
@@ -110,6 +111,7 @@ enum {
 	B_ENC_R0,     /* op dst (no source, e.g. LOADTRUE) */
 	B_ENC_VAR,    /* op [ reg, reg, ... ] — variable length */
 	B_ENC_VAR_STRID, /* variable, dont emit string ids to registers */
+	B_ENC_RD,     /* op dst, double (64-bit) */
 	B_ENC_DECIDE, /* deferred — encoder pass picks RRR/RRU8/RU16 */
 	B_ENC_CALL,   /* CALL base, nargs, nrets */
 };
@@ -251,9 +253,14 @@ struct b_opcode {
 		struct {
 			b_reg    dst;
 			b_reg   src1;
-			uint16_t imm;
+			int64_t imm;
 		} rri32;
-		
+
+		struct {
+			b_reg  dst;
+			double imm;
+		} rd;
+
 		struct {
 			b_reg dst;
 			b_reg src;
@@ -699,7 +706,7 @@ static void b_emit_rri32(b_codeblock *cb, uint8_t opnum, b_reg dst, b_reg src1, 
 	b_emit(cb, op);
 }
 
-static void b_emit_ri32(b_codeblock *cb, uint8_t opnum, b_reg dst, int32_t imm) {
+static void b_emit_ri64(b_codeblock *cb, uint8_t opnum, b_reg dst, int64_t imm) {
 	b_opcode *op = b_opcode_new();
 	op->op  = opnum;
 	op->enc = B_ENC_RI;
@@ -710,6 +717,18 @@ static void b_emit_ri32(b_codeblock *cb, uint8_t opnum, b_reg dst, int32_t imm) 
 
 	b_emit(cb, op);
 }
+
+static void b_emit_rd(b_codeblock *cb, uint8_t opnum, b_reg dst, double imm) {
+	b_opcode *op = b_opcode_new();
+	op->op  = opnum;
+	op->enc = B_ENC_RD;
+
+	op->rd.dst = dst;
+	op->rd.imm = imm;
+
+	b_emit(cb, op);
+}
+
 
 static void b_emit_call_op(b_codeblock *cb, b_reg* base, uint16_t nargs, uint16_t nrets) {
 	b_opcode *op = b_opcode_new();
@@ -899,10 +918,10 @@ static b_reg b_reg_reg(b_codeblock *cb, b_reg r) {
 
 	switch (old_type) {
 	case B_REG_INT:
-		if (old_int < INT32_MIN || old_int > INT32_MAX)
-			b_error("integer %lld exceeds u32 range", (long long)old_int);
-		
-		b_emit_ri32(cb, B_LOADINT, r, old_int);
+		if (old_int < INT64_MIN || old_int > INT64_MAX)
+			b_error("integer %lld exceeds i64 range", (long long)old_int);
+
+		b_emit_ri64(cb, B_LOADINT, r, old_int);
 		break;
 
 	case B_REG_BOOL: {
@@ -920,10 +939,11 @@ static b_reg b_reg_reg(b_codeblock *cb, b_reg r) {
 	}
 
 	case B_REG_DOUBLE:
-		b_error("float literals not yet supported");
+		b_emit_rd(cb, B_LOADDOUBLE, r, r->value.dbl);
+		break;
 
 	case B_REG_STRING:
-		b_emit_ri32(cb, B_LOADSTR, r, r->interned_string_id);
+		b_emit_ri64(cb, B_LOADSTR, r, r->interned_string_id);
 		break;
 
 	default:
@@ -1830,7 +1850,7 @@ static b_reg b_emit_function(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	/* reentry from b_emit_assign — function already compiled, just load it */
 	if (n->op_function.function_id) {
 		b_reg dst = b_reg_tmp(cb);
-		b_emit_ri32(cb, B_LOADFN, dst, (uint16_t)n->op_function.function_id);
+		b_emit_ri64(cb, B_LOADFN, dst, (uint16_t)n->op_function.function_id);
 		return dst;
 	}
 
@@ -2212,13 +2232,18 @@ static void b_dump_bytecode(b_function *f) {
 			b_dump_reg(op->rri32.dst);
 			printf(", ");
 			b_dump_reg(op->rri32.src1);
-			printf(", %u", op->rri32.imm);
+			printf(", %lld", (long long)op->rri32.imm);
 			break;
 		case B_ENC_RI:
 			b_dump_reg(op->rri32.dst);
-			printf(", %u", op->rri32.imm);
+			printf(", %lld", (long long)op->rri32.imm);
 			break;
-			
+
+		case B_ENC_RD:
+			b_dump_reg(op->rd.dst);
+			printf(", %g", op->rd.imm);
+			break;
+
 		case B_ENC_R:
 			b_dump_reg(op->r.dst);
 			printf(", ");
