@@ -1,0 +1,126 @@
+// number() string parsing tests — verify number("...") uses fromstring
+
+var h = require("tests/test_helpers.ci")
+h()
+
+fn eq(a, b, name) {
+	test.assert(math.cmp(a, b) == 0, name)
+}
+
+// === basic integer parsing ===
+
+print("running parse_int_zero")
+eq(number("0"), 0, "parse_int_zero")
+
+print("running parse_int_positive")
+eq(number("42"), 42, "parse_int_positive")
+
+print("running parse_int_negative")
+eq(number("-99"), -99, "parse_int_negative")
+
+print("running parse_int_large")
+eq(number("123456789"), 123456789, "parse_int_large")
+
+print("running parse_int_plus_sign")
+eq(number("+7"), 7, "parse_int_plus_sign")
+
+// === whitespace handling ===
+
+print("running parse_int_leading_ws")
+eq(number("  42"), 42, "parse_int_leading_ws")
+
+print("running parse_int_trailing_ws")
+eq(number("42  "), 42, "parse_int_trailing_ws")
+
+print("running parse_int_both_ws")
+eq(number("  42  "), 42, "parse_int_both_ws")
+
+// === float parsing ===
+
+print("running parse_float_basic")
+eq(number("3.14"), 3.14, "parse_float_basic")
+
+print("running parse_float_negative")
+eq(number("-0.5"), -0.5, "parse_float_negative")
+
+print("running parse_float_one")
+eq(number("1.0"), 1.0, "parse_float_one")
+
+// === scientific notation ===
+
+print("running parse_sci_e3")
+eq(number("1e3"), 1000, "parse_sci_e3")
+
+print("running parse_sci_1_5e2")
+eq(number("1.5e2"), 150.0, "parse_sci_1_5e2")
+
+print("running parse_sci_neg_exp")
+eq(number("2.5E-1"), 0.25, "parse_sci_neg_exp")
+
+print("running parse_sci_plus_exp")
+eq(number("1e+3"), 1000, "parse_sci_plus_exp")
+
+print("running parse_sci_neg_val")
+eq(number("-1.5e2"), -150.0, "parse_sci_neg_val")
+
+// === invalid strings return null ===
+
+print("running parse_junk_null")
+test.equal(number("abc"), null, "parse_junk_null")
+
+print("running parse_trailing_junk_null")
+test.equal(number("123abc"), null, "parse_trailing_junk_null")
+
+print("running parse_empty_null")
+test.equal(number(""), null, "parse_empty_null")
+
+print("running parse_spaces_null")
+test.equal(number("   "), null, "parse_spaces_null")
+
+print("running parse_dot_null")
+test.equal(number("."), null, "parse_dot_null")
+
+print("running parse_minus_null")
+test.equal(number("-"), null, "parse_minus_null")
+
+// === arithmetic on parsed numbers ===
+
+print("running parsed_int_add")
+eq(number("10") + number("20"), 30, "parsed_int_add")
+
+print("running parsed_float_add")
+var r = number("1.5") + number("2.5")
+test.equal(math.type(r), "float", "parsed_float_add_type")
+eq(r, 4.0, "parsed_float_add")
+
+print("running parsed_int_mul")
+eq(number("6") * number("7"), 42, "parsed_int_mul")
+
+// === parsed values have correct types ===
+
+print("running parsed_int_type")
+test.equal(math.type(number("42")), "int", "parsed_int_type")
+
+print("running parsed_float_type")
+test.equal(math.type(number("3.14")), "float", "parsed_float_type")
+
+// === passthrough for existing ints/numbers ===
+
+print("running passthrough_int")
+eq(number(42), 42, "passthrough_int")
+
+print("running passthrough_number")
+eq(number(number(99)), 99, "passthrough_number")
+
+// === non-string, non-number, non-int returns null ===
+
+print("running parse_map_null")
+test.equal(number({}), null, "parse_map_null")
+
+print("running parse_array_null")
+test.equal(number([]), null, "parse_array_null")
+
+print("running parse_null_null")
+test.equal(number(null), null, "parse_null_null")
+
+test.done()
