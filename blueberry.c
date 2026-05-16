@@ -169,11 +169,12 @@ static bb_closure *bb_vm_native_var(bb_vm *vm, const char *name, bb_cfn_var cfn)
 
 static inline ci_ptr bb_map_proto_find(bb_vm *vm, const ci_map *m, ci_ptr key) {
 	(void)vm;
-	for (const ci_map *cur = m; cur; cur = (const ci_map *)cur->prototype) {
-		ci_ptr val = ci_map_find(cur, key);
-		if (val)
-			return val;
-	}
+	
+	do {
+		ci_map_kv* kv = ci_map_find_hash(m, key);
+		if(kv) return kv->val;
+	} while ( (m = ((const ci_map *)m)->prototype) );
+		
 	return NULL;
 }
 
@@ -181,12 +182,10 @@ static inline ci_ptr bb_map_proto_find(bb_vm *vm, const ci_map *m, ci_ptr key) {
 static inline ci_ptr bb_proto_find(bb_vm *vm, ci_ptr obj, ci_ptr key) {
 	(void)vm;
 
-	if (!obj)
-		return NULL;
-
 	if (CI_IS_MAP(obj))
 		return bb_map_proto_find(vm, (const ci_map *)obj, key);
 
+	
 	if (CI_IS_OBJECT(obj)) {
 		ci_map *proto = bb_obj_arena_prototype(obj);
 		if (proto)
@@ -298,6 +297,8 @@ static ci_ptr bb_native_stacktrace(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) 
  *  Opcode handlers
  * ================================================================ */
 
+#define VM_OP_INLINE __attribute__((always_inline)) static inline
+
 #include "blueberry_vm/api.c"
 #include "blueberry_vm/proto/array.c"
 #include "blueberry_vm/proto/string.c"
@@ -378,8 +379,7 @@ VM_OP static void __vmop_##label##_rri(bb_coro *c, vm_dipatch_arg a, vm_dipatch_
 VM_OP static void __vmop_##label##_rrs(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) { \
 	VM_OP_ACCESS_STACK; \
 	ci_ptr arg_b = VM_OP_STACK(b); \
-	bb_function *fn = bb_coro_frame_function(bb_coro_frame_top(c)); \
-	ci_ptr arg_key = fn->unit->str2intern[_c]; \
+	ci_ptr arg_key = (ci_ptr)_c; \
 	ci_ptr r = impl(c, arg_b, arg_key); \
 	ci_inc(r); \
 	VM_OP_SET_STACK(a, r); \
@@ -537,8 +537,7 @@ VM_OP static void __vmop_hashstore(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg 
 
 VM_OP static void __vmop_hashstore_rrs(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
 	VM_OP_ACCESS_STACK;
-	bb_function *fn = bb_coro_frame_function(bb_coro_frame_top(c));
-	ci_ptr key = fn->unit->str2intern[_c];
+	ci_ptr key = (ci_ptr)_c;
 	bb_op_hashstore(c, VM_OP_STACK(a), key, VM_OP_STACK(b));
 
 	BB_DISPATCH_NEXT(c);
@@ -695,10 +694,12 @@ static bb_cached_op *bb_build_cached(bb_function *fn) {
 			ops[wi].c = imm;
 			bi += 8; wi++;
 			break;
-		case 2: /* RRS: a=r1, b=r2, c=sid (imm) */
+		case 2: /* RRS: a=r1, b=r2, c=resolved ci_ptr string */
+			if (imm >= fn->unit->str_count)
+				bb_error("RRS: string index %u out of range (codegen bug)", imm);
 			ops[wi].a = b1;
 			ops[wi].b = b2;
-			ops[wi].c = imm;
+			ops[wi].c = (vm_dipatch_arg)fn->unit->str2intern[imm];
 			bi += 8; wi++;
 			break;
 		case 3: { /* VAR: a=r1, b=r2, c=ptr to payload (first word after header) */

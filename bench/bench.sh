@@ -12,7 +12,8 @@ benchmarks=(
     #"spectral-norm  1.lua  1.ci  100"   # blueberry: float print is ugly but runs
     #"nbody          1.lua  1.ci  500000" # blueberry: produces wrong results (number boxing issue)
     "nsieve         1.lua  1.ci  7"
-    "maps           1.lua  1.ci  1000000"
+    "maps           1.lua  1.ci  10000000"
+    "maps2          2.lua  2.ci  10000000"
 )
 
 sep="─────────────────────────────────────────────────────────"
@@ -21,8 +22,12 @@ time_cmd() {
     # returns seconds with 3 decimal places, best of $RUNS runs
     local best=""
     for ((r=1; r<=RUNS; r++)); do
-        local t
-        t=$( { time "$@" > /dev/null 2>&1; } 2>&1 )
+        local t rc
+        t=$( { time "$@" > /dev/null 2>&1; } 2>&1 ) && rc=0 || rc=$?
+        if [ $rc -ne 0 ]; then
+            printf "CRASHED(%d)" "$rc"
+            return
+        fi
         # extract real time — handles both "0m1.234s" and "1.234" formats
         # replace comma decimal separator with dot for non-C locales
         t=$(echo "$t" | tr ',' '.')

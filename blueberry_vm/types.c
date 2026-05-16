@@ -85,6 +85,7 @@ static bb_metaproto *bb_proto_register_meta(bb_vm *vm, const char *name) {
 	mp->op_sub = NULL;
 	mp->op_mul = NULL;
 	mp->op_div = NULL;
+	mp->op_tostring = NULL;
 
 	ci_ptr n = bb_vm_istring(vm, name, (uint32_t)strlen(name));
 	bb_proto_register_cistr(vm, m, n);

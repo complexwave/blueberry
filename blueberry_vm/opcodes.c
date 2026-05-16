@@ -34,8 +34,8 @@ static inline ci_ptr bb_meta_dispatch(bb_coro *c, ci_ptr a, ci_ptr b, size_t off
 #define BB_META_DISPATCH(c, a, b, name, msg) \
 	return bb_meta_dispatch(c, a, b, bb_metam(name), msg)
 
-static inline ci_ptr bb_op_add(bb_coro *c, ci_ptr a, ci_ptr b) {
-	if (CI_IS_INT(a) && CI_IS_INT(b)) {
+VM_OP_INLINE ci_ptr bb_op_add(bb_coro *c, ci_ptr a, ci_ptr b) {
+	if (CI_IS_INT((uintptr_t)a & (uintptr_t)b)) {
 		intptr_t r;
 		
 		if (!__builtin_add_overflow((intptr_t)a, (intptr_t)b, &r))

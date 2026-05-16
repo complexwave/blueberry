@@ -10,6 +10,9 @@
 
 #include "parser.c"
 
+/* set to 1 to disable hashaccess opcode chaining (emit individual RRR ops) */
+static int HASH_DONT_CHAIN = 1;
+
 /* ================================================================
  *  Checked allocator
  * ================================================================ */
@@ -105,6 +108,7 @@ enum {
 	B_ENC_RU16,   /* op dst, imm16      */
 	
 	B_ENC_RRI,    /* op dst, src1, imm32 */
+	B_ENC_RRS,    /* op dst, src, strid  — imm = string table id */
 	B_ENC_RI,     /* op dst, imm32 */
 	
 	B_ENC_R,      /* op dst, src (prefix unary) */
@@ -706,6 +710,18 @@ static void b_emit_rri32(b_codeblock *cb, uint8_t opnum, b_reg dst, b_reg src1, 
 	b_emit(cb, op);
 }
 
+static void b_emit_rrs(b_codeblock *cb, uint8_t opnum, b_reg dst, b_reg src, uint32_t strid) {
+	b_opcode *op = b_opcode_new();
+	op->op  = opnum;
+	op->enc = B_ENC_RRS;
+
+	op->rri32.dst = dst;
+	op->rri32.src1 = src;
+	op->rri32.imm = (int64_t)strid;
+
+	b_emit(cb, op);
+}
+
 static void b_emit_ri64(b_codeblock *cb, uint8_t opnum, b_reg dst, int64_t imm) {
 	b_opcode *op = b_opcode_new();
 	op->op  = opnum;
@@ -1134,40 +1150,17 @@ static b_reg b_emit_hashaccess(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 
 	for (uint32_t i = 1; i < cnt; i++) {
 		b_reg key = b_consume_ast(cb, ast_node_list(n, i));
-			
-		if(key->type == B_REG_STRING){
-			if (!op){
-				map = dst;
-				dst = b_reg_tmp(cb);
-				op = b_new_var(B_HASHACCESS);
-				op->enc = B_ENC_VAR_STRID;
-				
-				/* dst, obj, key0, key1, ... */
-				b_op_pushreg(op, dst);
-				b_op_pushreg(op, b_reg_reg(cb, map));
-				b_reg_release(cb, map);
-			}
-			
-			b_op_pushreg(op, key);
+
+		map = dst;
+		dst = b_reg_tmp(cb);
+
+		if (key->type == B_REG_STRING) {
+			b_emit_rrs(cb, B_HASHACCESS, dst, b_reg_reg(cb, map), key->interned_string_id);
 		} else {
-			// split hashaccess
-			if (op){
-				b_emit_var(cb, op);
-			}
-
-			op = NULL;
-
-			map = dst;
-			dst = b_reg_tmp(cb);
 			b_emit_rrr(cb, B_HASHACCESS, dst, b_reg_reg(cb, map), b_reg_reg(cb, key));
-			b_reg_release(cb, map);
 			b_reg_release(cb, key);
-			
 		}
-	}
 
-	if (op){
-		b_emit_var(cb, op);
 		b_reg_release(cb, map);
 	}
 
@@ -1185,12 +1178,16 @@ static b_reg b_emit_method_hashaccess(b_codeblock *cb, ast_node *n, b_reg *out_s
 		*out_self = b_reg_reg(cb, b_consume_ast(cb, ast_node_list(n, 0)));
 		b_reg key = b_consume_ast(cb, ast_node_list(n, 1));
 		b_reg dst = b_reg_tmp(cb);
-		
-		b_emit_rrr(cb, B_HASHACCESS, dst, *out_self, b_reg_reg(cb, key));
-		
+
+		if (key->type == B_REG_STRING) {
+			b_emit_rrs(cb, B_HASHACCESS, dst, *out_self, key->interned_string_id);
+		} else {
+			b_emit_rrr(cb, B_HASHACCESS, dst, *out_self, b_reg_reg(cb, key));
+			b_reg_release(cb, key);
+		}
+
 		b_reg_release(cb, *out_self);
-		b_reg_release(cb, key);
-		
+
 		return dst;
 	}
 
@@ -1198,15 +1195,18 @@ static b_reg b_emit_method_hashaccess(b_codeblock *cb, ast_node *n, b_reg *out_s
 	ast_node *lastkey_node = (ast_node *)ci_arr_pop(n->nodes);
 	*out_self = b_reg_reg(cb, b_emit_hashaccess(cb, n, 0));
 
-
 	b_reg key = b_consume_ast(cb, lastkey_node);
 	b_reg dst = b_reg_tmp(cb);
-	
-	b_emit_rrr(cb, B_HASHACCESS, dst, *out_self, b_reg_reg(cb, key));
-	
+
+	if (key->type == B_REG_STRING) {
+		b_emit_rrs(cb, B_HASHACCESS, dst, *out_self, key->interned_string_id);
+	} else {
+		b_emit_rrr(cb, B_HASHACCESS, dst, *out_self, b_reg_reg(cb, key));
+		b_reg_release(cb, key);
+	}
+
 	b_reg_release(cb, *out_self);
-	b_reg_release(cb, key);
-	
+
 	return dst;
 }
 
@@ -2233,6 +2233,12 @@ static void b_dump_bytecode(b_function *f) {
 			printf(", ");
 			b_dump_reg(op->rri32.src1);
 			printf(", %lld", (long long)op->rri32.imm);
+			break;
+		case B_ENC_RRS:
+			b_dump_reg(op->rri32.dst);
+			printf(", ");
+			b_dump_reg(op->rri32.src1);
+			printf(", s%lld", (long long)op->rri32.imm);
 			break;
 		case B_ENC_RI:
 			b_dump_reg(op->rri32.dst);

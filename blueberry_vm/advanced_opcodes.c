@@ -16,7 +16,7 @@
  */
 typedef void (*bb_var_fn)(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uint8_t *list);
 
-static inline void bb_op_hashstore(bb_coro *c, ci_ptr map, ci_ptr key, ci_ptr val);
+VM_OP_INLINE void bb_op_hashstore(bb_coro *c, ci_ptr map, ci_ptr key, ci_ptr val);
 
 /* ================================================================
  *  RRR ops  —  ci_ptr fn(coro, a, b)
@@ -27,8 +27,21 @@ static inline ci_ptr bb_op_move(bb_coro *c, ci_ptr a, ci_ptr b) {
 	return a;
 }
 
-static inline ci_ptr bb_op_hashaccess_rrr(bb_coro *c, ci_ptr a, ci_ptr b) {
+VM_OP_INLINE ci_ptr bb_op_hashaccess_rrr(bb_coro *c, ci_ptr a, ci_ptr b) {
+	ci_map* m = a;
+	ci_ptr key = b;
+	
 	return bb_proto_find(c->vm, a, b);
+	
+	if (!CI_IS_MAP(a))
+		return bb_proto_find(c->vm, a, b);
+	
+	do {
+		ci_map_kv* kv = ci_map_find_kv_inline(m, key);
+		if(kv) return kv->val;
+	} while ( (m = ((const ci_map *)m)->prototype) );
+		
+	return NULL;
 }
 
 static inline ci_ptr bb_op_loadtrue(bb_coro *c, ci_ptr a, ci_ptr b) {
@@ -214,7 +227,7 @@ VM_OP static void __vmop_iterstep(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b
 	}
 }
 
-static inline void bb_op_hashstore(bb_coro *c, ci_ptr map, ci_ptr key, ci_ptr val) {
+VM_OP_INLINE void bb_op_hashstore(bb_coro *c, ci_ptr map, ci_ptr key, ci_ptr val) {
 	if (!CI_IS_MAP(map))
 		bb_coro_error(c, "HASHSTORE: operand is not a map");
 	ci_inc(val);

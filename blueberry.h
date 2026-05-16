@@ -155,6 +155,7 @@ typedef struct {
 	bb_op_fn op_bin_inv;
 	bb_op_fn op_neg;
 	bb_op_fn op_cmp;
+	bb_op_fn op_tostring;
 } bb_metaproto;
 
 #endif /* BLUEBERRY_H */

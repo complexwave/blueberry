@@ -250,6 +250,12 @@ static bc_buf *be_encode_function(b_function *f) {
 				op->rri32.src1->number,
 				0, op->rri32.imm);
 		}
+		else if (op->enc == B_ENC_RRS) {
+			bc_emit_fixed(out, BC_SUB_RRS, op->op,
+				op->rri32.dst->number,
+				op->rri32.src1->number,
+				0, (uint32_t)op->rri32.imm);
+		}
 		else if (op->enc == B_ENC_RI) {
 			int64_t imm = op->rri32.imm;
 			if (imm >= INT32_MIN && imm <= INT32_MAX) {

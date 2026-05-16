@@ -1,7 +1,7 @@
 .PHONY: parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim ci_number_test clean
 
 CC = clang-23
-CFLAGS = -Wall -O3 -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER -DCI_DISABLE_REFCOUNTING 
+CFLAGS = -Wall -O3 -march=native -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER -DCI_DISABLE_REFCOUNTING
 #-DBB_VM_DEBUG
 
 parser:

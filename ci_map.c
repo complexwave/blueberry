@@ -95,15 +95,9 @@ static inline uint32_t ci_map__round_up2(uint32_t n) {
 	return n + 1;
 }
 
-/* keys have lower 4 bits zeroed — shift them out */
+
 static inline uint32_t ci_map__hash_ptr(const void *ptr) {
-	uint64_t h = (uint64_t)(uintptr_t)ptr;
-	h ^= h >> 33;
-	h *= 0xff51afd7ed558ccdULL;
-	h ^= h >> 33;
-	h *= 0xc4ceb9fe1a85ec53ULL;
-	h ^= h >> 33;
-	return (uint32_t)h;
+	return (uintptr_t)ptr >> 5;
 }
 
 /* universal hash — dispatches by object type */
@@ -423,7 +417,8 @@ int ci_map_set(ci_map *m, ci_ptr key, ci_ptr val) {
  * Get (lookup)
  * ============================================================ */
 // this one is fast but ptr only
-inline ci_map_kv *ci_map_find_kv(const ci_map *m, ci_ptr key) {
+__attribute__((always_inline))
+static inline ci_map_kv *ci_map_find_kv_inline(const ci_map *m, ci_ptr key) {
 	ci_map_kv *kvs    = ci_map__kvs(m);
 	uint8_t   *preidx = ci_map__preindex(m);
 	uint32_t   mask   = m->divmask;
@@ -481,8 +476,12 @@ inline ci_map_kv *ci_map_find_kv(const ci_map *m, ci_ptr key) {
 	return NULL;
 }
 
+ci_map_kv *ci_map_find_kv(const ci_map *m, ci_ptr key) {
+	return ci_map_find_kv_inline(m, key);
+}
+
 ci_ptr inline ci_map_get(const ci_map *m, ci_ptr key) {
-	ci_map_kv *kv = ci_map_find_kv(m, key);
+	ci_map_kv *kv = ci_map_find_kv_inline(m, key);
 	if(kv) return kv->val;
 	return NULL;
 }
@@ -520,6 +519,10 @@ ci_map_kv *ci_map_find_kv_hash(const ci_map *m, ci_ptr key, uint32_t h) {
 	} while (probes >= 0);
 
 	return NULL;
+}
+
+ci_ptr ci_map_find_hash(const ci_map *m, ci_ptr key) {
+	return ci_map_find_kv_hash(m, key, m->hashcmp(key, NULL));
 }
 
 ci_ptr ci_map_find(const ci_map *m, ci_ptr key) {

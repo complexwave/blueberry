@@ -59,7 +59,35 @@ static ci_ptr bb_number_meta_cmp(bb_coro *c, ci_ptr a, ci_ptr b) {
 	return CI_PACKINT(ci_number_cmp(a, b));
 }
 
-/* number(x) — box a tagged int or return existing ci_number as-is */
+/*
+ * op_tostring(a, b)
+ *   a = number, b = string to append to (or NULL → new string)
+ */
+static ci_ptr bb_number_meta_tostring(bb_coro *c, ci_ptr a, ci_ptr b) {
+	int maxlen = ci_number_stringmax(a);
+	ci_str *s;
+
+	if (b) {
+		s = (ci_str *)b;
+	} else {
+		s = ci_str_new((size_t)maxlen);
+		if (!s) return NULL;
+	}
+
+	uint8_t *tail = ci_str_ensure_tail(s, (size_t)maxlen);
+	
+	int n = ci_number_tostring(
+		a, tail, 
+		CI_NUMBER_PRINT_MAX_INT_DIGITS_SCI, 
+		CI_NUMBER_PRINT_MAX_FLOAT_DIGITS_SCI
+	);
+	
+	ci_str_put_tail(s, (size_t)n);
+	
+	return (ci_ptr)s;
+}
+
+/* number(x) — box a tagged int, parse a string, or return existing ci_number as-is */
 static ci_ptr bb_native_number(bb_coro_arg *c, ci_ptr a, ci_ptr b, ci_ptr _) {
 	if (CI_IS_NUMBER(a))
 		return a;
@@ -70,7 +98,11 @@ static ci_ptr bb_native_number(bb_coro_arg *c, ci_ptr a, ci_ptr b, ci_ptr _) {
 		return (ci_ptr)n;
 	}
 
-	bb_coro_error(c, "number(): expected int or number");
+	if (CI_IS_ANY_STR(a)) {
+		ci_ptr r = ci_number_fromstring(ci_str_head(a), ci_str_len(a));
+		return r;  /* NULL if parse fails */
+	}
+
 	return NULL;
 }
 
@@ -90,6 +122,7 @@ static void bb_proto_number_init(bb_vm *vm) {
 	mp->op_bin_inv = bb_number_meta_bin_inv;
 	mp->op_neg = bb_number_meta_neg;
 	mp->op_cmp = bb_number_meta_cmp;
+	mp->op_tostring = bb_number_meta_tostring;
 
 	bb_set_arena_prototype(CI_NUMBER, &mp->map);
 

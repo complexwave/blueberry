@@ -155,6 +155,8 @@ ci_ptr ci_map_get(const ci_map *m, ci_ptr key);
  * ci_map_find_kv — lookup by pointer identity, returns kv pair.
  *   Returned pointer invalidated by any mutation.
  */
+__attribute__((always_inline))
+static inline ci_map_kv *ci_map_find_kv_inline(const ci_map *m, ci_ptr key);
 ci_map_kv *ci_map_find_kv(const ci_map *m, ci_ptr key);
 
 /*

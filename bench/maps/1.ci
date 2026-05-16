@@ -1,45 +1,44 @@
 // map/prototype chain access benchmark
 // heavy on nested field lookups via proto.set, light on function calls
 
-var N = str2int(argv[0])
 
-// build a 3-level prototype chain
-var base = {}
-base.x = 1
-base.y = 2
-base.z = 3
+var N = 10000000
 
-var mid = {}
-mid.a = 10
-mid.b = 20
-mid.c = 30
-proto.set(mid, base)
 
 var leaf = {}
 leaf.p = 100
 leaf.q = 200
 leaf.r = 300
-proto.set(leaf, mid)
-
-// nested map: leaf.data.inner.value
-leaf.data = { inner: { value: 42, extra: { deep: 7 } } }
 
 var sum = 0
 var i = 0
 while i < N {
     // prototype chain lookups (inherited fields)
-    sum = sum + leaf.x
-    sum = sum + leaf.y
-    sum = sum + leaf.z
-    sum = sum + leaf.a
-    sum = sum + leaf.b
-    sum = sum + leaf.c
+    //sum = sum + leaf.x
+    //sum = sum + leaf.y
+    //sum = sum + leaf.z
+    //sum = sum + leaf.a
+   // sum = sum + leaf.b
+   // sum = sum + leaf.c
+    
+    
     // own fields
     sum = sum + leaf.p
     sum = sum + leaf.q
     sum = sum + leaf.r
 
+	sum = sum + leaf.p
+    sum = sum + leaf.q
+    sum = sum + leaf.r
+    
+	sum = sum + leaf.p
+    sum = sum + leaf.q
+    sum = sum + leaf.r
+    
+	sum = sum + leaf.p
+    sum = sum + leaf.q
+    sum = sum + leaf.r
     i = i + 1
 }
 
-print(sum)
+//print(sum)

@@ -24,6 +24,7 @@
 #include "ciobj.h"
 #include <stdio.h>
 #include <math.h>
+#include "lib/uscale/uscale_min.c"
 
 /* ============================================================
  * Global comparison precision for relational operators
@@ -116,8 +117,10 @@ static inline ci_number *ci_number_floating(double v) {
  * Tagged ints are 63-bit signed (CI_PACKINT shifts left by 1).
  */
 static inline ci_ptr ci_number_int(__int128 v) {
+#ifndef CI_NUMBER_ALWAYS_BOX
 	if (v == (intptr_t)v)
 		return CI_PACKINT((intptr_t)v);
+#endif
 
 	ci_number *dst = ci_number_new(CI_NUM_I128);
 	if (!dst) return NULL;
@@ -204,33 +207,72 @@ static inline int ci_number_is_float_op(ci_ptr a, ci_ptr b) {
  * via ci_number_int(), only box if it doesn't fit.
  * ============================================================ */
 
-#define CI_NUMBER_BINOP(name, double_op) \
-static ci_ptr ci_number_##name(ci_ptr a, ci_ptr b) { \
-	if (ci_number_is_float_op(a, b)) \
-		return (ci_ptr)ci_number_floating( \
-			ci_number_to_double(a) double_op ci_number_to_double(b)); \
-	return ci_number_int(ci_number_to_int(a) double_op ci_number_to_int(b)); \
+static ci_ptr ci_number_add(ci_ptr a, ci_ptr b) {
+	if (ci_number_is_float_op(a, b))
+		return (ci_ptr)ci_number_floating(
+			ci_number_to_double(a) + ci_number_to_double(b));
+	__int128 ia = ci_number_to_int(a);
+	__int128 ib = ci_number_to_int(b);
+	__int128 r;
+	
+	if (__builtin_add_overflow(ia, ib, &r))
+		return (ci_ptr)ci_number_floating(
+			ci_number_to_double(a) + ci_number_to_double(b));
+		
+	return ci_number_int(r);
 }
 
-CI_NUMBER_BINOP(add, +)
-CI_NUMBER_BINOP(sub, -)
-CI_NUMBER_BINOP(mul, *)
+static ci_ptr ci_number_sub(ci_ptr a, ci_ptr b) {
+	if (ci_number_is_float_op(a, b))
+		return (ci_ptr)ci_number_floating(
+			ci_number_to_double(a) - ci_number_to_double(b));
+		
+	__int128 ia = ci_number_to_int(a);
+	__int128 ib = ci_number_to_int(b);
+	__int128 r;
+	
+	if (__builtin_sub_overflow(ia, ib, &r))
+		return (ci_ptr)ci_number_floating(
+			ci_number_to_double(a) - ci_number_to_double(b));
+		
+	return ci_number_int(r);
+}
+
+static ci_ptr ci_number_mul(ci_ptr a, ci_ptr b) {
+	if (ci_number_is_float_op(a, b))
+		return (ci_ptr)ci_number_floating(
+			ci_number_to_double(a) * ci_number_to_double(b));
+		
+	__int128 ia = ci_number_to_int(a);
+	__int128 ib = ci_number_to_int(b);
+	__int128 r;
+	
+	if (__builtin_mul_overflow(ia, ib, &r))
+		return (ci_ptr)ci_number_floating(
+			ci_number_to_double(a) * ci_number_to_double(b));
+		
+	return ci_number_int(r);
+}
 
 /* div is special: int div-by-zero → double infinity */
 static ci_ptr ci_number_div(ci_ptr a, ci_ptr b) {
 	if (ci_number_is_float_op(a, b)) {
 		double da = ci_number_to_double(a);
 		double db = ci_number_to_double(b);
+		
 		if (db == 0.0)
 			return (ci_ptr)ci_number_floating(
 				(da == 0.0) ? NAN : ((da < 0.0) ? -INFINITY : INFINITY));
+			
 		return (ci_ptr)ci_number_floating(da / db);
 	}
 
 	__int128 ia = ci_number_to_int(a);
 	__int128 ib = ci_number_to_int(b);
+	
 	if (ib == 0)
 		return (ci_ptr)ci_number_floating((ia < 0) ? -INFINITY : INFINITY);
+	
 	return ci_number_int(ia / ib);
 }
 
@@ -239,13 +281,16 @@ static ci_ptr ci_number_mod(ci_ptr a, ci_ptr b) {
 		double db = ci_number_to_double(b);
 		if (db == 0.0)
 			return (ci_ptr)ci_number_floating(NAN);
+		
 		return (ci_ptr)ci_number_floating(fmod(ci_number_to_double(a), db));
 	}
 
 	__int128 ia = ci_number_to_int(a);
 	__int128 ib = ci_number_to_int(b);
+	
 	if (ib == 0)
 		return (ci_ptr)ci_number_floating(NAN);
+	
 	return ci_number_int(ia % ib);
 }
 
@@ -254,7 +299,9 @@ static ci_ptr ci_number_neg(ci_ptr a) {
 	if (CI_IS_INT(a))
 		return ci_number_int(-(__int128)CI_INT(a));
 
-	if (!CI_IS_NUMBER(a)) return NULL;
+	if (!CI_IS_NUMBER(a)) 
+		return NULL;
+	
 	ci_number *src = (ci_number *)a;
 
 	if (CI_NUMBER_IS_DOUBLE(src))
@@ -288,27 +335,28 @@ static ci_ptr ci_number_pow(ci_ptr a, ci_ptr b) {
 
 	__int128 result = 1;
 	while (exp > 0) {
-		if (exp & 1)
-			result *= base;
-		base *= base;
+		if (exp & 1) {
+			if (__builtin_mul_overflow(result, base, &result))
+				goto use_fpow;
+		}
+		if (exp > 1) {
+			if (__builtin_mul_overflow(base, base, &base))
+				goto use_fpow;
+		}
 		exp >>= 1;
 	}
 
-	/* try to return tagged int */
-	if (result >= INT32_MIN && result <= INT32_MAX)
-		return CI_PACKINT((intptr_t)result);
-
-	ci_number *dst = ci_number_new(CI_NUM_I128);
-	if (!dst) return NULL;
-	dst->i128 = result;
-	return (ci_ptr)dst;
+	return ci_number_int(result);
 
 use_fpow:;
 	double da = ci_number_to_double(a);
 	double db = ci_number_to_double(b);
 	ci_number *dst2 = ci_number_new(CI_NUM_F64);
+	
 	if (!dst2) return NULL;
+	
 	dst2->f64 = pow(da, db);
+	
 	return (ci_ptr)dst2;
 }
 
@@ -450,4 +498,382 @@ static void ci_number_print(ci_ptr p) {
 		else
 			printf("%lu", lo);
 	}
+}
+
+/* ============================================================
+ * Integer/Float to string (using uscale)
+ * ============================================================ */
+
+#define CI_NUMBER_PRINT_MAX_INT_DIGITS_SCI  10
+#define CI_NUMBER_PRINT_MAX_FLOAT_DIGITS_SCI -6
+#define CI_NUMBER_BUF_INT128  42  /* 39 digits + sign + null + spare */
+#define CI_NUMBER_BUF_DEFAULT 25  /* 64-bit int (20) or double (24) + null */
+
+/*
+ * ci_number_stringmax — return required buffer size for printing.
+ */
+static inline int ci_number_stringmax(ci_ptr p) {
+	if (CI_IS_INT(p))
+		return CI_NUMBER_BUF_DEFAULT;
+	if (CI_IS_NUMBER(p) && !CI_NUMBER_IS_DOUBLE(p))
+		return CI_NUMBER_BUF_INT128;
+	return CI_NUMBER_BUF_DEFAULT;
+}
+
+/*
+ * ci_number_itoa — uint64 to decimal string.
+ * Writes digits into buf, returns number of bytes written.
+ */
+static inline int ci_number_itoa(uint8_t * restrict buf, uint64_t v) {
+	int n = 0;
+	do {
+		buf[n++] = '0' + (v % 10);
+		v /= 10;
+	} while (v);
+	for (int i = 0, j = n - 1; i < j; i++, j--) {
+		uint8_t c = buf[i]; buf[i] = buf[j]; buf[j] = c;
+	}
+	return n;
+}
+
+/*
+ * ci_number_itoa128 — unsigned 128-bit int to decimal string.
+ * Writes digits into buf, returns number of bytes written.
+ */
+static int ci_number_itoa128(uint8_t * restrict buf, unsigned __int128 v) {
+	if (v <= UINT64_MAX)
+		return ci_number_itoa(buf, (uint64_t)v);
+
+	/* split: v = hi * 10^19 + lo */
+	const uint64_t div19 = 10000000000000000000ULL; /* 1e19 */
+	uint64_t lo = (uint64_t)(v % div19);
+	uint64_t hi = (uint64_t)(v / div19);
+
+	int n = ci_number_itoa(buf, hi);
+
+	/* lo must be zero-padded to 19 digits */
+	uint8_t tmp[20];
+	int ln = ci_number_itoa(tmp, lo);
+	for (int i = 0; i < 19 - ln; i++)
+		buf[n++] = '0';
+	for (int i = 0; i < ln; i++)
+		buf[n++] = tmp[i];
+
+	return n;
+}
+
+/*
+ * ci_number_dtoa — double to string (pretty format).
+ * Returns number of bytes written.
+ */
+#define CI_DTOA_COPY while (src < end) *out++ = *src++;
+#define CI_DTOA_CH(ch) *out++ = ch;
+
+static int ci_number_dtoa(uint8_t * restrict dst, double f, int max_ints, int fdmax) {
+	uint8_t *out = dst;
+
+	if (f < 0) {
+		*out++ = '-';
+		f = -f;
+	}
+
+	/* TODO: handle 0, inf, nan */
+
+	uscale_digits r = uscale_dtoa_short(f);
+
+	uint8_t digits[32];
+	int int_digits = ci_number_itoa(digits, r.d);
+
+	int p = r.p;
+	uint8_t *src = digits;
+	uint8_t *end = src + int_digits;
+
+	if (p >= 0) {
+		int trailing_zeros = p;
+		int int_print_length = int_digits + p;
+
+		if (int_print_length > max_ints) {
+			if (p) {
+				goto print_normalized;
+			}
+		} else {
+			CI_DTOA_COPY;
+
+			while(trailing_zeros--)
+				CI_DTOA_CH('0');
+
+			goto finalize;
+		}
+	}
+
+	int float_total_print_digits = -p;
+	int int_print_length = int_digits - float_total_print_digits;
+	if (int_print_length < 0) int_print_length = 0;
+
+	int float_significant_digits = int_digits - int_print_length;
+
+	int leading_zeroes = float_total_print_digits - float_significant_digits;
+
+	if (fdmax < 0) {
+		fdmax = -fdmax;
+
+		if (float_total_print_digits >= fdmax) {
+			goto print_normalized;
+		}
+	}
+
+	if (!fdmax && leading_zeroes) {
+		goto print_normalized;
+	}
+
+	if (int_print_length > 0) {
+		if (int_print_length > max_ints)
+			goto print_normalized;
+
+		while (int_print_length--)
+			*out++ = *src++;
+
+		CI_DTOA_CH('.');
+	} else {
+		CI_DTOA_CH('0');
+		CI_DTOA_CH('.');
+	}
+
+	if (fdmax) {
+		while (leading_zeroes-- && fdmax) {
+			CI_DTOA_CH('0');
+			fdmax--;
+		}
+
+		while (fdmax-- && (src < end))
+			*out++ = *src++;
+
+		goto finalize;
+	}
+
+	CI_DTOA_COPY;
+	goto finalize;
+
+print_normalized:
+	p = int_digits - 1 + r.p;
+
+	src = digits;
+	*out++ = *src++;
+
+	if (src < end) {
+		*out++ = '.';
+		CI_DTOA_COPY;
+	}
+
+	if (p) {
+		*out++ = 'e';
+
+		if (p < 0) {
+			*out++ = '-';
+			p = -p;
+		}
+
+		int exponent_length = ci_number_itoa(digits, p);
+		src = digits;
+		end = src + exponent_length;
+
+		CI_DTOA_COPY;
+	}
+
+finalize:
+	*out = 0;
+	return out - dst;
+}
+
+#undef CI_DTOA_COPY
+#undef CI_DTOA_CH
+
+/*
+ * ci_number_fromstring — parse number from string.
+ *
+ * Fast path: accumulate into int64 (up to 17 digits safe).
+ * Overflow: promote to __int128 (up to 37 digits safe).
+ * Float: if '.' or 'e' encountered, use uscale_atod.
+ * Trailing junk after the number → return NULL.
+ */
+
+#define CI_ATOD_MAX_INT64_DIGITS   17  /* 10^17 < INT64_MAX */
+#define CI_ATOD_MAX_I128_DIGITS    37  /* 10^37 < INT128_MAX */
+#define CI_ATOD_MAX_FLOAT_DIGITS   19  /* uscale handles up to 19 */
+
+#define CI_IS_DIGIT(c)  ((unsigned)((c) - '0') <= 9)
+#define CI_IS_WS(c)     ((c) == ' ' || (c) == '\t' || (c) == '\r' || (c) == '\n')
+#define CI_IS_EXP(c)    ((c) == 'e' || (c) == 'E')
+
+static ci_ptr ci_number_fromstring(const uint8_t *src, size_t len) {
+	const uint8_t *end = src + len;
+	ci_ptr ret;
+
+	#define HAS_DATA  (src < end)
+	#define PEEK      (*src)
+	#define NEXT      (*src++)
+	#define IS_FLOAT  (HAS_DATA && (PEEK == '.' || CI_IS_EXP(PEEK)))
+
+	/* skip leading whitespace */
+	while (HAS_DATA && CI_IS_WS(PEEK)) src++;
+	if (!HAS_DATA) return NULL;
+
+	/* sign */
+	int neg = 0;
+	if (PEEK == '-')      { neg = 1; src++; }
+	else if (PEEK == '+') { src++; }
+
+	if (!HAS_DATA || (!CI_IS_DIGIT(PEEK) && PEEK != '.'))
+		return NULL;
+
+	/* int64 fast path */
+	int64_t v64 = 0;
+	int digits = 0;
+
+	while (HAS_DATA && CI_IS_DIGIT(PEEK)) {
+		v64 = v64 * 10 + (NEXT - '0');
+		digits++;
+		if (digits >= CI_ATOD_MAX_INT64_DIGITS)
+			goto read_i128;
+	}
+
+	if(!digits) return NULL;
+	
+	if (IS_FLOAT) goto read_float;
+
+	ret = ci_number_int(neg ? -(__int128)v64 : (__int128)v64);
+	goto consume_tail;
+
+	read_i128:;
+	{
+		__int128 v128 = (__int128)v64;
+
+		while (HAS_DATA && CI_IS_DIGIT(PEEK)) {
+			v128 = v128 * 10 + (NEXT - '0');
+			digits++;
+			if (digits >= CI_ATOD_MAX_I128_DIGITS) {
+				
+				static const __int128 i128_max = ((unsigned __int128)1 << 127) - 1;
+				ret = ci_number_int(neg ? ~i128_max : i128_max);
+				
+				goto consume_tail;
+			}
+		}
+
+		if (IS_FLOAT) goto read_float;
+
+		ret = ci_number_int(neg ? -v128 : v128);
+		
+		goto expected_none;
+	}
+
+	read_float:;
+	{
+		uint64_t mant = (uint64_t)v64;
+		int frac_digits = 0;
+		int sig_digits = digits;
+
+		if (HAS_DATA && PEEK == '.') {
+			src++;
+			while (HAS_DATA && CI_IS_DIGIT(PEEK)) {
+				if (sig_digits < CI_ATOD_MAX_FLOAT_DIGITS) {
+					mant = mant * 10 + (PEEK - '0');
+					sig_digits++;
+				}
+				frac_digits++;
+				src++;
+			}
+		}
+
+		int exp = 0;
+		if (HAS_DATA && CI_IS_EXP(PEEK)) {
+			src++;
+			int exp_neg = 0;
+			if (HAS_DATA && PEEK == '-')      { exp_neg = 1; src++; }
+			else if (HAS_DATA && PEEK == '+') { src++; }
+			while (HAS_DATA && CI_IS_DIGIT(PEEK)) {
+				exp = exp * 10 + (NEXT - '0');
+				if (exp > 999) { exp = 999; break; }
+			}
+			while (HAS_DATA && CI_IS_DIGIT(PEEK)) src++;
+			if (exp_neg) exp = -exp;
+		}
+
+		double fval = uscale_atod(mant, exp - frac_digits);
+		if (neg) fval = -fval;
+		ret = (ci_ptr)ci_number_floating(fval);
+		goto expected_none;
+	}
+
+	consume_tail:
+	if (!HAS_DATA) return ret;
+
+	// whitespace*
+	while (HAS_DATA && CI_IS_WS(PEEK)) src++;
+	
+	//\d*
+	while (HAS_DATA && CI_IS_DIGIT(PEEK)) src++;
+	
+	//.\d*
+	if (HAS_DATA && PEEK == '.') {
+		src++;
+		while (HAS_DATA && CI_IS_DIGIT(PEEK)) src++;
+	}
+	
+	//e[+-]?\d*
+	if (HAS_DATA && CI_IS_EXP(PEEK)) {
+		src++;
+		if (HAS_DATA && (PEEK == '+' || PEEK == '-')) src++;
+		while (HAS_DATA && CI_IS_DIGIT(PEEK)) src++;
+	}
+	
+	expected_none:
+	if (!HAS_DATA) return ret;
+	
+	// whitespace*
+	while (HAS_DATA && CI_IS_WS(PEEK)) src++;
+	if (!HAS_DATA) return ret;
+	
+	ci_dec(ret);
+	return NULL;
+
+	#undef HAS_DATA
+	#undef PEEK
+	#undef NEXT
+	#undef IS_FLOAT
+}
+
+
+/*
+ * ci_number_tostring — number to string with formatting control.
+ * max_ints: max integer digits before scientific (use CI_NUMBER_PRINT_MAX_INT_DIGITS_SCI)
+ * fdmax:    >0 = max fractional digits, 0 = all, <0 = scientific threshold
+ * Returns number of bytes written (no null terminator added).
+ * Caller must preallocate buf via ci_number_stringmax().
+ */
+static int ci_number_tostring(ci_ptr p, uint8_t * restrict buf, int max_ints, int fdmax) {
+	if (CI_IS_INT(p)) {
+		intptr_t v = CI_INT(p);
+		if (v < 0) {
+			*buf = '-';
+			return 1 + ci_number_itoa(buf + 1, (uint64_t)(-v));
+		}
+		return ci_number_itoa(buf, (uint64_t)v);
+	}
+
+	if (!CI_IS_NUMBER(p))
+		return 0;
+
+	ci_number *n = (ci_number *)p;
+
+	if (CI_NUMBER_IS_DOUBLE(n))
+		return ci_number_dtoa(buf, n->f64, max_ints, fdmax);
+
+	/* i128 */
+	__int128 v = n->i128;
+	if (v < 0) {
+		*buf = '-';
+		return 1 + ci_number_itoa128(buf + 1, (unsigned __int128)(-v));
+	}
+	return ci_number_itoa128(buf, (unsigned __int128)v);
 }
