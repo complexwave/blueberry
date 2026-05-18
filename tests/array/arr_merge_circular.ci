@@ -1,0 +1,110 @@
+// Array .merge() — circular buffer / slowpath cases
+var h = require("tests/test_helpers.ci")
+h()
+
+// === merge into circular-buffer dst (dst has offset) ===
+print("running merge_dst_circular")
+var q = []
+var i = 0
+while i < 10 {
+	q.push(i)
+	i = i + 1
+}
+i = 0
+while i < 7 {
+	q.shift()
+	i = i + 1
+}
+// q = [7, 8, 9], offset nonzero
+test.equal(q.len(), 3, "merge_dst_circular")
+q.merge([10, 11, 12])
+test.equal(q.len(), 6, "merge_dst_circular")
+test.equal(q[0], 7, "merge_dst_circular")
+test.equal(q[3], 10, "merge_dst_circular")
+test.equal(q[5], 12, "merge_dst_circular")
+
+// === merge circular src into fresh dst ===
+print("running merge_src_circular")
+var src = []
+i = 0
+while i < 8 {
+	src.push(i)
+	i = i + 1
+}
+i = 0
+while i < 5 {
+	src.shift()
+	i = i + 1
+}
+// src = [5, 6, 7], offset nonzero
+var dst = [1, 2]
+dst.merge(src)
+test.equal(dst.len(), 5, "merge_src_circular")
+test.equal(dst[0], 1, "merge_src_circular")
+test.equal(dst[2], 5, "merge_src_circular")
+test.equal(dst[4], 7, "merge_src_circular")
+
+// === merge wrapped src (offset+length > size) ===
+print("running merge_wrapped_src")
+var w = []
+i = 0
+while i < 4 {
+	w.push(i)
+	i = i + 1
+}
+// w = [0,1,2,3] size=4
+w.shift()
+w.shift()
+w.push(4)
+w.push(5)
+// w = [2,3,4,5] wrapped around, offset=2
+test.equal(w.len(), 4, "merge_wrapped_src")
+var r = [10]
+r.merge(w)
+test.equal(r.len(), 5, "merge_wrapped_src")
+test.equal(r[0], 10, "merge_wrapped_src")
+test.equal(r[1], 2, "merge_wrapped_src")
+test.equal(r[4], 5, "merge_wrapped_src")
+
+// === merge both circular ===
+print("running merge_both_circular")
+var d2 = []
+i = 0
+while i < 6 {
+	d2.push(i + 100)
+	i = i + 1
+}
+i = 0
+while i < 4 {
+	d2.shift()
+	i = i + 1
+}
+// d2 = [104, 105]
+var s2 = []
+i = 0
+while i < 6 {
+	s2.push(i + 200)
+	i = i + 1
+}
+i = 0
+while i < 4 {
+	s2.shift()
+	i = i + 1
+}
+// s2 = [204, 205]
+d2.merge(s2)
+test.equal(d2.len(), 4, "merge_both_circular")
+test.equal(d2[0], 104, "merge_both_circular")
+test.equal(d2[1], 105, "merge_both_circular")
+test.equal(d2[2], 204, "merge_both_circular")
+test.equal(d2[3], 205, "merge_both_circular")
+
+// === merge returns self (chainable) ===
+print("running merge_returns_self")
+var ch = [1]
+var ret = ch.merge([2], [3])
+test.equal(ret.len(), 3, "merge_returns_self")
+test.equal(ret[0], 1, "merge_returns_self")
+test.equal(ret[2], 3, "merge_returns_self")
+
+test.done()

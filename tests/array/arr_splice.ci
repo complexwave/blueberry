@@ -1,0 +1,83 @@
+// Array .splice(start, deleteCount, ...inserts)
+//
+// Removes deleteCount elements starting at start index,
+// inserts varargs in their place. Modifies array in-place.
+//
+//   .splice(2, 1)         — delete 1 element at index 2
+//   .splice(2, 0, x, y)   — insert x,y at index 2, delete nothing
+//   .splice(1, 2, x)      — replace 2 elements at index 1 with x
+//   .splice(0, 3)          — delete first 3
+//   .splice(len, 0, x)     — append x (same as push)
+//
+// start clamped to [0, len]. deleteCount clamped to not exceed end.
+// Returns self.
+var h = require("tests/test_helpers.ci")
+h()
+
+// === delete from middle ===
+print("running splice_del_mid")
+var a = [1, 2, 3, 4, 5]
+a.splice(1, 2)
+// [1, 4, 5]
+test.equal(a.len(), 3, "splice_del_mid")
+test.equal(a[0], 1, "splice_del_mid")
+test.equal(a[1], 4, "splice_del_mid")
+test.equal(a[2], 5, "splice_del_mid")
+
+// === delete from start ===
+print("running splice_del_start")
+var b = [10, 20, 30, 40]
+b.splice(0, 2)
+test.equal(b.len(), 2, "splice_del_start")
+test.equal(b[0], 30, "splice_del_start")
+test.equal(b[1], 40, "splice_del_start")
+
+// === delete from end ===
+print("running splice_del_end")
+var c = [1, 2, 3, 4, 5]
+c.splice(3, 2)
+test.equal(c.len(), 3, "splice_del_end")
+test.equal(c[2], 3, "splice_del_end")
+
+// === delete all ===
+print("running splice_del_all")
+var d = [1, 2, 3]
+d.splice(0, 3)
+test.equal(d.len(), 0, "splice_del_all")
+
+// === delete one ===
+print("running splice_del_one")
+var e = [10, 20, 30]
+e.splice(1, 1)
+test.equal(e.len(), 2, "splice_del_one")
+test.equal(e[0], 10, "splice_del_one")
+test.equal(e[1], 30, "splice_del_one")
+
+// === insert at middle, no delete ===
+print("running splice_ins_mid")
+var f = [1, 2, 5]
+f.splice(2, 0, 3, 4)
+// [1, 2, 3, 4, 5]
+test.equal(f.len(), 5, "splice_ins_mid")
+test.equal(f[2], 3, "splice_ins_mid")
+test.equal(f[3], 4, "splice_ins_mid")
+test.equal(f[4], 5, "splice_ins_mid")
+
+// === insert at start ===
+print("running splice_ins_start")
+var g = [3, 4]
+g.splice(0, 0, 1, 2)
+test.equal(g.len(), 4, "splice_ins_start")
+test.equal(g[0], 1, "splice_ins_start")
+test.equal(g[1], 2, "splice_ins_start")
+test.equal(g[2], 3, "splice_ins_start")
+
+// === insert at end (like push) ===
+print("running splice_ins_end")
+var hh = [1, 2]
+hh.splice(2, 0, 3, 4)
+test.equal(hh.len(), 4, "splice_ins_end")
+test.equal(hh[2], 3, "splice_ins_end")
+test.equal(hh[3], 4, "splice_ins_end")
+
+test.done()

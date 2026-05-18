@@ -1,0 +1,73 @@
+// Array tests: resize, size, find, contains
+var h = require("tests/test_helpers.ci")
+h()
+
+// === size getter ===
+print("running arr_size_read")
+var s1 = [1, 2, 3]
+var sz = s1.size()
+test.assert(sz >= 3, "arr_size_read")
+
+// === size setter: grow preallocates, len unchanged ===
+print("running arr_size_grow")
+var s2 = [1, 2]
+s2.size(50)
+test.equal(s2.len(), 2, "arr_size_grow")
+test.assert(s2.size() >= 50, "arr_size_grow")
+
+// === size setter: shrink truncates ===
+print("running arr_size_shrink")
+var g2 = [1, 2, 3, 4, 5]
+g2.size(2)
+test.equal(g2.len(), 2, "arr_size_shrink")
+test.equal(g2[0], 1, "arr_size_shrink")
+test.equal(g2[1], 2, "arr_size_shrink")
+
+print("running arr_size_zero")
+var g3 = [1, 2, 3]
+g3.size(0)
+test.equal(g3.len(), 0, "arr_size_zero")
+
+// === find ===
+print("running arr_find_present")
+var fa = [10, 20, 30, 40]
+test.equal(fa.find(20), 1, "arr_find_present")
+
+print("running arr_find_first")
+test.equal(fa.find(10), 0, "arr_find_first")
+
+print("running arr_find_last")
+test.equal(fa.find(40), 3, "arr_find_last")
+
+print("running arr_find_missing")
+var found = fa.find(99)
+test.equal(found, false, "arr_find_missing")
+
+// === find with start index ===
+print("running arr_find_start")
+var fs = [10, 20, 30, 20, 40]
+test.equal(fs.find(20), 1, "arr_find_start")
+test.equal(fs.find(20, 2), 3, "arr_find_start")
+
+print("running arr_find_start_exact")
+test.equal(fs.find(30, 2), 2, "arr_find_start_exact")
+
+print("running arr_find_start_miss")
+test.equal(fs.find(10, 1), false, "arr_find_start_miss")
+
+print("running arr_find_start_zero")
+test.equal(fs.find(10, 0), 0, "arr_find_start_zero")
+
+// === contains ===
+print("running arr_contains_yes")
+var ca = [1, 2, 3]
+test.equal(ca.contains(2), true, "arr_contains_yes")
+
+print("running arr_contains_no")
+test.equal(ca.contains(99), false, "arr_contains_no")
+
+print("running arr_contains_null")
+var ca2 = [1, null, 3]
+test.equal(ca2.contains(null), true, "arr_contains_null")
+
+test.done()

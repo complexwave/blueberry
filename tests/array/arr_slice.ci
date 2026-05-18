@@ -1,0 +1,177 @@
+// Array .slice(from, to) — positive ranges, basic cases
+//
+// Semantics (Python-style half-open range):
+//   .slice(from, to) returns NEW array with elements [from, to)
+//
+//   - Range is half-open: element at `to` is EXCLUDED
+//   - Positive indices count from start: 0 = first
+//   - Negative indices count from end: -1 = last, -2 = second-to-last
+//   - Out-of-bounds positive: clamped to len
+//   - Out-of-bounds negative: clamped to 0
+//   - Inverted range (to <= from after resolve): returns empty array
+//   - If `to` is not an integer (null, true, etc), defaults to len (slice to end)
+//
+// Common patterns:
+//   .slice(0)        — full copy (to defaults to len)
+//   .slice(n)        — from index n to end
+//   .slice(0, n)     — first n elements
+//   .slice(-n)       — last n elements
+//   .slice(0, -n)    — all except last n
+//   .slice(-m, -n)   — middle range from end offsets
+//   .slice(n, n)     — empty (zero-length)
+//   .slice(5, 2)     — empty (inverted)
+//
+// Shorthand (to omitted or non-int):
+//   .slice(3)        — same as .slice(3, len)
+//   .slice(3, true)  — same, more explicit
+//   .slice(-2)       — last 2 elements
+//   .slice(-2, true) — same, more explicit
+
+var h = require("tests/test_helpers.ci")
+h()
+
+var a = [10, 20, 30, 40, 50]
+var s = null
+
+// === full copy: slice(0, len) ===
+print("running slice_full_copy")
+s = a.slice(0, 5)
+test.equal(s.len(), 5, "slice_full_copy")
+test.equal(s[0], 10, "slice_full_copy")
+test.equal(s[4], 50, "slice_full_copy")
+
+// === copy is independent ===
+print("running slice_independent")
+s.push(60)
+test.equal(a.len(), 5, "slice_independent")
+test.equal(s.len(), 6, "slice_independent")
+
+// === from index to end ===
+print("running slice_from_mid")
+s = a.slice(2, 5)
+test.equal(s.len(), 3, "slice_from_mid")
+test.equal(s[0], 30, "slice_from_mid")
+test.equal(s[1], 40, "slice_from_mid")
+test.equal(s[2], 50, "slice_from_mid")
+
+print("running slice_from_last")
+s = a.slice(4, 5)
+test.equal(s.len(), 1, "slice_from_last")
+test.equal(s[0], 50, "slice_from_last")
+
+// === first n elements ===
+print("running slice_first_n")
+s = a.slice(0, 3)
+test.equal(s.len(), 3, "slice_first_n")
+test.equal(s[0], 10, "slice_first_n")
+test.equal(s[1], 20, "slice_first_n")
+test.equal(s[2], 30, "slice_first_n")
+
+print("running slice_first_one")
+s = a.slice(0, 1)
+test.equal(s.len(), 1, "slice_first_one")
+test.equal(s[0], 10, "slice_first_one")
+
+// === explicit mid-range ===
+print("running slice_mid_range")
+s = a.slice(1, 4)
+test.equal(s.len(), 3, "slice_mid_range")
+test.equal(s[0], 20, "slice_mid_range")
+test.equal(s[1], 30, "slice_mid_range")
+test.equal(s[2], 40, "slice_mid_range")
+
+// === single element ===
+print("running slice_single")
+s = a.slice(2, 3)
+test.equal(s.len(), 1, "slice_single")
+test.equal(s[0], 30, "slice_single")
+
+// === empty: zero-length range ===
+print("running slice_empty_same")
+s = a.slice(2, 2)
+test.equal(s.len(), 0, "slice_empty_same")
+
+print("running slice_empty_zero")
+s = a.slice(0, 0)
+test.equal(s.len(), 0, "slice_empty_zero")
+
+// === empty: inverted range ===
+print("running slice_inverted")
+s = a.slice(4, 1)
+test.equal(s.len(), 0, "slice_inverted")
+
+print("running slice_inverted2")
+s = a.slice(3, 2)
+test.equal(s.len(), 0, "slice_inverted2")
+
+// === OOB positive: clamped to len ===
+print("running slice_oob_to")
+s = a.slice(0, 999)
+test.equal(s.len(), 5, "slice_oob_to")
+test.equal(s[0], 10, "slice_oob_to")
+test.equal(s[4], 50, "slice_oob_to")
+
+print("running slice_oob_from")
+s = a.slice(999, 1000)
+test.equal(s.len(), 0, "slice_oob_from")
+
+// === slice on empty array ===
+print("running slice_empty_arr")
+var ea = []
+s = ea.slice(0, 5)
+test.equal(s.len(), 0, "slice_empty_arr")
+
+// === shorthand: .slice(n) — to defaults to len ===
+print("running slice_shorthand_mid")
+s = a.slice(2)
+test.equal(s.len(), 3, "slice_shorthand_mid")
+test.equal(s[0], 30, "slice_shorthand_mid")
+test.equal(s[2], 50, "slice_shorthand_mid")
+
+print("running slice_shorthand_copy")
+s = a.slice(0)
+test.equal(s.len(), 5, "slice_shorthand_copy")
+test.equal(s[0], 10, "slice_shorthand_copy")
+test.equal(s[4], 50, "slice_shorthand_copy")
+
+print("running slice_shorthand_neg")
+s = a.slice(-2)
+test.equal(s.len(), 2, "slice_shorthand_neg")
+test.equal(s[0], 40, "slice_shorthand_neg")
+test.equal(s[1], 50, "slice_shorthand_neg")
+
+print("running slice_shorthand_last")
+s = a.slice(-1)
+test.equal(s.len(), 1, "slice_shorthand_last")
+test.equal(s[0], 50, "slice_shorthand_last")
+
+// === explicit true as to — same as omitting ===
+print("running slice_true_mid")
+s = a.slice(3, true)
+test.equal(s.len(), 2, "slice_true_mid")
+test.equal(s[0], 40, "slice_true_mid")
+test.equal(s[1], 50, "slice_true_mid")
+
+print("running slice_true_neg")
+s = a.slice(-3, true)
+test.equal(s.len(), 3, "slice_true_neg")
+test.equal(s[0], 30, "slice_true_neg")
+test.equal(s[2], 50, "slice_true_neg")
+
+print("running slice_true_copy")
+s = a.slice(0, true)
+test.equal(s.len(), 5, "slice_true_copy")
+
+// === .copy() equivalent to .slice(0) ===
+print("running slice_vs_copy")
+var orig = [1, 2, 3, 4, 5]
+var by_copy = orig.copy()
+s = orig.slice(0)
+test.equal(by_copy.len(), s.len(), "slice_vs_copy")
+var i = 0
+while i < by_copy.len() {
+	test.equal(by_copy[i], s[i], "slice_vs_copy")
+	i = i + 1
+}
+
+test.done()

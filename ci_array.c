@@ -172,6 +172,15 @@ static inline ci_ptr ci_arr_index(const ci_array *a, uint32_t i) {
 	return ci_arr(a, i);
 }
 
+/* wrap negative index: -1 → last, -2 → second-to-last, etc.
+ * returns a->length (invalid) if result is still out of bounds. */
+static inline uint32_t ci_arr_wrapindex(const ci_array *a, intptr_t index) {
+	if (index >= 0) return (uint32_t)index;
+	intptr_t wrapped = (intptr_t)a->length + index;
+	if (wrapped < 0) return a->length;
+	return (uint32_t)wrapped;
+}
+
 static ci_array *ci_arr_upgrade(ci_array *a);  /* defined below */
 
 /* true when the live elements wrap around the end of the backing buffer */

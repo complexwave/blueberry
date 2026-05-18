@@ -1,0 +1,118 @@
+// Array .slice(from, to) — negative indices, OOB clamping, circular buffer
+var h = require("tests/test_helpers.ci")
+h()
+
+var a = [10, 20, 30, 40, 50]
+var s = null
+
+// === last n elements: negative from ===
+print("running slice_last_n")
+s = a.slice(-3, 5)
+test.equal(s.len(), 3, "slice_last_n")
+test.equal(s[0], 30, "slice_last_n")
+test.equal(s[1], 40, "slice_last_n")
+test.equal(s[2], 50, "slice_last_n")
+
+print("running slice_last_one")
+s = a.slice(-1, 5)
+test.equal(s.len(), 1, "slice_last_one")
+test.equal(s[0], 50, "slice_last_one")
+
+print("running slice_last_all")
+s = a.slice(-5, 5)
+test.equal(s.len(), 5, "slice_last_all")
+test.equal(s[0], 10, "slice_last_all")
+
+// === all except last n: negative to ===
+print("running slice_except_last1")
+s = a.slice(0, -1)
+test.equal(s.len(), 4, "slice_except_last1")
+test.equal(s[0], 10, "slice_except_last1")
+test.equal(s[3], 40, "slice_except_last1")
+
+print("running slice_except_last2")
+s = a.slice(0, -2)
+test.equal(s.len(), 3, "slice_except_last2")
+test.equal(s[2], 30, "slice_except_last2")
+
+print("running slice_except_last4")
+s = a.slice(0, -4)
+test.equal(s.len(), 1, "slice_except_last4")
+test.equal(s[0], 10, "slice_except_last4")
+
+// === both negative ===
+print("running slice_both_neg")
+s = a.slice(-4, -1)
+test.equal(s.len(), 3, "slice_both_neg")
+test.equal(s[0], 20, "slice_both_neg")
+test.equal(s[1], 30, "slice_both_neg")
+test.equal(s[2], 40, "slice_both_neg")
+
+print("running slice_both_neg2")
+s = a.slice(-3, -2)
+test.equal(s.len(), 1, "slice_both_neg2")
+test.equal(s[0], 30, "slice_both_neg2")
+
+// === OOB negative: clamped to 0 ===
+print("running slice_oob_neg_from")
+s = a.slice(-999, 3)
+test.equal(s.len(), 3, "slice_oob_neg_from")
+test.equal(s[0], 10, "slice_oob_neg_from")
+
+print("running slice_oob_neg_to")
+s = a.slice(0, -999)
+test.equal(s.len(), 0, "slice_oob_neg_to")
+
+print("running slice_oob_neg_both")
+s = a.slice(-999, 999)
+test.equal(s.len(), 5, "slice_oob_neg_both")
+
+// === slice on empty with negative ===
+print("running slice_empty_neg")
+var ea = []
+s = ea.slice(-1, 5)
+test.equal(s.len(), 0, "slice_empty_neg")
+
+// === single-element edge cases ===
+print("running slice_single_arr")
+var sa = [42]
+s = sa.slice(-1, 1)
+test.equal(s.len(), 1, "slice_single_arr")
+test.equal(s[0], 42, "slice_single_arr")
+
+s = sa.slice(0, -1)
+test.equal(s.len(), 0, "slice_single_arr")
+
+// === circular buffer (after queue ops) ===
+print("running slice_circular")
+var q = []
+var i = 0
+while i < 20 {
+	q.push(i)
+	i = i + 1
+}
+i = 0
+while i < 15 {
+	q.shift()
+	i = i + 1
+}
+// q = [15, 16, 17, 18, 19], offset nonzero
+s = q.slice(1, 4)
+test.equal(s.len(), 3, "slice_circular")
+test.equal(s[0], 16, "slice_circular")
+test.equal(s[1], 17, "slice_circular")
+test.equal(s[2], 18, "slice_circular")
+
+print("running slice_circular_neg")
+s = q.slice(-2, 5)
+test.equal(s.len(), 2, "slice_circular_neg")
+test.equal(s[0], 18, "slice_circular_neg")
+test.equal(s[1], 19, "slice_circular_neg")
+
+print("running slice_circular_both_neg")
+s = q.slice(-4, -1)
+test.equal(s.len(), 3, "slice_circular_both_neg")
+test.equal(s[0], 16, "slice_circular_both_neg")
+test.equal(s[2], 18, "slice_circular_both_neg")
+
+test.done()

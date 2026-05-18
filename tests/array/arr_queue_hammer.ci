@@ -1,0 +1,237 @@
+// Array queue hammer tests: stress push/shift patterns, size stability, repeated iteration
+var h = require("tests/test_helpers.ci")
+h()
+
+// === FIFO queue: push N, shift N, verify order ===
+print("running queue_fifo_order")
+var q = []
+var n = 200
+var i = 0
+while i < n {
+	q.push(i)
+	i = i + 1
+}
+var ok = true
+i = 0
+while i < n {
+	var v = q.shift()
+	if v != i { ok = false }
+	i = i + 1
+}
+test.assert(ok, "queue_fifo_order")
+test.equal(q.len(), 0, "queue_fifo_order")
+
+// === Steady-state queue: push 1, shift 1 — size must not grow ===
+print("running queue_size_stable")
+var sq = []
+i = 0
+while i < 10 {
+	sq.push(i)
+	i = i + 1
+}
+var initial_size = sq.size()
+i = 0
+while i < 500 {
+	sq.push(i + 10)
+	sq.shift()
+	i = i + 1
+}
+test.equal(sq.len(), 10, "queue_size_stable")
+test.assert(sq.size() <= initial_size * 2, "queue_size_stable")
+
+// === Burst queue: push 50, shift 50 in waves — size must not explode ===
+print("running queue_burst_size")
+var bq = []
+var wave = 0
+while wave < 20 {
+	i = 0
+	while i < 50 {
+		bq.push(wave * 50 + i)
+		i = i + 1
+	}
+	i = 0
+	while i < 50 {
+		bq.shift()
+		i = i + 1
+	}
+	wave = wave + 1
+}
+test.equal(bq.len(), 0, "queue_burst_size")
+// after draining fully, size should be bounded, not 1000
+test.assert(bq.size() <= 128, "queue_burst_size")
+
+// === Push/shift cycling with size check ===
+print("running queue_cycle_no_grow")
+var cq = []
+i = 0
+while i < 20 {
+	cq.push(i)
+	i = i + 1
+}
+var base_size = cq.size()
+i = 0
+while i < 1000 {
+	cq.push(i + 20)
+	cq.shift()
+	i = i + 1
+}
+test.equal(cq.len(), 20, "queue_cycle_no_grow")
+// size must stay bounded — should NOT grow to 1020
+test.assert(cq.size() <= base_size * 2, "queue_cycle_no_grow")
+
+// === Push/shift preserves correct values ===
+print("running queue_cycle_values")
+var vq = []
+i = 0
+while i < 10 {
+	vq.push(i)
+	i = i + 1
+}
+i = 0
+while i < 300 {
+	vq.push(i + 1000)
+	var got = vq.shift()
+	if i < 10 {
+		if got != i { test.fail("queue_cycle_values") }
+	} else {
+		if got != (i - 10 + 1000) { test.fail("queue_cycle_values") }
+	}
+	i = i + 1
+}
+test.pass("queue_cycle_values")
+
+// === Unshift/pop as reverse queue — size stable ===
+print("running reverse_queue_size")
+var rq = []
+i = 0
+while i < 10 {
+	rq.unshift(i)
+	i = i + 1
+}
+var rq_base = rq.size()
+i = 0
+while i < 500 {
+	rq.unshift(i + 100)
+	rq.pop()
+	i = i + 1
+}
+test.equal(rq.len(), 10, "reverse_queue_size")
+test.assert(rq.size() <= rq_base * 2, "reverse_queue_size")
+
+// === Mixed: push+pop then push+shift alternating ===
+print("running mixed_ops_hammer")
+var mq = []
+i = 0
+while i < 100 {
+	mq.push(i)
+	i = i + 1
+}
+// pop half from tail
+i = 0
+while i < 50 {
+	mq.pop()
+	i = i + 1
+}
+test.equal(mq.len(), 50, "mixed_ops_hammer")
+// shift half from head
+i = 0
+while i < 25 {
+	mq.shift()
+	i = i + 1
+}
+test.equal(mq.len(), 25, "mixed_ops_hammer")
+// push more, shift all
+i = 0
+while i < 25 {
+	mq.push(i + 200)
+	i = i + 1
+}
+test.equal(mq.len(), 50, "mixed_ops_hammer")
+i = 0
+while i < 50 {
+	mq.shift()
+	i = i + 1
+}
+test.equal(mq.len(), 0, "mixed_ops_hammer")
+
+// === Repeated for-in iteration on same array ===
+print("running iter_repeated")
+var arr = [10, 20, 30, 40, 50]
+var sum1 = 0
+for i, v in arr {
+	sum1 = sum1 + v
+}
+var sum2 = 0
+for i, v in arr {
+	sum2 = sum2 + v
+}
+var sum3 = 0
+for i, v in arr {
+	sum3 = sum3 + v
+}
+test.equal(sum1, 150, "iter_repeated")
+test.equal(sum2, 150, "iter_repeated")
+test.equal(sum3, 150, "iter_repeated")
+
+// === Iterate, mutate, iterate again ===
+print("running iter_after_mutate")
+var ma = [1, 2, 3, 4, 5]
+var s = 0
+for i, v in ma {
+	s = s + v
+}
+test.equal(s, 15, "iter_after_mutate")
+ma.push(6)
+ma.shift()
+// now [2, 3, 4, 5, 6]
+s = 0
+for i, v in ma {
+	s = s + v
+}
+test.equal(s, 20, "iter_after_mutate")
+
+// === Iterate checks index correctness ===
+print("running iter_indices")
+var idx_arr = [100, 200, 300]
+var idx_ok = true
+for i, v in idx_arr {
+	if i == 0 && v != 100 { idx_ok = false }
+	if i == 1 && v != 200 { idx_ok = false }
+	if i == 2 && v != 300 { idx_ok = false }
+}
+test.assert(idx_ok, "iter_indices")
+
+// === Iterate after heavy queue usage (circular buffer state) ===
+print("running iter_after_queue")
+var qa = []
+i = 0
+while i < 50 {
+	qa.push(i)
+	i = i + 1
+}
+i = 0
+while i < 40 {
+	qa.shift()
+	i = i + 1
+}
+// qa = [40, 41, 42, ..., 49], offset is nonzero (circular)
+test.equal(qa.len(), 10, "iter_after_queue")
+var qs = 0
+var qi = 0
+for idx, v in qa {
+	if idx != qi { test.fail("iter_after_queue") }
+	qs = qs + v
+	qi = qi + 1
+}
+// sum 40..49 = 445
+test.equal(qs, 445, "iter_after_queue")
+test.equal(qi, 10, "iter_after_queue")
+
+// second iteration on same circular-state array
+var qs2 = 0
+for idx, v in qa {
+	qs2 = qs2 + v
+}
+test.equal(qs2, 445, "iter_after_queue")
+
+test.done()

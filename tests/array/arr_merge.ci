@@ -1,0 +1,94 @@
+// Array .merge(arr2, arr3, ...) — vararg, appends all elements in order
+// Modifies self in-place, returns self.
+// Fastpath: memcpy when dst offset==0 and all srcs non-wrapped.
+// Slowpath: element-by-element via circular index.
+var h = require("tests/test_helpers.ci")
+h()
+
+// === merge one array ===
+print("running merge_one")
+var a = [1, 2, 3]
+var b = [4, 5, 6]
+a.merge(b)
+test.equal(a.len(), 6, "merge_one")
+test.equal(a[0], 1, "merge_one")
+test.equal(a[3], 4, "merge_one")
+test.equal(a[5], 6, "merge_one")
+
+// === original source unchanged ===
+print("running merge_src_intact")
+test.equal(b.len(), 3, "merge_src_intact")
+
+// === merge multiple arrays ===
+print("running merge_multi")
+var c = [1]
+c.merge([2, 3], [4, 5], [6])
+test.equal(c.len(), 6, "merge_multi")
+test.equal(c[0], 1, "merge_multi")
+test.equal(c[1], 2, "merge_multi")
+test.equal(c[3], 4, "merge_multi")
+test.equal(c[5], 6, "merge_multi")
+
+// === merge into empty ===
+print("running merge_into_empty")
+var d = []
+d.merge([1, 2], [3])
+test.equal(d.len(), 3, "merge_into_empty")
+test.equal(d[0], 1, "merge_into_empty")
+test.equal(d[2], 3, "merge_into_empty")
+
+// === merge empty arrays (no-ops) ===
+print("running merge_empty_srcs")
+var e = [1, 2]
+e.merge([], [], [])
+test.equal(e.len(), 2, "merge_empty_srcs")
+test.equal(e[0], 1, "merge_empty_srcs")
+
+// === merge mix of empty and non-empty ===
+print("running merge_mixed_empty")
+var f = [1]
+f.merge([], [2], [], [3], [])
+test.equal(f.len(), 3, "merge_mixed_empty")
+test.equal(f[1], 2, "merge_mixed_empty")
+test.equal(f[2], 3, "merge_mixed_empty")
+
+// === merge single element arrays ===
+print("running merge_singles")
+var g = []
+g.merge([1], [2], [3], [4], [5])
+test.equal(g.len(), 5, "merge_singles")
+var i = 0
+while i < 5 {
+	test.equal(g[i], i + 1, "merge_singles")
+	i = i + 1
+}
+
+// === merge large ===
+print("running merge_large")
+var big1 = []
+i = 0
+while i < 100 {
+	big1.push(i)
+	i = i + 1
+}
+var big2 = []
+i = 0
+while i < 100 {
+	big2.push(i + 100)
+	i = i + 1
+}
+var dst = []
+dst.merge(big1, big2)
+test.equal(dst.len(), 200, "merge_large")
+test.equal(dst[0], 0, "merge_large")
+test.equal(dst[99], 99, "merge_large")
+test.equal(dst[100], 100, "merge_large")
+test.equal(dst[199], 199, "merge_large")
+
+// === size doesn't over-allocate wildly ===
+print("running merge_size")
+var ms = []
+ms.merge([1, 2, 3], [4, 5])
+test.assert(ms.size() <= 16, "merge_size")
+
+test.done()

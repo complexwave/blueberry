@@ -1,0 +1,147 @@
+// Array tests: all forms of indexing (bracket, .get, .set, negative)
+var h = require("tests/test_helpers.ci")
+h()
+
+var a = [10, 20, 30, 40, 50]
+
+// === bracket read: positive ===
+print("running idx_bracket_pos")
+test.equal(a[0], 10, "idx_bracket_pos")
+test.equal(a[2], 30, "idx_bracket_pos")
+test.equal(a[4], 50, "idx_bracket_pos")
+
+// === bracket read: negative ===
+print("running idx_bracket_neg")
+test.equal(a[-1], 50, "idx_bracket_neg")
+test.equal(a[-2], 40, "idx_bracket_neg")
+test.equal(a[-5], 10, "idx_bracket_neg")
+
+// === bracket read: oob returns null ===
+print("running idx_bracket_oob")
+test.equal(a[5], null, "idx_bracket_oob")
+test.equal(a[99], null, "idx_bracket_oob")
+test.equal(a[-6], null, "idx_bracket_oob")
+test.equal(a[-999], null, "idx_bracket_oob")
+
+// === .get: positive ===
+print("running idx_get_pos")
+test.equal(a.get(0), 10, "idx_get_pos")
+test.equal(a.get(4), 50, "idx_get_pos")
+
+// === .get: negative ===
+print("running idx_get_neg")
+test.equal(a.get(-1), 50, "idx_get_neg")
+test.equal(a.get(-5), 10, "idx_get_neg")
+
+// === .get: oob ===
+print("running idx_get_oob")
+test.equal(a.get(5), null, "idx_get_oob")
+test.equal(a.get(-6), null, "idx_get_oob")
+
+// === bracket and .get agree ===
+print("running idx_bracket_get_match")
+var i = -5
+while i <= 5 {
+	test.equal(a[i], a.get(i), "idx_bracket_get_match")
+	i = i + 1
+}
+
+// === bracket write: positive ===
+print("running idx_store_pos")
+var b = [1, 2, 3, 4, 5]
+b[2] = 99
+test.equal(b[2], 99, "idx_store_pos")
+
+// === bracket write: negative ===
+print("running idx_store_neg")
+b[-1] = 55
+test.equal(b[4], 55, "idx_store_neg")
+
+print("running idx_store_neg_first")
+b[-5] = 11
+test.equal(b[0], 11, "idx_store_neg_first")
+
+// === .set: positive ===
+print("running idx_set_pos")
+var c = [1, 2, 3]
+c.set(1, 88)
+test.equal(c[1], 88, "idx_set_pos")
+
+// === .set: negative ===
+print("running idx_set_neg")
+c.set(-1, 77)
+test.equal(c[2], 77, "idx_set_neg")
+
+// === bracket write and .set agree ===
+print("running idx_store_set_match")
+var d = [10, 20, 30]
+d[1] = 99
+var d2 = [10, 20, 30]
+d2.set(1, 99)
+test.equal(d[1], d2[1], "idx_store_set_match")
+
+print("running idx_store_set_neg_match")
+var e = [10, 20, 30]
+e[-1] = 99
+var e2 = [10, 20, 30]
+e2.set(-1, 99)
+test.equal(e[2], e2[2], "idx_store_set_neg_match")
+
+// === bracket write: extend ===
+print("running idx_store_extend")
+var f = [1, 2]
+f[5] = 42
+test.equal(f.len(), 6, "idx_store_extend")
+test.equal(f[5], 42, "idx_store_extend")
+test.equal(f[2], null, "idx_store_extend")
+
+// === .set: extend ===
+print("running idx_set_extend")
+var g = [1]
+g.set(3, 99)
+test.equal(g.len(), 4, "idx_set_extend")
+test.equal(g.get(3), 99, "idx_set_extend")
+
+// === indexing on single-element array ===
+print("running idx_single")
+var s = [42]
+test.equal(s[0], 42, "idx_single")
+test.equal(s[-1], 42, "idx_single")
+test.equal(s[1], null, "idx_single")
+test.equal(s[-2], null, "idx_single")
+
+// === indexing after queue ops (circular buffer) ===
+print("running idx_circular")
+var q = []
+i = 0
+while i < 20 {
+	q.push(i)
+	i = i + 1
+}
+i = 0
+while i < 15 {
+	q.shift()
+	i = i + 1
+}
+// q = [15, 16, 17, 18, 19], offset nonzero
+test.equal(q[0], 15, "idx_circular")
+test.equal(q[-1], 19, "idx_circular")
+test.equal(q[-5], 15, "idx_circular")
+test.equal(q[5], null, "idx_circular")
+test.equal(q[-6], null, "idx_circular")
+
+print("running idx_circular_store")
+q[-1] = 999
+test.equal(q[4], 999, "idx_circular_store")
+q[-5] = 111
+test.equal(q[0], 111, "idx_circular_store")
+
+// === variable index ===
+print("running idx_variable")
+var va = [10, 20, 30, 40]
+var idx = -2
+test.equal(va[idx], 30, "idx_variable")
+idx = 1
+test.equal(va[idx], 20, "idx_variable")
+
+test.done()

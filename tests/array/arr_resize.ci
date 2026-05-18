@@ -1,0 +1,107 @@
+// Array tests: .size() as getter/setter (preallocation, shrink, no null-padding)
+var h = require("tests/test_helpers.ci")
+h()
+
+// === size getter on fresh array ===
+print("running size_getter")
+var a = [1, 2, 3]
+test.assert(a.size() >= 3, "size_getter")
+test.equal(a.len(), 3, "size_getter")
+
+// === size setter: grow preallocates, does NOT change len ===
+print("running size_grow_no_pad")
+var b = [1, 2, 3]
+b.size(100)
+test.equal(b.len(), 3, "size_grow_no_pad")
+test.assert(b.size() >= 100, "size_grow_no_pad")
+
+// === existing elements preserved after grow ===
+print("running size_grow_preserves")
+test.equal(b[0], 1, "size_grow_preserves")
+test.equal(b[1], 2, "size_grow_preserves")
+test.equal(b[2], 3, "size_grow_preserves")
+
+// === push after prealloc works normally ===
+print("running size_push_after_grow")
+b.push(4)
+b.push(5)
+test.equal(b.len(), 5, "size_push_after_grow")
+test.equal(b[3], 4, "size_push_after_grow")
+test.equal(b[4], 5, "size_push_after_grow")
+
+// === size setter: shrink truncates elements ===
+print("running size_shrink")
+var c = [10, 20, 30, 40, 50]
+c.size(2)
+test.equal(c.len(), 2, "size_shrink")
+test.equal(c[0], 10, "size_shrink")
+test.equal(c[1], 20, "size_shrink")
+
+// === size to 0 clears ===
+print("running size_zero")
+var d = [1, 2, 3]
+d.size(0)
+test.equal(d.len(), 0, "size_zero")
+
+// === size on empty array ===
+print("running size_empty_grow")
+var e = []
+e.size(50)
+test.equal(e.len(), 0, "size_empty_grow")
+test.assert(e.size() >= 50, "size_empty_grow")
+
+// === push fills preallocated space without realloc ===
+print("running size_prealloc_fill")
+var f = []
+f.size(10)
+var sz_before = f.size()
+var i = 0
+while i < 10 {
+	f.push(i)
+	i = i + 1
+}
+test.equal(f.len(), 10, "size_prealloc_fill")
+test.equal(f.size(), sz_before, "size_prealloc_fill")
+
+// === grow then shrink then grow ===
+print("running size_grow_shrink_grow")
+var g = [1, 2, 3, 4, 5]
+g.size(100)
+test.equal(g.len(), 5, "size_grow_shrink_grow")
+g.size(3)
+test.equal(g.len(), 3, "size_grow_shrink_grow")
+test.equal(g[0], 1, "size_grow_shrink_grow")
+test.equal(g[2], 3, "size_grow_shrink_grow")
+g.size(50)
+test.equal(g.len(), 3, "size_grow_shrink_grow")
+test.assert(g.size() >= 50, "size_grow_shrink_grow")
+
+// === size same as current len — no-op ===
+print("running size_same")
+var h2 = [1, 2, 3]
+var old_size = h2.size()
+h2.size(3)
+test.equal(h2.len(), 3, "size_same")
+
+// === size after queue ops (circular buffer) ===
+print("running size_after_queue")
+var q = []
+i = 0
+while i < 20 {
+	q.push(i)
+	i = i + 1
+}
+i = 0
+while i < 15 {
+	q.shift()
+	i = i + 1
+}
+// q = [15..19], len=5, offset nonzero
+test.equal(q.len(), 5, "size_after_queue")
+q.size(100)
+test.equal(q.len(), 5, "size_after_queue")
+test.assert(q.size() >= 100, "size_after_queue")
+test.equal(q[0], 15, "size_after_queue")
+test.equal(q[4], 19, "size_after_queue")
+
+test.done()

@@ -78,17 +78,17 @@ static inline ci_ptr bb_op_arraccess(bb_coro *c, ci_ptr arr, ci_ptr idx) {
 		if(CI_IS_MAP(arr)){
 			return ci_map_find(arr, idx);
 		}
-		
+
 		bb_coro_error(c, "ARRACCESS: operand is not an array");
 	}
 	if (!CI_IS_INT(idx))
 		bb_coro_error(c, "ARRACCESS: index must be integer");
 
-	intptr_t index = CI_INT(idx);
-	uint32_t alen = ci_arr_len((const ci_array *)arr);
-	if (index < 0 || index >= (intptr_t)alen)
+	const ci_array *a = (const ci_array *)arr;
+	uint32_t i = ci_arr_wrapindex(a, CI_INT(idx));
+	if (i >= ci_arr_len(a))
 		return NULL;
-	return ci_arr_index((const ci_array *)arr, (uint32_t)index);
+	return ci_arr_index(a, i);
 }
 
 /* ================================================================
@@ -100,26 +100,22 @@ static inline void bb_op_arraystore(bb_coro *c, ci_ptr arr, ci_ptr idx, ci_ptr v
 		if (CI_IS_MAP(arr)){
 			return bb_op_hashstore(c, arr, idx, val);
 		}
-		
+
 		bb_coro_error(c, "ARRAYSTORE: operand is not an array");
 	}
-	
+
 	if (!CI_IS_INT(idx))
 		bb_coro_error(c, "ARRAYSTORE: index must be integer");
 
-	intptr_t index = CI_INT(idx);
-	if (index < 0)
-		bb_coro_error(c, "ARRAYSTORE: negative index %lld", (long long)index);
-
 	ci_array *a = (ci_array *)arr;
-	uint32_t alen = ci_arr_len(a);
-	if ((uint32_t)index >= alen)
-		ci_arr_extend(a, (uint32_t)index + 1);
+	uint32_t i = ci_arr_wrapindex(a, CI_INT(idx));
+	if (i >= ci_arr_len(a))
+		ci_arr_extend(a, i + 1);
 
 	ci_inc(val);
-	ci_ptr old = ci_arr_index(a, (uint32_t)index);
+	ci_ptr old = ci_arr_index(a, i);
 	ci_dec(old);
-	ci_arr_set(a, (uint32_t)index, val);
+	ci_arr_set(a, i, val);
 }
 
 /* ================================================================

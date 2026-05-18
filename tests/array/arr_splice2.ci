@@ -1,0 +1,107 @@
+// Array .splice() — replace, edge cases, clamping
+var h = require("tests/test_helpers.ci")
+h()
+
+// === replace: fewer inserts than deletes (shrink) ===
+print("running splice_replace_shrink")
+var a = [1, 2, 3, 4, 5]
+a.splice(1, 3, 99)
+// [1, 99, 5]
+test.equal(a.len(), 3, "splice_replace_shrink")
+test.equal(a[0], 1, "splice_replace_shrink")
+test.equal(a[1], 99, "splice_replace_shrink")
+test.equal(a[2], 5, "splice_replace_shrink")
+
+// === replace: more inserts than deletes (grow) ===
+print("running splice_replace_grow")
+var b = [1, 2, 5]
+b.splice(1, 1, 3, 4)
+// [1, 3, 4, 5]
+test.equal(b.len(), 4, "splice_replace_grow")
+test.equal(b[1], 3, "splice_replace_grow")
+test.equal(b[2], 4, "splice_replace_grow")
+test.equal(b[3], 5, "splice_replace_grow")
+
+// === replace: equal inserts and deletes ===
+print("running splice_replace_equal")
+var c = [1, 2, 3]
+c.splice(0, 2, 10, 20)
+test.equal(c.len(), 3, "splice_replace_equal")
+test.equal(c[0], 10, "splice_replace_equal")
+test.equal(c[1], 20, "splice_replace_equal")
+test.equal(c[2], 3, "splice_replace_equal")
+
+// === delete count exceeds remaining — clamped ===
+print("running splice_del_clamp")
+var d = [1, 2, 3]
+d.splice(1, 999)
+test.equal(d.len(), 1, "splice_del_clamp")
+test.equal(d[0], 1, "splice_del_clamp")
+
+// === start beyond end — appends ===
+print("running splice_start_beyond")
+var e = [1, 2]
+e.splice(99, 0, 3)
+test.equal(e.len(), 3, "splice_start_beyond")
+test.equal(e[2], 3, "splice_start_beyond")
+
+// === delete 0 at start — pure prepend ===
+print("running splice_prepend")
+var f = [3, 4, 5]
+f.splice(0, 0, 1, 2)
+test.equal(f.len(), 5, "splice_prepend")
+test.equal(f[0], 1, "splice_prepend")
+test.equal(f[4], 5, "splice_prepend")
+
+// === splice on empty array — insert ===
+print("running splice_on_empty")
+var g = []
+g.splice(0, 0, 1, 2, 3)
+test.equal(g.len(), 3, "splice_on_empty")
+test.equal(g[0], 1, "splice_on_empty")
+test.equal(g[2], 3, "splice_on_empty")
+
+// === splice returns self ===
+print("running splice_returns_self")
+var hh = [1, 2, 3]
+var ret = hh.splice(1, 1, 99)
+test.equal(ret.len(), 3, "splice_returns_self")
+test.equal(ret[1], 99, "splice_returns_self")
+
+// === multiple splices in sequence ===
+print("running splice_sequence")
+var s = [1, 2, 3, 4, 5]
+s.splice(4, 1)
+// [1,2,3,4]
+s.splice(0, 1)
+// [2,3,4]
+s.splice(1, 0, 99)
+// [2,99,3,4]
+test.equal(s.len(), 4, "splice_sequence")
+test.equal(s[0], 2, "splice_sequence")
+test.equal(s[1], 99, "splice_sequence")
+test.equal(s[2], 3, "splice_sequence")
+test.equal(s[3], 4, "splice_sequence")
+
+// === splice after queue ops (has offset) ===
+print("running splice_after_queue")
+var q = []
+var i = 0
+while i < 10 {
+	q.push(i)
+	i = i + 1
+}
+i = 0
+while i < 5 {
+	q.shift()
+	i = i + 1
+}
+// q = [5,6,7,8,9], offset nonzero
+q.splice(2, 1, 77)
+// [5,6,77,8,9]
+test.equal(q.len(), 5, "splice_after_queue")
+test.equal(q[0], 5, "splice_after_queue")
+test.equal(q[2], 77, "splice_after_queue")
+test.equal(q[4], 9, "splice_after_queue")
+
+test.done()

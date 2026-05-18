@@ -1,0 +1,46 @@
+// Array tests: indexing, for-in, nested, mixed types
+var h = require("tests/test_helpers.ci")
+h()
+
+// === indexing ===
+print("running arr_index_read")
+var ia = [10, 20, 30]
+test.equal(ia[0], 10, "arr_index_read")
+test.equal(ia[1], 20, "arr_index_read")
+test.equal(ia[2], 30, "arr_index_read")
+
+print("running arr_index_write")
+ia[1] = 99
+test.equal(ia[1], 99, "arr_index_write")
+
+// === for-in iteration ===
+print("running arr_for_in")
+var it = [10, 20, 30]
+var sum = 0
+var idx_sum = 0
+for i, v in it {
+	sum = sum + v
+	idx_sum = idx_sum + i
+}
+test.equal(sum, 60, "arr_for_in")
+test.equal(idx_sum, 3, "arr_for_in")
+
+// === nested arrays ===
+print("running arr_nested")
+var na = [[1, 2], [3, 4]]
+test.equal(na.len(), 2, "arr_nested")
+test.equal(na[0][0], 1, "arr_nested")
+test.equal(na[0][1], 2, "arr_nested")
+test.equal(na[1][0], 3, "arr_nested")
+test.equal(na[1][1], 4, "arr_nested")
+
+// === array with mixed types ===
+print("running arr_mixed_types")
+var mt = [1, "hello", true, null]
+test.equal(mt.len(), 4, "arr_mixed_types")
+test.equal(mt[0], 1, "arr_mixed_types")
+test.equal(mt[1], "hello", "arr_mixed_types")
+test.equal(mt[2], true, "arr_mixed_types")
+test.equal(mt[3], null, "arr_mixed_types")
+
+test.done()

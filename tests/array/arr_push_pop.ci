@@ -1,0 +1,106 @@
+// Array tests: len, push, pop, shift, unshift
+var h = require("tests/test_helpers.ci")
+h()
+
+// === len ===
+print("running arr_len_empty")
+var a = []
+test.equal(a.len(), 0, "arr_len_empty")
+
+print("running arr_len_nonempty")
+var b = [1, 2, 3]
+test.equal(b.len(), 3, "arr_len_nonempty")
+
+// === push ===
+print("running arr_push_one")
+var c = []
+c.push(10)
+test.equal(c.len(), 1, "arr_push_one")
+
+print("running arr_push_value")
+test.equal(c[0], 10, "arr_push_value")
+
+print("running arr_push_multiple")
+c.push(20)
+c.push(30)
+test.equal(c.len(), 3, "arr_push_multiple")
+test.equal(c[2], 30, "arr_push_multiple")
+
+// === pop ===
+print("running arr_pop_value")
+var d = [1, 2, 3]
+var popped = d.pop()
+test.equal(popped, 3, "arr_pop_value")
+
+print("running arr_pop_len")
+test.equal(d.len(), 2, "arr_pop_len")
+
+print("running arr_pop_remaining")
+test.equal(d[0], 1, "arr_pop_remaining")
+test.equal(d[1], 2, "arr_pop_remaining")
+
+// === shift ===
+print("running arr_shift_value")
+var e = [10, 20, 30]
+var shifted = e.shift()
+test.equal(shifted, 10, "arr_shift_value")
+
+print("running arr_shift_len")
+test.equal(e.len(), 2, "arr_shift_len")
+
+print("running arr_shift_remaining")
+test.equal(e[0], 20, "arr_shift_remaining")
+test.equal(e[1], 30, "arr_shift_remaining")
+
+// === unshift ===
+print("running arr_unshift")
+var f = [2, 3]
+f.unshift(1)
+test.equal(f.len(), 3, "arr_unshift")
+test.equal(f[0], 1, "arr_unshift")
+test.equal(f[1], 2, "arr_unshift")
+test.equal(f[2], 3, "arr_unshift")
+
+print("running arr_unshift_empty")
+var f2 = []
+f2.unshift(99)
+test.equal(f2.len(), 1, "arr_unshift_empty")
+test.equal(f2[0], 99, "arr_unshift_empty")
+
+// === push/pop round-trip ===
+print("running arr_push_pop_roundtrip")
+var pp = []
+pp.push(1)
+pp.push(2)
+pp.push(3)
+test.equal(pp.pop(), 3, "arr_push_pop_roundtrip")
+test.equal(pp.pop(), 2, "arr_push_pop_roundtrip")
+test.equal(pp.pop(), 1, "arr_push_pop_roundtrip")
+test.equal(pp.len(), 0, "arr_push_pop_roundtrip")
+
+// === shift/unshift round-trip ===
+print("running arr_shift_unshift_roundtrip")
+var su = []
+su.unshift(1)
+su.unshift(2)
+su.unshift(3)
+test.equal(su[0], 3, "arr_shift_unshift_roundtrip")
+test.equal(su.shift(), 3, "arr_shift_unshift_roundtrip")
+test.equal(su.shift(), 2, "arr_shift_unshift_roundtrip")
+test.equal(su.shift(), 1, "arr_shift_unshift_roundtrip")
+test.equal(su.len(), 0, "arr_shift_unshift_roundtrip")
+
+// === queue behavior (push + shift) ===
+print("running arr_queue_behavior")
+var q = []
+q.push(1)
+q.push(2)
+q.push(3)
+test.equal(q.shift(), 1, "arr_queue_behavior")
+test.equal(q.shift(), 2, "arr_queue_behavior")
+q.push(4)
+test.equal(q.shift(), 3, "arr_queue_behavior")
+test.equal(q.shift(), 4, "arr_queue_behavior")
+test.equal(q.len(), 0, "arr_queue_behavior")
+
+test.done()
