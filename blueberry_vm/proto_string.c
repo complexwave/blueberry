@@ -69,6 +69,11 @@ static ci_ptr bb_str_is_slice(bb_coro_arg *c, ci_ptr s) {
 	return CI_BOOL(CI_IS_SLICE(s));
 }
 
+static ci_ptr bb_str_is_readonly(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING(s);
+	return CI_BOOL(CI_IS_READONLY(s));
+}
+
 /* slice_offset() — byte offset between parent's head and this slice's head.
  * Returns null if self is not a slice, or 0 if parent is null (static memory). */
 static ci_ptr bb_str_slice_offset(bb_coro_arg *c, ci_ptr s) {

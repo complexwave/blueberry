@@ -38,7 +38,7 @@ static ci_map *bb_get_proto(bb_vm *vm, ci_ptr obj) {
 		return NULL;
 	if (CI_IS_MAP(obj))
 		return (ci_map *)((ci_map *)obj)->prototype;
-	if (CI_IS_OBJECT(obj))
+	if (CI_IS_PTR(obj))
 		return bb_obj_arena_prototype(obj);
 	return NULL;
 }

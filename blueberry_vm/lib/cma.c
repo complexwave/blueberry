@@ -30,7 +30,7 @@
  *  bb_cma_op — GC-managed wrapper around a cma_op tree node
  * ================================================================ */
 
-#define CI_BB_CMA_OP ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 4) | CI_OBJECT | CI_REFCOUNTABLE))
+#define CI_BB_CMA_OP ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 4) | CI_REFCOUNTABLE))
 
 #define bb_is_cma_op(p) CI_CHECK_MASK_FAMILY(p, CI_BB_CMA_OP, CI_VM_FAMILY)
 

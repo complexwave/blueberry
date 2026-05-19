@@ -78,11 +78,11 @@ typedef void *ci_ptr;
 #define CI_ARR_TAG           CI_FAMILY_ENTRY(CI_ARRAY_FAMILY, 0)
 #define CI_ARR_DEFAULT_CAP   8
 
-#define CI_ARR            ((uint16_t)(CI_ARR_TAG | CI_OBJECT | CI_REFCOUNTABLE))  /* 0x0023 */
-#define CI_ARR_SMALL_128  ((uint16_t)(CI_ARR_TAG | CI_OBJECT))                    /* 0x0021 */
-#define CI_ARR_SMALL_256  ((uint16_t)(CI_UPPER_TAG(0x40) | CI_ARR_TAG | CI_OBJECT))     /* 0x4021 */
-#define CI_ARR_SMALL_1024 ((uint16_t)(CI_UPPER_TAG(0x80) | CI_ARR_TAG | CI_OBJECT))     /* 0x8021 */
-#define CI_ARR_SMALL_2048 ((uint16_t)(CI_UPPER_TAG(0xC0) | CI_ARR_TAG | CI_OBJECT))     /* 0xC021 */
+#define CI_ARR            ((uint16_t)(CI_ARR_TAG | CI_REFCOUNTABLE))              /* 0x0022 */
+#define CI_ARR_SMALL_128  ((uint16_t)(CI_ARR_TAG))                                /* 0x0020 */
+#define CI_ARR_SMALL_256  ((uint16_t)(CI_UPPER_TAG(0x40) | CI_ARR_TAG))           /* 0x4020 */
+#define CI_ARR_SMALL_1024 ((uint16_t)(CI_UPPER_TAG(0x80) | CI_ARR_TAG))           /* 0x8020 */
+#define CI_ARR_SMALL_2048 ((uint16_t)(CI_UPPER_TAG(0xC0) | CI_ARR_TAG))           /* 0xC020 */
 
 /* any array (full or small): family marker bit set */
 #define CI_IS_ANY_ARR(ptr)   CI_IS_FAMILY(ptr, CI_ARRAY_FAMILY)

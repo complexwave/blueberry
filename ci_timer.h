@@ -83,7 +83,7 @@ static inline void ci_now_set(ci_time t) {
 #define CI_TIMER_FAMILY  CI_O_FAMILY_8
 #define CI_TIMER_TAG     CI_FAMILY_ENTRY(CI_TIMER_FAMILY, 5)
 
-#define CI_TIMER  ((uint16_t)(CI_TIMER_TAG | CI_OBJECT | CI_REFCOUNTABLE))
+#define CI_TIMER  ((uint16_t)(CI_TIMER_TAG | CI_REFCOUNTABLE))
 
 /* ============================================================
  * GC flag bits

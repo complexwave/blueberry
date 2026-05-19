@@ -74,20 +74,22 @@ static inline ci_ptr bb_op_methodbind(bb_coro *c, ci_ptr obj, ci_ptr key) {
 }
 
 static inline ci_ptr bb_op_arraccess(bb_coro *c, ci_ptr arr, ci_ptr idx) {
-	if (!CI_IS_ANY_ARR(arr)){
-		if(CI_IS_MAP(arr)){
+	if (!CI_IS_ANY_ARR(arr)) {
+		if (CI_IS_MAP(arr))
 			return ci_map_find(arr, idx);
-		}
 
-		bb_coro_error(c, "ARRACCESS: operand is not an array");
+		BB_META_DISPATCH_INDEX_GET(c, arr, idx, "ARRACCESS: operand is not an array");
 	}
+
 	if (!CI_IS_INT(idx))
 		bb_coro_error(c, "ARRACCESS: index must be integer");
 
 	const ci_array *a = (const ci_array *)arr;
 	uint32_t i = ci_arr_wrapindex(a, CI_INT(idx));
+
 	if (i >= ci_arr_len(a))
 		return NULL;
+
 	return ci_arr_index(a, i);
 }
 
@@ -96,12 +98,11 @@ static inline ci_ptr bb_op_arraccess(bb_coro *c, ci_ptr arr, ci_ptr idx) {
  * ================================================================ */
 
 static inline void bb_op_arraystore(bb_coro *c, ci_ptr arr, ci_ptr idx, ci_ptr val) {
-	if (!CI_IS_ANY_ARR(arr)){
-		if (CI_IS_MAP(arr)){
+	if (!CI_IS_ANY_ARR(arr)) {
+		if (CI_IS_MAP(arr))
 			return bb_op_hashstore(c, arr, idx, val);
-		}
 
-		bb_coro_error(c, "ARRAYSTORE: operand is not an array");
+		BB_META_DISPATCH_INDEX_SET(c, arr, idx, val, "ARRAYSTORE: operand is not an array");
 	}
 
 	if (!CI_IS_INT(idx))
@@ -109,6 +110,7 @@ static inline void bb_op_arraystore(bb_coro *c, ci_ptr arr, ci_ptr idx, ci_ptr v
 
 	ci_array *a = (ci_array *)arr;
 	uint32_t i = ci_arr_wrapindex(a, CI_INT(idx));
+
 	if (i >= ci_arr_len(a))
 		ci_arr_extend(a, i + 1);
 

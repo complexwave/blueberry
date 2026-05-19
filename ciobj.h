@@ -7,9 +7,9 @@
  * Ptrtag layout (6 bits embedded in pointer address at ARENA_SHIFT):
  *
  *   bit 5  bit 4  bit 3  bit 2  bit 1  bit 0
- *   [─── family field (4 bits, CI_O_FAMILY_BIT_OFFSET=2) ───]  RC  OBJ
+ *   [─── family field (4 bits, CI_O_FAMILY_BIT_OFFSET=2) ───]  RC  RO
  *
- *   bit 0  (CI_OBJECT):       1 = citrin-internal type
+ *   bit 0  (CI_TAG_READONLY): 1 = immutable object
  *   bit 1  (CI_REFCOUNTABLE): 1 = manually refcounted
  *   bits 2-5: family field — lowest set bit is the family marker.
  *             Higher bits encode the entry index within the family.
@@ -30,7 +30,7 @@
  *   maps        f=0x10: e0=0x10  e1=0x30
  *   arrays      f=0x20: e0=0x20
  *
- *   Full tag = CI_FAMILY_ENTRY(f,e) | CI_OBJECT | CI_REFCOUNTABLE (caller's job)
+ *   Full tag = CI_FAMILY_ENTRY(f,e) | CI_REFCOUNTABLE (caller's job)
  *   No two families can collide — structurally impossible.
  */
 #pragma once
@@ -42,8 +42,7 @@
 
 typedef void* ci_ptr;
 
-#define CI_USERMEM       0
-#define CI_OBJECT        1
+#define CI_TAG_READONLY  1
 
 #define CI_REFCOUNTABLE  (1 << 1)
 
@@ -98,11 +97,13 @@ typedef void* ci_ptr;
  * Shared convention across strings, arrays, maps, etc. */
 #define CI_OBJ_SMALL    (1 << 0)
 
-/* Object is interned/readonly — cannot be mutated or upgraded.
- * Stored in gc.flags (not ptrtag) so it applies to any object type. */
-#define CI_OBJ_READONLY (1 << 1)
-
 #define CI_IS_SMALL(p)    (((const ci_gchdr *)(p))->flags & CI_OBJ_SMALL)
+
+/* Object is interned/readonly — cannot be mutated or upgraded.
+ * Stored in gc.flags (not ptrtag) so it applies to any object type.
+ * Used for dynamic promote/demote of readonly status. */
+#define CI_OBJ_READONLY (1 << 8)
+
 #define CI_IS_READONLY(p) (((const ci_gchdr *)(p))->flags & CI_OBJ_READONLY)
 
 
@@ -170,8 +171,7 @@ typedef void* ci_ptr;
 
 	
 #define CI_IS_REFCOUNTABLE(ptr) (CI_IS_PTR(ptr) && CI_AND_TAG(ptr, CI_REFCOUNTABLE) != 0)
-#define CI_IS_OBJECT(ptr)       (CI_IS_PTR(ptr) && CI_AND_TAG(ptr, CI_OBJECT) != 0)
-#define CI_IS_USERMEM(ptr)      (CI_IS_PTR(ptr) && !CI_IS_OBJECT(ptr))
+#define CI_IS_TAG_READONLY(ptr) CI_AND_TAG(ptr, CI_TAG_READONLY)
 
 /* ---- GC header ---- */
 
@@ -180,8 +180,8 @@ typedef struct {
 	uint16_t flags;
 } ci_gchdr;
 
-// upper 8 user flags
-// lower 8 gc flags
+// upper 8: gc flags (CI_OBJ_READONLY etc.)
+// lower 8: user flags (per-type: CI_OBJ_SMALL, CI_OBJ_SLICE, CI_TIMER_*, etc.)
 
 /* embed in structs */
 #define CI_GC_HDR  ci_gchdr gc

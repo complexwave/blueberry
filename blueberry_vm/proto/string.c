@@ -24,13 +24,14 @@ static ci_ptr bb_str_at(bb_coro_arg *c, ci_ptr s, ci_ptr idx) {
 	BB_CHECK_INT(idx);
 	intptr_t i = CI_INT(idx);
 	size_t len = ci_str_len(s);
+	if (i < 0) i += (intptr_t)len;
 	if (i < 0 || (size_t)i >= len)
 		return NULL;
 	return CI_PACKINT(ci_str_head(s)[i]);
 }
 
-/* slice(start, end) — zero-copy slice view into [start, end), negative = from end */
-static ci_ptr bb_str_slice(bb_coro_arg *c, ci_ptr s, ci_ptr a_start, ci_ptr a_end) {
+/* slice_impl — shared range logic for slice (copy) and __slice (zero-copy view) */
+BB_ALWAYS_INLINE ci_ptr bb_str_slice_impl(bb_coro_arg *c, ci_ptr s, ci_ptr a_start, ci_ptr a_end, int use_slice) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_INT(a_start);
 
@@ -50,17 +51,37 @@ static ci_ptr bb_str_slice(bb_coro_arg *c, ci_ptr s, ci_ptr a_start, ci_ptr a_en
 	/* clamp */
 	if (si < 0) si = 0;
 	if (ei > len) ei = len;
-	if (si >= ei)
-		return (ci_ptr)ci_str_slice_new((const uint8_t *)"", 0, NULL);
 
-	/* NOTE: parent string is NOT promoted to readonly here.
-	 * Slices are unsafe if parent reallocs — caller's responsibility.
-	 * Future: ci_str_make_readonly(s) when a slice is created. */
 	uint8_t *head = ci_str_head(s);
 	size_t slen = (size_t)(ei - si);
-	ci_str *r = ci_str_slice_new(head + si, slen, s);
-	if (!r) bb_error("slice: out of memory");
+
+	if (si >= ei) {
+		if (use_slice)
+			return (ci_ptr)ci_str_slice_new((const uint8_t *)"", 0, NULL);
+		return (ci_ptr)ci_str_from_cstr("");
+	}
+
+	if (use_slice) {
+		ci_str *r = ci_str_slice_new(head + si, slen, s);
+		if (!r) bb_coro_error(c, "slice: out of memory");
+		return (ci_ptr)r;
+	}
+
+	ci_str *r = ci_str_new(slen);
+	if (!r) bb_coro_error(c, "slice: out of memory");
+	memcpy(ci_str_head(r), head + si, slen);
+	ci_str_put_tail(r, slen);
 	return (ci_ptr)r;
+}
+
+/* slice(start, end) — safe copy substring */
+static ci_ptr bb_str_slice(bb_coro_arg *c, ci_ptr s, ci_ptr a_start, ci_ptr a_end) {
+	return bb_str_slice_impl(c, s, a_start, a_end, 0);
+}
+
+/* __slice(start, end) — unsafe zero-copy view into parent */
+static ci_ptr bb_str__slice(bb_coro_arg *c, ci_ptr s, ci_ptr a_start, ci_ptr a_end) {
+	return bb_str_slice_impl(c, s, a_start, a_end, 1);
 }
 
 /* is_slice() — true if this string is a zero-copy slice view */
@@ -100,8 +121,8 @@ static ci_ptr bb_str_parent(bb_coro_arg *c, ci_ptr s) {
 
 /* ---- search ---- */
 
-/* find(needle) — index of first occurrence, null if not found */
-static ci_ptr bb_str_find(bb_coro_arg *c, ci_ptr s, ci_ptr needle) {
+/* find(needle, start?) — index of first occurrence from start, false if not found */
+static ci_ptr bb_str_find(bb_coro_arg *c, ci_ptr s, ci_ptr needle, ci_ptr a_start) {
 	BB_CHECK_STRING(s);
 	BB_CHECK_STRING(needle);
 
@@ -110,12 +131,20 @@ static ci_ptr bb_str_find(bb_coro_arg *c, ci_ptr s, ci_ptr needle) {
 	uint8_t *n = ci_str_head(needle);
 	size_t nlen = ci_str_len(needle);
 
+	size_t from = 0;
+	if (a_start && CI_IS_INT(a_start)) {
+		intptr_t si = CI_INT(a_start);
+		if (si < 0) si += (intptr_t)hlen;
+		if (si < 0) si = 0;
+		from = (size_t)si;
+	}
+
 	if (nlen == 0)
-		return CI_PACKINT(0);
-	if (nlen > hlen)
+		return CI_PACKINT((intptr_t)from);
+	if (nlen > hlen || from > hlen - nlen)
 		return CI_BOOL(0);
 
-	for (size_t i = 0; i <= hlen - nlen; i++) {
+	for (size_t i = from; i <= hlen - nlen; i++) {
 		if (memcmp(h + i, n, nlen) == 0)
 			return CI_PACKINT((intptr_t)i);
 	}
@@ -124,7 +153,7 @@ static ci_ptr bb_str_find(bb_coro_arg *c, ci_ptr s, ci_ptr needle) {
 
 /* contains(needle) — true or false */
 static ci_ptr bb_str_contains(bb_coro_arg *c, ci_ptr s, ci_ptr needle) {
-	ci_ptr idx = bb_str_find(c, s, needle);
+	ci_ptr idx = bb_str_find(c, s, needle, NULL);
 	return CI_BOOL(idx != CI_BOOL(0));
 }
 
@@ -136,8 +165,8 @@ static ci_ptr bb_str_starts(bb_coro_arg *c, ci_ptr s, ci_ptr prefix) {
 	size_t slen = ci_str_len(s);
 	size_t plen = ci_str_len(prefix);
 	if (plen > slen)
-		return CI_PACKINT(0);
-	return CI_PACKINT(memcmp(ci_str_head(s), ci_str_head(prefix), plen) == 0);
+		return CI_BOOL(0);
+	return CI_BOOL(memcmp(ci_str_head(s), ci_str_head(prefix), plen) == 0);
 }
 
 /* ends(suffix) */
@@ -148,8 +177,8 @@ static ci_ptr bb_str_ends(bb_coro_arg *c, ci_ptr s, ci_ptr suffix) {
 	size_t slen = ci_str_len(s);
 	size_t xlen = ci_str_len(suffix);
 	if (xlen > slen)
-		return CI_PACKINT(0);
-	return CI_PACKINT(memcmp(ci_str_head(s) + slen - xlen, ci_str_head(suffix), xlen) == 0);
+		return CI_BOOL(0);
+	return CI_BOOL(memcmp(ci_str_head(s) + slen - xlen, ci_str_head(suffix), xlen) == 0);
 }
 
 /* ---- mutation (return self for chaining) ---- */
@@ -166,12 +195,12 @@ static ci_ptr bb_str_append(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
 	/* upgrade small string if needed */
 	if (CI_IS_STR_SMALL(s)) {
 		ci_str *upgraded = ci_str_upgrade(s);
-		if (!upgraded) bb_error("append: cannot upgrade small string");
+		if (!upgraded) bb_coro_error(c,"append: cannot upgrade small string");
 		s = (ci_ptr)upgraded;
 	}
 
 	if (!ci_str_append((ci_str *)s, ci_str_head(other), olen))
-		bb_error("append: out of memory");
+		bb_coro_error(c,"append: out of memory");
 	return s;
 }
 
@@ -186,12 +215,12 @@ static ci_ptr bb_str_prepend(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
 
 	if (CI_IS_STR_SMALL(s)) {
 		ci_str *upgraded = ci_str_upgrade(s);
-		if (!upgraded) bb_error("prepend: cannot upgrade small string");
+		if (!upgraded) bb_coro_error(c,"prepend: cannot upgrade small string");
 		s = (ci_ptr)upgraded;
 	}
 
 	if (!ci_str_prepend((ci_str *)s, ci_str_head(other), olen))
-		bb_error("prepend: out of memory");
+		bb_coro_error(c,"prepend: out of memory");
 	return s;
 }
 
@@ -208,7 +237,7 @@ static ci_ptr bb_str_clear(bb_coro_arg *c, ci_ptr s) {
 static ci_ptr bb_str_copy(bb_coro_arg *c, ci_ptr s) {
 	BB_CHECK_STRING(s);
 	ci_str *r = ci_str_copy(s, 0);
-	if (!r) bb_error("copy: out of memory");
+	if (!r) bb_coro_error(c,"copy: out of memory");
 	return (ci_ptr)r;
 }
 
@@ -281,9 +310,11 @@ static ci_ptr bb_str_repeat(bb_coro_arg *c, ci_ptr s, ci_ptr n) {
 		return (ci_ptr)ci_str_from_cstr("");
 
 	size_t len = ci_str_len(s);
-	size_t total = len * (size_t)count;
+	intptr_t total_check;
+	BB_NO_OVERFLOW_MUL((intptr_t)len, count, total_check);
+	size_t total = (size_t)total_check;
 	ci_str *r = ci_str_new(total);
-	if (!r) bb_error("repeat: out of memory");
+	if (!r) bb_coro_error(c,"repeat: out of memory");
 	uint8_t *src = ci_str_head(s);
 	uint8_t *dst = ci_str_ensure_tail(r, total);
 	for (intptr_t i = 0; i < count; i++) {
@@ -307,13 +338,13 @@ static ci_ptr bb_str_split(bb_coro_arg *c, ci_ptr s, ci_ptr delim) {
 	size_t dlen = ci_str_len(delim);
 
 	ci_array *arr = ci_arr_new(8);
-	if (!arr) bb_error("split: out of memory");
+	if (!arr) bb_coro_error(c,"split: out of memory");
 
 	if (dlen == 0) {
 		/* split each byte */
 		for (size_t i = 0; i < hlen; i++) {
 			ci_str *part = ci_str_new(1);
-			if (!part) bb_error("split: out of memory");
+			if (!part) bb_coro_error(c,"split: out of memory");
 			uint8_t *dst = ci_str_ensure_tail(part, 1);
 			*dst = h[i];
 			ci_str_put_tail(part, 1);
@@ -322,12 +353,22 @@ static ci_ptr bb_str_split(bb_coro_arg *c, ci_ptr s, ci_ptr delim) {
 		return (ci_ptr)arr;
 	}
 
+	if (dlen > hlen) {
+		ci_str *part = ci_str_new(hlen);
+		if (!part) bb_coro_error(c, "split: out of memory");
+		uint8_t *dst = ci_str_ensure_tail(part, hlen);
+		memcpy(dst, h, hlen);
+		ci_str_put_tail(part, hlen);
+		ci_arr_push(arr, (ci_ptr)part);
+		return (ci_ptr)arr;
+	}
+
 	size_t prev = 0;
 	for (size_t i = 0; i <= hlen - dlen; i++) {
 		if (memcmp(h + i, d, dlen) == 0) {
 			size_t plen = i - prev;
 			ci_str *part = ci_str_new(plen);
-			if (!part) bb_error("split: out of memory");
+			if (!part) bb_coro_error(c,"split: out of memory");
 			uint8_t *dst = ci_str_ensure_tail(part, plen);
 			memcpy(dst, h + prev, plen);
 			ci_str_put_tail(part, plen);
@@ -339,7 +380,7 @@ static ci_ptr bb_str_split(bb_coro_arg *c, ci_ptr s, ci_ptr delim) {
 	/* trailing piece */
 	size_t plen = hlen - prev;
 	ci_str *part = ci_str_new(plen);
-	if (!part) bb_error("split: out of memory");
+	if (!part) bb_coro_error(c,"split: out of memory");
 	uint8_t *dst = ci_str_ensure_tail(part, plen);
 	memcpy(dst, h + prev, plen);
 	ci_str_put_tail(part, plen);
@@ -355,11 +396,17 @@ static ci_ptr bb_str_bytes(bb_coro_arg *c, ci_ptr s) {
 	uint8_t *h = ci_str_head(s);
 
 	ci_array *arr = ci_arr_new((uint32_t)(len < 8 ? 8 : len));
-	if (!arr) bb_error("bytes: out of memory");
+	if (!arr) bb_coro_error(c,"bytes: out of memory");
 
 	for (size_t i = 0; i < len; i++)
 		ci_arr_push(arr, CI_PACKINT(h[i]));
 	return (ci_ptr)arr;
+}
+
+/* is_readonly() — check gc header readonly flag */
+static ci_ptr bb_str_is_readonly(bb_coro_arg *c, ci_ptr s) {
+	BB_CHECK_STRING(s);
+	return CI_BOOL(CI_IS_READONLY(s));
 }
 
 /* hash() — FNV-1a hash as int */
@@ -408,7 +455,7 @@ static ci_ptr bb_str_replace(bb_coro_arg *c, ci_ptr s, ci_ptr needle, ci_ptr rep
 	uint8_t *r = ci_str_head(replacement);
 	size_t rlen = ci_str_len(replacement);
 
-	if (nlen == 0)
+	if (nlen == 0 || nlen > hlen)
 		return (ci_ptr)ci_str_copy(s, 0);
 
 	/* first pass: count occurrences */
@@ -424,7 +471,7 @@ static ci_ptr bb_str_replace(bb_coro_arg *c, ci_ptr s, ci_ptr needle, ci_ptr rep
 
 	size_t newlen = hlen - count * nlen + count * rlen;
 	ci_str *out = ci_str_new(newlen);
-	if (!out) bb_error("replace: out of memory");
+	if (!out) bb_coro_error(c,"replace: out of memory");
 
 	uint8_t *dst = ci_str_ensure_tail(out, newlen);
 	size_t prev = 0;
@@ -443,6 +490,22 @@ static ci_ptr bb_str_replace(bb_coro_arg *c, ci_ptr s, ci_ptr needle, ci_ptr rep
 	return (ci_ptr)out;
 }
 
+/* set(idx, byte) — set byte at index, negative wraps */
+static ci_ptr bb_str_set(bb_coro_arg *c, ci_ptr s, ci_ptr idx, ci_ptr val) {
+	BB_CHECK_STRING_WRITABLE(s);
+	BB_CHECK_INT(idx);
+	BB_CHECK_INT(val);
+
+	intptr_t i = CI_INT(idx);
+	size_t len = ci_str_len(s);
+	if (i < 0) i += (intptr_t)len;
+	if (i < 0 || (size_t)i >= len)
+		bb_coro_error(c, "set: index out of bounds");
+
+	ci_str_head(s)[i] = (uint8_t)CI_INT(val);
+	return s;
+}
+
 /* ---- registration ---- */
 
 static void bb_proto_string_init(bb_vm *vm) {
@@ -452,7 +515,10 @@ static void bb_proto_string_init(bb_vm *vm) {
 		{ "size",     bb_str_size,     0 },
 		/* access */
 		{ "at",          bb_str_at,           0 },
+		{ "get",         bb_str_at,           0 },
+		{ "set",         bb_str_set,          0 },
 		{ "slice",       bb_str_slice,       0 },
+		{ "__slice",     bb_str__slice,      0 },
 		{ "is_slice",    bb_str_is_slice,    0 },
 		{ "slice_offset", bb_str_slice_offset, 0 },
 		{ "ctx",         bb_str_ctx,         0 },
@@ -477,18 +543,24 @@ static void bb_proto_string_init(bb_vm *vm) {
 		/* conversion */
 		{ "split",    bb_str_split,    0 },
 		{ "bytes",    bb_str_bytes,    0 },
+		/* query */
+		{ "is_readonly", bb_str_is_readonly, 0 },
 		/* compare */
 		{ "hash",     bb_str_hash,     0 },
 		{ "eq",       bb_str_eq,       0 },
 		{ "cmp",      bb_str_cmp,      0 },
 	};
-	ci_map *proto = bb_proto_register(vm, "string");
-	bb_func2map(vm, proto, str_lib, sizeof(str_lib) / sizeof(str_lib[0]));
+	bb_metaproto *mp = bb_proto_register_meta(vm, "string");
+	mp->index_get = (void *)bb_str_at;
+	mp->index_set = (void *)bb_str_set;
 
-	bb_set_arena_prototype(CI_STR,           proto);
-	bb_set_arena_prototype(CI_STR_SLICE,     proto);
-	bb_set_arena_prototype(CI_STR_SMALL_32,  proto);
-	bb_set_arena_prototype(CI_STR_SMALL_64,  proto);
-	bb_set_arena_prototype(CI_STR_SMALL_128, proto);
-	bb_set_arena_prototype(CI_STR_SMALL_256, proto);
+	bb_func2map(vm, &mp->map, str_lib, sizeof(str_lib) / sizeof(str_lib[0]));
+
+	bb_set_arena_prototype(CI_STR,           &mp->map);
+	bb_set_arena_prototype(CI_STR_READONLY,  &mp->map);
+	bb_set_arena_prototype(CI_STR_SLICE,     &mp->map);
+	bb_set_arena_prototype(CI_STR_SMALL_32,  &mp->map);
+	bb_set_arena_prototype(CI_STR_SMALL_64,  &mp->map);
+	bb_set_arena_prototype(CI_STR_SMALL_128, &mp->map);
+	bb_set_arena_prototype(CI_STR_SMALL_256, &mp->map);
 }

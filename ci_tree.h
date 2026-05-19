@@ -70,27 +70,31 @@ typedef struct {
 	int16_t       index;
 } ci_tree_iter_entry;
 
-typedef struct {
+typedef struct ci_tree_iter ci_tree_iter;
+typedef ci_map_kv *(*ci_tree_iter_step)(ci_tree_iter *it);
+
+struct ci_tree_iter {
 	CI_GC_HDR;
-	ci_tree *tree;
-	uint8_t  done;
-	uint8_t  started;
-	int16_t  nstack;
+	ci_tree          *tree;
+	ci_tree_iter_step step;
+	uint8_t           done;
+	uint8_t           started;
+	int16_t           nstack;
 	ci_tree_iter_entry stack[CI_TREE_MAX_HEIGHT];
-} ci_tree_iter;
+};
 
 /* ============================================================
  * Tag definitions
  * ============================================================ */
 
-#define CI_ORDERED_MAP  ((uint16_t)(CI_FAMILY_ENTRY(CI_MAP_FAMILY, 1) | CI_OBJECT | CI_REFCOUNTABLE))
-#define CI_TREE_ITER    ((uint16_t)(CI_FAMILY_ENTRY(CI_MAP_FAMILY, 2) | CI_OBJECT | CI_REFCOUNTABLE))
+#define CI_ORDERED_MAP  ((uint16_t)(CI_FAMILY_ENTRY(CI_MAP_FAMILY, 1) | CI_REFCOUNTABLE))
+#define CI_TREE_ITER    ((uint16_t)(CI_FAMILY_ENTRY(CI_MAP_FAMILY, 2) | CI_REFCOUNTABLE))
 
 #define CI_IS_ORDERED_MAP(ptr)  CI_CHECK_MASK_FAMILY(ptr, \
-	CI_FAMILY_ENTRY(CI_MAP_FAMILY, 1) | CI_OBJECT, CI_MAP_FAMILY)
+	CI_FAMILY_ENTRY(CI_MAP_FAMILY, 1), CI_MAP_FAMILY)
 
 #define CI_IS_TREE_ITER(ptr)    CI_CHECK_MASK_FAMILY(ptr, \
-	CI_FAMILY_ENTRY(CI_MAP_FAMILY, 2) | CI_OBJECT, CI_MAP_FAMILY)
+	CI_FAMILY_ENTRY(CI_MAP_FAMILY, 2), CI_MAP_FAMILY)
 
 /* ============================================================
  * B-tree parameters
@@ -122,8 +126,11 @@ ci_tree *ci_tree_new(ci_tree_cmp cmp, ci_ptr cmpctx);
 /* Insert or replace. Returns 1 on success, 0 on OOM. */
 int ci_tree_set(ci_tree *t, ci_ptr key, ci_ptr val);
 
+/* Lookup by key. Returns kv pair or NULL. */
+static inline ci_map_kv *ci_tree_find_kv(const ci_tree *t, ci_ptr key);
+
 /* Lookup by key. Returns value or NULL. */
-ci_ptr ci_tree_get(const ci_tree *t, ci_ptr key);
+static inline ci_ptr ci_tree_get(const ci_tree *t, ci_ptr key);
 
 /* Delete by key. Returns 1 if removed, 0 if absent. */
 int ci_tree_delete(ci_tree *t, ci_ptr key);
@@ -152,10 +159,15 @@ int ci_tree_default_cmp(ci_ptr a, ci_ptr b, ci_ptr ctx);
  * Iterator
  * ============================================================ */
 
-/* Allocate iterator, ci_inc(tree). First call to _next returns first item. */
+/* Allocate forward iterator. First call to _next returns smallest item. */
 ci_tree_iter *ci_tree_iter_new(ci_tree *t);
 
-/* Returns next kv pair or NULL when done. Pointer valid until next call. */
-ci_map_kv *ci_tree_iter_next(ci_tree_iter *it);
+/* Allocate reverse iterator. First call to _next returns largest item. */
+ci_tree_iter *ci_tree_iter_new_reverse(ci_tree *t);
+
+/* Returns next kv pair or NULL when done. Direction set by constructor. */
+static inline ci_map_kv *ci_tree_iter_next(ci_tree_iter *it) {
+	return it->step(it);
+}
 
 #endif /* CI_TREE_H */

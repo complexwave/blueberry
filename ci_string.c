@@ -60,7 +60,7 @@
 *                  11 = 256 bytes (CI_STR_SMALL_256)
 *
 * "Small" lives in ci_gchdr.flags as CI_OBJ_SMALL (bit 0).
-* "Readonly/internalized" lives in ci_gchdr.flags as CI_OBJ_READONLY (bit 1).
+* "Readonly/internalized" lives in ci_gchdr.flags as CI_OBJ_READONLY (bit 8).
 * "Slice" lives in ci_gchdr.flags as CI_OBJ_SLICE (bit 2).
 *   Slice is a ci_str_slice cast to ci_str *; shares CI_STR tag.
 *   memory==start, limit==end — head/tail space both 0.
@@ -80,12 +80,15 @@
 #define CI_STR_FAMILY    CI_O_FAMILY_2                      /* 0x08 */
 #define CI_STR_TAG       CI_FAMILY_ENTRY(CI_STR_FAMILY, 0)  /* 0x08 */
 
-#define CI_STR           ((uint16_t)(CI_STR_TAG | CI_OBJECT | CI_REFCOUNTABLE))         /* 0x000B */
-#define CI_STR_SLICE     ((uint16_t)(CI_UPPER_TAG(0x01) | CI_STR_TAG | CI_OBJECT | CI_REFCOUNTABLE)) /* 0x010B */
-#define CI_STR_SMALL_32  ((uint16_t)(CI_STR_TAG | CI_OBJECT))                          /* 0x0009 */
-#define CI_STR_SMALL_64  ((uint16_t)(CI_UPPER_TAG(0x40) | CI_STR_TAG | CI_OBJECT))     /* 0x4009 */
-#define CI_STR_SMALL_128 ((uint16_t)(CI_UPPER_TAG(0x80) | CI_STR_TAG | CI_OBJECT))     /* 0x8009 */
-#define CI_STR_SMALL_256 ((uint16_t)(CI_UPPER_TAG(0xC0) | CI_STR_TAG | CI_OBJECT))     /* 0xC009 */
+#define CI_STR           ((uint16_t)(CI_STR_TAG | CI_REFCOUNTABLE))                     /* 0x000A */
+#define CI_STR_SLICE     ((uint16_t)(CI_UPPER_TAG(0x01) | CI_STR_TAG | CI_REFCOUNTABLE)) /* 0x010A */
+#define CI_STR_SMALL_32  ((uint16_t)(CI_STR_TAG))                                      /* 0x0008 */
+#define CI_STR_SMALL_64  ((uint16_t)(CI_UPPER_TAG(0x40) | CI_STR_TAG))                 /* 0x4008 */
+#define CI_STR_SMALL_128 ((uint16_t)(CI_UPPER_TAG(0x80) | CI_STR_TAG))                 /* 0x8008 */
+#define CI_STR_SMALL_256 ((uint16_t)(CI_UPPER_TAG(0xC0) | CI_STR_TAG))                 /* 0xC008 */
+
+/* readonly string: CI_STR with ptrtag bit 0 set — ultra-fast CI_IS_TAG_READONLY check */
+#define CI_STR_READONLY  ((uint16_t)(CI_STR_TAG | CI_REFCOUNTABLE | CI_TAG_READONLY))  /* 0x000B */
 
 /* any string (full or small): family marker bit set */
 #define CI_IS_ANY_STR(ptr)   CI_IS_FAMILY(ptr, CI_STR_FAMILY)
@@ -220,6 +223,10 @@ static inline void ci_str_reset_hash(void *p) {
 		((ci_str *)p)->hash = 0;
 }
 
+static inline void ci_str_mark_readonly(void *p) {
+	((ci_str *)p)->gc.flags |= CI_OBJ_READONLY;
+}
+
 
 /* ============================================================
 * Registration
@@ -245,6 +252,13 @@ void ci_str_register(void);
 *   refcnt=1, hash=0 on return. Returns NULL on failure.
 */
 ci_str *ci_str_new(size_t size);
+
+/*
+* ci_str_new_readonly(data, len)
+*   Allocate a CI_STR_READONLY with data copied in, CI_OBJ_READONLY set.
+*   Immutable from birth — no need to mark readonly after the fact.
+*/
+ci_str *ci_str_new_readonly(const char *data, size_t len);
 
 /*
 * ci_str_from_cstr(cstr)
@@ -299,8 +313,10 @@ void ci_str_put_tail(ci_str *s, size_t n);
 * ci_str_ensure_head(s, n)
 *   Guarantee at least n bytes of head space. If insufficient:
 *   malloc fresh buffer with extra headroom, copy data, free old.
-*   Retreats start by n and returns new start. NULL on OOM.
-*   Upgrades small strings in-place (fails on 32-byte / internalized).
+*   Ensures at least n bytes of head space. Returns pointer to
+*   the reserved region (n bytes before current start). Does NOT
+*   move start — caller advances start as needed (see ci_str_prepend).
+*   NULL on OOM. Upgrades small strings in-place (fails on 32-byte / internalized).
 */
 uint8_t *ci_str_ensure_head(ci_str *s, size_t n);
 
@@ -429,6 +445,7 @@ void ci_str_register(void) {
 	tg_arena_ops str_small_ops = { ci_str_small_destructor, NULL, NULL };
 
 	ci_register_ops(CI_STR,           sizeof(ci_str),       &str_ops);
+	ci_register_ops(CI_STR_READONLY,  sizeof(ci_str),       &str_ops);
 	ci_register_ops(CI_STR_SLICE,     sizeof(ci_str_slice), &str_slice_ops);
 	ci_register_ops(CI_STR_SMALL_32,  32,  &str_small_ops);
 	ci_register_ops(CI_STR_SMALL_64,  64,  &str_small_ops);
@@ -506,8 +523,8 @@ static ci_str *ci_str_upgrade(void *p) {
 
 /* ---- ci_str lifecycle ---- */
 
-ci_str *ci_str_new(size_t size) {
-	ci_str *s = ci_new(CI_STR);
+static inline ci_str *ci_str_alloc(size_t size, uint16_t tag) {
+	ci_str *s = ci_new(tag);
 	if (!s) return NULL;
 
 	size_t alloc = size ? size : 1; /* avoid malloc(0) ambiguity */
@@ -526,6 +543,21 @@ ci_str *ci_str_new(size_t size) {
 	s->limit  = mem + alloc;
 	return s;
 }
+
+ci_str *ci_str_new(size_t size) {
+	return ci_str_alloc(size, CI_STR);
+}
+
+ci_str *ci_str_new_readonly(const char *data, size_t len) {
+	ci_str *s = ci_str_alloc(len, CI_STR_READONLY);
+	if (!s) return NULL;
+
+	memcpy(s->start, data, len);
+	s->end = s->start + len;
+	s->gc.flags |= CI_OBJ_READONLY;
+	return s;
+}
+
 
 ci_str *ci_str_from_cstr(const char *cstr) {
 	size_t len = strlen(cstr);

@@ -106,6 +106,76 @@ static ci_ptr bb_native_number(bb_coro_arg *c, ci_ptr a, ci_ptr b, ci_ptr _) {
 	return NULL;
 }
 
+/*
+ * Try to match a keyword (case-sensitive) after skipping whitespace.
+ * Returns pointer past the keyword, or NULL on mismatch.
+ */
+static const uint8_t *bb_float_match(const uint8_t *s, const uint8_t *end, const char *kw) {
+	while (*kw) {
+		if (s >= end || *s != (uint8_t)*kw) return NULL;
+		s++; kw++;
+	}
+	return s;
+}
+
+/* float(x) — like number(x) but also accepts inf, +inf, -inf, NaN */
+static ci_ptr bb_native_float(bb_coro_arg *c, ci_ptr a, ci_ptr b, ci_ptr _) {
+	if (CI_IS_NUMBER(a))
+		return a;
+
+	if (CI_IS_INT(a)) {
+		ci_number *n = ci_number_new(CI_NUM_I128);
+		n->i128 = (__int128)CI_INT(a);
+		return (ci_ptr)n;
+	}
+
+	if (CI_IS_ANY_STR(a)) {
+		const uint8_t *src = ci_str_head(a);
+		size_t len = ci_str_len(a);
+		const uint8_t *end = src + len;
+
+		/* skip leading whitespace */
+		while (src < end && (*src == ' ' || *src == '\t' || *src == '\r' || *src == '\n'))
+			src++;
+
+		if (src < end) {
+			const uint8_t *tail = NULL;
+			double val = 0;
+
+			if (*src == 'N') {
+				tail = bb_float_match(src, end, "NaN");
+				if (tail) val = NAN;
+			} else if (*src == 'i') {
+				tail = bb_float_match(src, end, "inf");
+				if (tail) val = INFINITY;
+			} else if (*src == '+') {
+				tail = bb_float_match(src, end, "+inf");
+				if (tail) val = INFINITY;
+			} else if (*src == '-') {
+				tail = bb_float_match(src, end, "-inf");
+				if (tail) val = -INFINITY;
+			}
+
+			if (tail) {
+				/* skip trailing whitespace */
+				while (tail < end && (*tail == ' ' || *tail == '\t' || *tail == '\r' || *tail == '\n'))
+					tail++;
+
+				if (tail == end)
+					return (ci_ptr)ci_number_floating(val);
+
+				return NULL;
+			}
+		}
+
+		/* fall through to normal number parsing */
+		ci_ptr r = ci_number_fromstring(ci_str_head(a), ci_str_len(a));
+		return r;
+	}
+
+	return NULL;
+}
+
 static void bb_proto_number_init(bb_vm *vm) {
 	bb_metaproto *mp = bb_proto_register_meta(vm, "number");
 
@@ -128,4 +198,7 @@ static void bb_proto_number_init(bb_vm *vm) {
 
 	bb_closure *cl = bb_vm_native(vm, "number", bb_native_number);
 	ci_map_put(vm->globals, cl->fn->name, (ci_ptr)cl);
+
+	bb_closure *fl = bb_vm_native(vm, "float", bb_native_float);
+	ci_map_put(vm->globals, fl->fn->name, (ci_ptr)fl);
 }

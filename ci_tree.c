@@ -442,8 +442,9 @@ set:
  * Get
  * ============================================================ */
 
-ci_ptr ci_tree_get(const ci_tree *t, ci_ptr key) {
+static inline ci_map_kv *ci_tree_find_kv(const ci_tree *t, ci_ptr key) {
 	ci_tree_node *node = t->root;
+
 	if (!node)
 		return NULL;
 
@@ -452,13 +453,24 @@ ci_ptr ci_tree_get(const ci_tree *t, ci_ptr key) {
 		int found;
 		int i = ci_tree_bsearch_hint(t, node, key, &found,
 			(uint64_t *)&t->hint, depth);
+
 		if (found)
-			return node->items[i].val;
+			return &node->items[i];
+
 		if (node->leaf)
 			return NULL;
+
 		node = node->children[i];
 		depth++;
 	}
+}
+
+static inline ci_ptr ci_tree_get(const ci_tree *t, ci_ptr key) {
+	ci_map_kv *kv = ci_tree_find_kv(t, key);
+
+	if (kv) return kv->val;
+
+	return NULL;
 }
 
 /* ============================================================
@@ -634,11 +646,12 @@ ci_tree *ci_tree_new(ci_tree_cmp cmp, ci_ptr cmpctx) {
  * Iterator
  * ============================================================ */
 
-ci_tree_iter *ci_tree_iter_new(ci_tree *t) {
+static ci_tree_iter *ci_tree_iter_alloc(ci_tree *t, ci_tree_iter_step step) {
 	ci_tree_iter *it = ci_new(CI_TREE_ITER);
 	if (!it)
 		return NULL;
 	it->tree = t;
+	it->step = step;
 	ci_inc(t);
 	it->done = 0;
 	it->started = 0;
@@ -646,7 +659,8 @@ ci_tree_iter *ci_tree_iter_new(ci_tree *t) {
 	return it;
 }
 
-/* push down to leftmost leaf from node */
+/* --- forward --- */
+
 static void ci_tree_iter_push_left(ci_tree_iter *it, ci_tree_node *node) {
 	while (node) {
 		it->stack[it->nstack++] = (ci_tree_iter_entry){ node, 0 };
@@ -656,7 +670,7 @@ static void ci_tree_iter_push_left(ci_tree_iter *it, ci_tree_node *node) {
 	}
 }
 
-ci_map_kv *ci_tree_iter_next(ci_tree_iter *it) {
+static ci_map_kv *ci_tree_iter_forward(ci_tree_iter *it) {
 	if (it->done)
 		return NULL;
 
@@ -679,24 +693,82 @@ ci_map_kv *ci_tree_iter_next(ci_tree_iter *it) {
 				top->index++;
 				return &node->items[idx];
 			}
-			/* exhausted this leaf, pop */
 			it->nstack--;
 			continue;
 		}
 
-		/* branch node */
 		if (idx < node->nitems) {
-			/* return item at idx, then descend into children[idx+1] */
 			top->index++;
 			ci_map_kv *result = &node->items[idx];
 			ci_tree_iter_push_left(it, node->children[idx + 1]);
 			return result;
 		}
 
-		/* exhausted this branch, pop */
 		it->nstack--;
 	}
 
 	it->done = 1;
 	return NULL;
+}
+
+/* --- backward --- */
+
+static void ci_tree_iter_push_right(ci_tree_iter *it, ci_tree_node *node) {
+	while (node) {
+		it->stack[it->nstack++] = (ci_tree_iter_entry){ node, node->nitems - 1 };
+		if (node->leaf)
+			break;
+		node = node->children[node->nitems];
+	}
+}
+
+static ci_map_kv *ci_tree_iter_backward(ci_tree_iter *it) {
+	if (it->done)
+		return NULL;
+
+	if (!it->started) {
+		it->started = 1;
+		if (!it->tree->root) {
+			it->done = 1;
+			return NULL;
+		}
+		ci_tree_iter_push_right(it, it->tree->root);
+	}
+
+	while (it->nstack > 0) {
+		ci_tree_iter_entry *top = &it->stack[it->nstack - 1];
+		ci_tree_node *node = top->node;
+		int idx = top->index;
+
+		if (node->leaf) {
+			if (idx >= 0) {
+				top->index--;
+				return &node->items[idx];
+			}
+			it->nstack--;
+			continue;
+		}
+
+		if (idx >= 0) {
+			top->index--;
+			ci_map_kv *result = &node->items[idx];
+			ci_tree_iter_push_right(it, node->children[idx]);
+			return result;
+		}
+
+		it->nstack--;
+	}
+
+	it->done = 1;
+	return NULL;
+}
+
+/* --- constructors --- */
+
+ci_tree_iter *ci_tree_iter_new(ci_tree *t) {
+	return ci_tree_iter_alloc(t, ci_tree_iter_forward);
+}
+
+ci_tree_iter *ci_tree_iter_new_reverse(ci_tree *t) {
+	return ci_tree_iter_alloc(t, ci_tree_iter_backward);
 }

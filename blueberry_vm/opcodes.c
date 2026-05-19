@@ -4,36 +4,6 @@ static inline ci_ptr bb_op_loadnull(bb_coro *c, ci_ptr a, ci_ptr b) {
 	return NULL;
 }
 
-#define bb_metam(name) offsetof(bb_metaproto, name)
-
-static inline bb_op_fn bb_proto_get_metamethod(ci_map *proto, size_t offset) {
-	return *(bb_op_fn *)((uint8_t *)proto + offset);
-}
-
-static inline ci_ptr bb_meta_dispatch(bb_coro *c, ci_ptr a, ci_ptr b, size_t offset, const char *errmsg) {
-	if (CI_IS_OBJECT(a)) {
-		ci_map *proto = bb_obj_arena_prototype(a);
-		if (CI_IS_MAGIC_PROTO(proto)) {
-			bb_op_fn fn = bb_proto_get_metamethod(proto, offset);
-			if (fn) return fn(c, a, b);
-		}
-	}
-
-	if (CI_IS_OBJECT(b)) {
-		ci_map *proto = bb_obj_arena_prototype(b);
-		if (CI_IS_MAGIC_PROTO(proto)) {
-			bb_op_fn fn = bb_proto_get_metamethod(proto, offset);
-			if (fn) return fn(c, a, b);
-		}
-	}
-
-	bb_coro_error(c, "%s", errmsg);
-	return NULL;
-}
-
-#define BB_META_DISPATCH(c, a, b, name, msg) \
-	return bb_meta_dispatch(c, a, b, bb_metam(name), msg)
-
 VM_OP_INLINE ci_ptr bb_op_add(bb_coro *c, ci_ptr a, ci_ptr b) {
 	if (CI_IS_INT((uintptr_t)a & (uintptr_t)b)) {
 		intptr_t r;
@@ -151,8 +121,12 @@ static inline ci_ptr bb_op_bin_rshift(bb_coro *c, ci_ptr a, ci_ptr b) {
 }
 
 static inline ci_ptr bb_cmp_dispatch(bb_coro *c, ci_ptr a, ci_ptr b) {
-	ci_ptr r = bb_meta_dispatch(c, a, b, bb_metam(op_cmp), "CMP: type error");
-	return r;
+	bb_op_fn fn = (bb_op_fn)bb_meta_find(c, a, b, bb_metam(op_cmp));
+
+	if (fn) return fn(c, a, b);
+
+	bb_coro_error(c, "CMP: type error");
+	__builtin_unreachable();
 }
 
 static inline ci_ptr bb_op_eq(bb_coro *c, ci_ptr a, ci_ptr b) {

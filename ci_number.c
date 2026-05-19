@@ -50,7 +50,7 @@ static inline void ci_number_set_cmp_precision(double eps) {
 #define CI_VM_FAMILY  CI_O_FAMILY_8
 #endif
 
-#define CI_NUMBER  ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 6) | CI_OBJECT | CI_REFCOUNTABLE))
+#define CI_NUMBER  ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 6) | CI_REFCOUNTABLE))
 
 #define CI_IS_NUMBER(p)  CI_CHECK_MASK_FAMILY(p, CI_NUMBER, CI_VM_FAMILY)
 
@@ -373,6 +373,7 @@ static inline int ci_number_cmp_eps(ci_ptr a, ci_ptr b, double eps) {
 	if (ci_number_is_float_op(a, b)) {
 		double da = ci_number_to_double(a);
 		double db = ci_number_to_double(b);
+		if (da == db) return 0;
 		double diff = da - db;
 		if (diff < 0) diff = -diff;
 		double mag = fabs(da);

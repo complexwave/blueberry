@@ -88,6 +88,13 @@ static bb_vm *bb_vm_new(void) {
 	vm->globals    = ci_map_ident_new(16);
 	vm->units      = ci_arr_new(4);
 	vm->prototypes = ci_map_ident_new(16);
+
+	ci_str *rtmp = ci_new(CI_STR);
+	rtmp->hash = 0;
+	rtmp->memory = NULL;
+	ci_nocnt(rtmp);
+	vm->istr_rtmp = rtmp;
+
 	return vm;
 }
 
@@ -111,20 +118,24 @@ static void bb_vm_free(bb_vm *vm) {
 }
 
 static ci_ptr bb_vm_istring(bb_vm *vm, const char *s, uint32_t len) {
-	ci_str *tmp = ci_str_new(len);
-	if (!tmp)
-		bb_vm_error(vm, "istring: out of memory");
-	ci_str_append(tmp, s, len);
+	ci_str *rtmp = vm->istr_rtmp;
+	rtmp->start  = (uint8_t *)s;
+	rtmp->end    = (uint8_t *)s + len;
+	rtmp->memory = (uint8_t *)s;
+	rtmp->limit  = (uint8_t *)s + len;
+	rtmp->hash   = 0;
 
-	ci_ptr existing = ci_map_find(vm->strings, tmp);
-	if (existing) {
-		ci_dec(tmp);
+	ci_ptr existing = ci_map_find(vm->strings, rtmp);
+	if (existing)
 		return existing;
-	}
 
-	ci_map_put(vm->strings, tmp, tmp);
-	ci_nocnt(tmp);
-	return tmp;
+	ci_str *str = ci_str_new_readonly(s, len);
+	if (!str)
+		bb_vm_error(vm, "istring: out of memory");
+
+	ci_map_put(vm->strings, str, str);
+	ci_nocnt(str);
+	return str;
 }
 
 
@@ -186,7 +197,7 @@ static inline ci_ptr bb_proto_find(bb_vm *vm, ci_ptr obj, ci_ptr key) {
 		return bb_map_proto_find(vm, (const ci_map *)obj, key);
 
 	
-	if (CI_IS_OBJECT(obj)) {
+	if (CI_IS_PTR(obj)) {
 		ci_map *proto = bb_obj_arena_prototype(obj);
 		if (proto)
 			return bb_map_proto_find(vm, proto, key);
@@ -755,6 +766,8 @@ static void bb_vm_execute(bb_coro *c) {
 #include "blueberry_vm/lib/io.c"
 #include "blueberry_vm/lib/cma.c"
 #include "blueberry_vm/lib/map.c"
+#include "blueberry_vm/lib/array.c"
+#include "blueberry_vm/lib/tree.c"
 #include "blueberry_vm/lib/proto.c"
 #include "blueberry_vm/lib/callapi.c"
 #include "blueberry_vm/lib/math.c"
@@ -847,6 +860,8 @@ int main(int argc, char **argv) {
 	bb_lib_io_init(vm);
 	bb_lib_cma_init(vm);
 	bb_lib_map_init(vm);
+	bb_lib_array_init(vm);
+	bb_lib_tree_init(vm);
 	bb_lib_proto_init(vm);
 	bb_lib_callapi_init(vm);
 	bb_lib_coro_init(vm);

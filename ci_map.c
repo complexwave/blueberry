@@ -601,6 +601,14 @@ int ci_map_remove(ci_map *m, ci_ptr key) {
  * Utility
  * ============================================================ */
 
+void ci_map_ensure_space(ci_map *m, uint32_t cnt) {
+	if (m->used_limit >= cnt)
+		return;
+
+	uint32_t needed = ci_map_len(m) + cnt;
+	ci_map__resize(m, (uint32_t)(needed / CI_MAP_LOAD_FACTOR) + 1);
+}
+
 void ci_map_clear(ci_map *m) {
 	/* TODO: ci_dec all keys/values when refcounting */
 	memset(m->space, 0, ci_map__space_size(ci_map_buckets(m)));

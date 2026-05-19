@@ -13,6 +13,22 @@
 #define bb_is_coro(p)    CI_IS_CORO(p)
 #define bb_is_number(p)  (CI_IS_INT(p) || CI_IS_NUMBER(p))
 
+#define BB_NO_OVERFLOW_ADD(a, b, r) do { \
+	if (__builtin_add_overflow((a), (b), &(r))) \
+		bb_coro_error(c, "%s: int add overflow", __func__); \
+} while(0)
+
+#define BB_NO_OVERFLOW_SUB(a, b, r) do { \
+	if (__builtin_sub_overflow((a), (b), &(r))) \
+		bb_coro_error(c, "%s: int sub overflow", __func__); \
+} while(0)
+
+#define BB_NO_OVERFLOW_MUL(a, b, r) do { \
+	if (__builtin_mul_overflow((a), (b), &(r))) \
+		bb_coro_error(c, "%s: int mul overflow", __func__); \
+} while(0)
+
+
 /* ---- CHECK macros (return NULL on type mismatch) ---- */
 
 #define BB_CHECK_STRING(a) do { \
@@ -61,6 +77,56 @@
 		nargs = ci_arr_len(_voa); \
 		args  = ci_arr_head(_voa); \
 	} \
+} while(0)
+
+/* ---- metamethod dispatch ---- */
+
+#define bb_metam(name) offsetof(bb_metaproto, name)
+
+static inline void *bb_proto_get_metamethod(ci_map *proto, size_t offset) {
+	return *(void **)((uint8_t *)proto + offset);
+}
+
+/* try to find a metamethod on a or b, return the fn pointer (or NULL) */
+static inline void *bb_meta_find(bb_coro *c, ci_ptr a, ci_ptr b, size_t offset) {
+	if (CI_IS_PTR(a)) {
+		ci_map *proto = bb_obj_arena_prototype(a);
+
+		if (CI_IS_MAGIC_PROTO(proto)) {
+			void *fn = bb_proto_get_metamethod(proto, offset);
+			if (fn) return fn;
+		}
+	}
+
+	if (CI_IS_PTR(b)) {
+		ci_map *proto = bb_obj_arena_prototype(b);
+
+		if (CI_IS_MAGIC_PROTO(proto)) {
+			void *fn = bb_proto_get_metamethod(proto, offset);
+			if (fn) return fn;
+		}
+	}
+
+	return NULL;
+}
+
+#define BB_META_DISPATCH(c, a, b, name, msg) do { \
+	bb_op_fn _fn = (bb_op_fn)bb_meta_find(c, a, b, bb_metam(name)); \
+	if (_fn) return _fn(c, a, b); \
+	bb_coro_error(c, "%s", msg); \
+	__builtin_unreachable(); \
+} while(0)
+
+#define BB_META_DISPATCH_INDEX_GET(c, obj, key, msg) do { \
+	bb_op_fn _fn = (bb_op_fn)bb_meta_find(c, obj, NULL, bb_metam(index_get)); \
+	if (_fn) return _fn(c, obj, key); \
+	bb_coro_error(c, "%s", msg); \
+} while(0)
+
+#define BB_META_DISPATCH_INDEX_SET(c, obj, key, val, msg) do { \
+	bb_op_fn_ext _fn = (bb_op_fn_ext)bb_meta_find(c, obj, NULL, bb_metam(index_set)); \
+	if (_fn) { _fn(c, obj, key, val); return; } \
+	bb_coro_error(c, "%s", msg); \
 } while(0)
 
 /* ---- native method flag ---- */

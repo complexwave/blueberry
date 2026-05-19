@@ -118,9 +118,12 @@ static ci_ptr bb_arr_set(bb_coro_arg *c, ci_ptr arr, ci_ptr idx, ci_ptr val) {
 	BB_CHECK_INT(idx);
 	ci_array *a = (ci_array *)arr;
 	uint32_t i = ci_arr_wrapindex(a, CI_INT(idx));
-	if (i >= ci_arr_len(a))
+	if (i >= ci_arr_len(a)){
+		if(i >= INT32_MAX) return NULL;
+			
 		ci_arr_extend(a, i + 1);
-
+	}
+	
 	ci_inc(val);
 	ci_ptr old = ci_arr_index(a, i);
 	ci_dec(old);
@@ -141,7 +144,7 @@ static ci_ptr bb_arr_merge(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *ar
 			bb_coro_error(c, "merge: argument is not an array");
 		
 		ci_array *src = (ci_array *)args[i];
-		total += src->length;
+		BB_NO_OVERFLOW_ADD(total, src->length, total);
 		
 		if (src->length > 0 && (src->offset + src->length) > src->size)
 			all_contiguous = 0;
@@ -203,6 +206,9 @@ static ci_ptr bb_arr__splice(bb_coro_arg *c, ci_array *a,
 	if (tail_idx > len) tail_idx = len;
 	uint32_t actual_del = tail_idx - start;
 
+	if (insert_count > (uint32_t)INT32_MAX)
+		bb_coro_error(c, "splice: too many inserts");
+
 	int32_t size_diff = (int32_t)insert_count - (int32_t)actual_del;
 
 	/* grow if inserting more than deleting */
@@ -220,9 +226,15 @@ static ci_ptr bb_arr__splice(bb_coro_arg *c, ci_array *a,
 
 	/* memmove tail: [tail_idx .. len) → [tail_idx + size_diff .. ] */
 	uint32_t tail_len = len - tail_idx;
-	if (tail_len > 0 && size_diff != 0)
-		memmove(base + tail_idx + size_diff, base + tail_idx, tail_len * sizeof(ci_ptr));
+	if (tail_len > 0 && size_diff != 0) {
+		ci_ptr *src = base + tail_idx;
+		ci_ptr *dst = base + tail_idx + size_diff;
 
+		if (dst < base) return NULL;
+
+		memmove(dst, src, tail_len * sizeof(ci_ptr));
+	}
+	
 	/* copy inserts into the gap */
 	for (uint32_t i = 0; i < insert_count; i++) {
 		ci_inc(inserts[i]);

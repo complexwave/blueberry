@@ -14,6 +14,7 @@ typedef struct bb_closure bb_closure;
 typedef struct bb_cached_op bb_cached_op;
 
 typedef ci_ptr (*bb_op_fn)(bb_coro *c, ci_ptr a, ci_ptr b);
+typedef void  (*bb_op_fn_ext)(bb_coro *c, ci_ptr a, ci_ptr b, ci_ptr d);
 typedef size_t vm_dipatch_arg;
 typedef __attribute__((preserve_none)) void (*bb_fast_fn)(bb_coro *co, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg c);
 
@@ -34,6 +35,7 @@ struct bb_vm {
 	ci_array *units;
 	ci_map *prototypes;
 	bb_coro *current_coro;
+	ci_str *istr_rtmp;
 };
 
 struct bb_unit {
@@ -116,14 +118,14 @@ struct bb_closure {
 #define CI_VM_FAMILY     CI_O_FAMILY_8
 #define CI_VM_TAG_BASE   CI_FAMILY_ENTRY(CI_VM_FAMILY, 0)
 
-#define CI_BB_VM        ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 0) | CI_OBJECT | CI_REFCOUNTABLE))  /* 0x0005 */
-#define CI_BB_CORO      ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 1) | CI_OBJECT | CI_REFCOUNTABLE))  /* 0x000D */
-#define CI_BB_CLOSURE   ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 2) | CI_OBJECT | CI_REFCOUNTABLE))  /* 0x0015 */
-#define CI_BB_FFISTRUCT ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 3) | CI_OBJECT))                    /* 0x001D */
+#define CI_BB_VM        ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 0) | CI_REFCOUNTABLE))  /* 0x0006 */
+#define CI_BB_CORO      ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 1) | CI_REFCOUNTABLE))  /* 0x000E */
+#define CI_BB_CLOSURE   ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 2) | CI_REFCOUNTABLE))  /* 0x0016 */
+#define CI_BB_FFISTRUCT ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 3)))                    /* 0x001C */
 
-#define CI_IS_VM_FAMILY(ptr)  CI_CHECK_MASK_FAMILY(ptr, CI_VM_FAMILY | CI_OBJECT, CI_VM_FAMILY)
-#define CI_IS_CORO(ptr)     CI_CHECK_MASK_FAMILY(ptr, CI_BB_CORO | CI_VM_FAMILY | CI_OBJECT, CI_VM_FAMILY)
-#define CI_IS_CLOSURE(ptr)  CI_CHECK_MASK_FAMILY(ptr, CI_BB_CLOSURE | CI_VM_FAMILY | CI_OBJECT, CI_VM_FAMILY)
+#define CI_IS_VM_FAMILY(ptr)  CI_CHECK_MASK_FAMILY(ptr, CI_VM_FAMILY, CI_VM_FAMILY)
+#define CI_IS_CORO(ptr)     CI_CHECK_MASK_FAMILY(ptr, CI_BB_CORO, CI_VM_FAMILY)
+#define CI_IS_CLOSURE(ptr)  CI_CHECK_MASK_FAMILY(ptr, CI_BB_CLOSURE, CI_VM_FAMILY)
 
 #define BB_FN_NATIVE      (1u << 0)
 #define BB_FN_NATIVE_VAR  (1u << 1)
@@ -156,6 +158,11 @@ typedef struct {
 	bb_op_fn op_neg;
 	bb_op_fn op_cmp;
 	bb_op_fn op_tostring;
+
+	bb_op_fn     index_get;
+	bb_op_fn_ext index_set;
 } bb_metaproto;
+
+#define BB_ALWAYS_INLINE __attribute__((always_inline)) static inline
 
 #endif /* BLUEBERRY_H */
