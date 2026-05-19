@@ -1,0 +1,57 @@
+// String tests: len, size, at, copy, bytes
+var h = require("tests/test_helpers.ci")
+h()
+
+// === len ===
+print("running str_len")
+var s = "hello"
+test.equal(s.len(), 5, "str_len")
+
+print("running str_len_empty")
+test.equal("".len(), 0, "str_len_empty")
+
+print("running str_len_one")
+test.equal("x".len(), 1, "str_len_one")
+
+// === at ===
+print("running str_at_first")
+test.equal(s.at(0), 104, "str_at_first")
+
+print("running str_at_last")
+test.equal(s.at(4), 111, "str_at_last")
+
+print("running str_at_oob")
+test.equal(s.at(5), null, "str_at_oob")
+test.equal(s.at(99), null, "str_at_oob")
+
+print("running str_at_neg")
+test.equal(s.at(-1), 111, "str_at_neg")
+test.equal(s.at(-5), 104, "str_at_neg")
+
+print("running str_at_neg_oob")
+test.equal(s.at(-6), null, "str_at_neg_oob")
+
+// === copy ===
+print("running str_copy")
+var c = s.copy()
+test.equal(c.len(), 5, "str_copy")
+test.equal(c.eq(s), 1, "str_copy")
+
+print("running str_copy_independent")
+c.append("!")
+test.equal(c.len(), 6, "str_copy_independent")
+test.equal(s.len(), 5, "str_copy_independent")
+
+// === bytes ===
+print("running str_bytes")
+var b = "ABC".bytes()
+test.equal(b.len(), 3, "str_bytes")
+test.equal(b[0], 65, "str_bytes")
+test.equal(b[1], 66, "str_bytes")
+test.equal(b[2], 67, "str_bytes")
+
+print("running str_bytes_empty")
+var be = "".bytes()
+test.equal(be.len(), 0, "str_bytes_empty")
+
+test.done()

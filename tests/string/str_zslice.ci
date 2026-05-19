@@ -1,0 +1,73 @@
+// String tests: __slice (zero-copy) extensive
+var h = require("tests/test_helpers.ci")
+h()
+
+var s = "abcdefghij"
+
+// === basic zero-copy ===
+print("running zslice_basic")
+var z = s.__slice(0, 5)
+test.equal(z.eq("abcde"), 1, "zslice_basic")
+test.assert(z.is_slice(), "zslice_basic")
+test.assert(z.is_readonly(), "zslice_basic")
+
+// === offset tracking ===
+print("running zslice_offset_start")
+test.equal(s.__slice(0, 3).slice_offset(), 0, "zslice_offset_start")
+
+print("running zslice_offset_mid")
+test.equal(s.__slice(3, 7).slice_offset(), 3, "zslice_offset_mid")
+
+print("running zslice_offset_end")
+test.equal(s.__slice(8, 10).slice_offset(), 8, "zslice_offset_end")
+
+// === negative indices ===
+print("running zslice_neg_start")
+test.equal(s.__slice(-3).eq("hij"), 1, "zslice_neg_start")
+test.equal(s.__slice(-3).slice_offset(), 7, "zslice_neg_start")
+
+print("running zslice_neg_both")
+test.equal(s.__slice(-5, -2).eq("fgh"), 1, "zslice_neg_both")
+
+// === parent chain ===
+print("running zslice_parent")
+var z2 = s.__slice(2, 8)
+test.assert(z2.parent(), "zslice_parent")
+
+// === empty zero-copy ===
+print("running zslice_empty")
+var ze = s.__slice(5, 5)
+test.equal(ze.len(), 0, "zslice_empty")
+test.assert(ze.is_slice(), "zslice_empty")
+
+print("running zslice_empty_reversed")
+var ze2 = s.__slice(7, 3)
+test.equal(ze2.len(), 0, "zslice_empty_reversed")
+
+// === full string view ===
+print("running zslice_full")
+var zf = s.__slice(0)
+test.equal(zf.eq("abcdefghij"), 1, "zslice_full")
+test.equal(zf.slice_offset(), 0, "zslice_full")
+
+// === copy from zero-copy slice ===
+print("running zslice_to_copy")
+var zc = s.__slice(2, 6).copy()
+test.equal(zc.eq("cdef"), 1, "zslice_to_copy")
+test.equal(zc.is_slice(), false, "zslice_to_copy")
+test.equal(zc.is_readonly(), false, "zslice_to_copy")
+
+// === multiple slices same parent ===
+print("running zslice_multi_same_parent")
+var za = s.__slice(0, 3)
+var zb = s.__slice(3, 6)
+var zcc = s.__slice(6, 10)
+test.equal(za.eq("abc"), 1, "zslice_multi_same_parent")
+test.equal(zb.eq("def"), 1, "zslice_multi_same_parent")
+test.equal(zcc.eq("ghij"), 1, "zslice_multi_same_parent")
+
+// === clamp extremes ===
+print("running zslice_clamp")
+test.equal(s.__slice(-999, 999).eq("abcdefghij"), 1, "zslice_clamp")
+
+test.done()

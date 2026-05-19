@@ -1,0 +1,102 @@
+// map.delete() — verify deletion via iteration
+var h = require("tests/test_helpers.ci")
+h()
+
+// === basic delete, verify by iterating ===
+print("running map_delete_basic")
+var m = {"a" => 1, "b" => 2, "c" => 3}
+map.delete(m, "b")
+
+var found_b = false
+for k, v in m {
+	if k == "b" { found_b = true }
+}
+test.assert(!found_b, "map_delete_basic")
+
+// === deleted key not in keys ===
+print("running map_delete_not_in_iter")
+var remaining = []
+for k, v in m {
+	remaining.push(k)
+}
+test.equal(remaining.len(), 2, "map_delete_not_in_iter")
+
+// === values correct after delete ===
+print("running map_delete_values_intact")
+var vals = {}
+for k, v in m {
+	vals[k] = v
+}
+test.equal(vals["a"], 1, "map_delete_values_intact")
+test.equal(vals["c"], 3, "map_delete_values_intact")
+
+// === delete returns true ===
+print("running map_delete_returns_true")
+var m2 = {"x" => 10}
+var r = map.delete(m2, "x")
+test.equal(r, true, "map_delete_returns_true")
+
+// === delete missing returns false ===
+print("running map_delete_missing")
+var r2 = map.delete(m2, "nope")
+test.equal(r2, false, "map_delete_missing")
+
+// === delete all keys, iter yields nothing ===
+print("running map_delete_all")
+var m3 = {"a" => 1, "b" => 2, "c" => 3}
+map.delete(m3, "a")
+map.delete(m3, "b")
+map.delete(m3, "c")
+
+var count = 0
+for k, v in m3 {
+	count = count + 1
+}
+test.equal(count, 0, "map_delete_all")
+
+// === delete then reinsert, verify by iter ===
+print("running map_delete_reinsert")
+var m4 = {"a" => 1, "b" => 2}
+map.delete(m4, "a")
+m4["a"] = 99
+
+var found_a = false
+var a_val = null
+for k, v in m4 {
+	if k == "a" {
+		found_a = true
+		a_val = v
+	}
+}
+test.assert(found_a, "map_delete_reinsert")
+test.equal(a_val, 99, "map_delete_reinsert")
+
+// === delete with int keys ===
+print("running map_delete_int_keys")
+var m5 = {}
+var i = 0
+while i < 20 {
+	m5[i] = i * 10
+	i = i + 1
+}
+
+map.delete(m5, 5)
+map.delete(m5, 10)
+map.delete(m5, 15)
+
+var found5 = false
+var found10 = false
+var found15 = false
+var iter_count = 0
+for k, v in m5 {
+	if k == 5 { found5 = true }
+	if k == 10 { found10 = true }
+	if k == 15 { found15 = true }
+	iter_count = iter_count + 1
+}
+test.assert(!found5, "map_delete_int_keys")
+test.assert(!found10, "map_delete_int_keys")
+test.assert(!found15, "map_delete_int_keys")
+test.equal(iter_count, 17, "map_delete_int_keys")
+
+test.done()

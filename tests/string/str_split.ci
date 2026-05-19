@@ -1,0 +1,46 @@
+// String tests: split
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running str_split_basic")
+var sp = "a,b,c".split(",")
+test.equal(sp.len(), 3, "str_split_basic")
+test.assert(sp[0].eq("a"), "str_split_basic")
+test.assert(sp[1].eq("b"), "str_split_basic")
+test.assert(sp[2].eq("c"), "str_split_basic")
+
+print("running str_split_no_match")
+var sp2 = "hello".split(",")
+test.equal(sp2.len(), 1, "str_split_no_match")
+test.assert(sp2[0].eq("hello"), "str_split_no_match")
+
+print("running str_split_longer_delim")
+var sp3 = "ab".split("abcdef")
+test.equal(sp3.len(), 1, "str_split_longer_delim")
+test.assert(sp3[0].eq("ab"), "str_split_longer_delim")
+
+print("running str_split_multi_char_delim")
+var sp4 = "a::b::c".split("::")
+test.equal(sp4.len(), 3, "str_split_multi_char_delim")
+test.assert(sp4[0].eq("a"), "str_split_multi_char_delim")
+test.assert(sp4[1].eq("b"), "str_split_multi_char_delim")
+test.assert(sp4[2].eq("c"), "str_split_multi_char_delim")
+
+print("running str_split_empty_delim")
+var sp5 = "abc".split("")
+test.equal(sp5.len(), 3, "str_split_empty_delim")
+test.assert(sp5[0].eq("a"), "str_split_empty_delim")
+test.assert(sp5[1].eq("b"), "str_split_empty_delim")
+test.assert(sp5[2].eq("c"), "str_split_empty_delim")
+
+print("running str_split_trailing")
+var sp6 = "a,b,".split(",")
+test.equal(sp6.len(), 3, "str_split_trailing")
+test.assert(sp6[2].eq(""), "str_split_trailing")
+
+print("running str_split_leading")
+var sp7 = ",a,b".split(",")
+test.equal(sp7.len(), 3, "str_split_leading")
+test.assert(sp7[0].eq(""), "str_split_leading")
+
+test.done()

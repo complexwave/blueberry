@@ -1,0 +1,57 @@
+// map.exists() — distinguish stored null from missing key
+var h = require("tests/test_helpers.ci")
+h()
+
+// === basic exists ===
+print("running map_exists_present")
+var m = {"a" => 1, "b" => 2}
+test.equal(map.exists(m, "a"), true, "map_exists_present")
+test.equal(map.exists(m, "b"), true, "map_exists_present")
+
+print("running map_exists_missing")
+test.equal(map.exists(m, "c"), false, "map_exists_missing")
+
+// === null value still exists ===
+print("running map_exists_null_value")
+var m2 = {"k" => null}
+test.equal(map.exists(m2, "k"), true, "map_exists_null_value")
+test.equal(m2["k"], null, "map_exists_null_value")
+
+// === after delete, no longer exists ===
+print("running map_exists_after_delete")
+map.delete(m, "a")
+test.equal(map.exists(m, "a"), false, "map_exists_after_delete")
+test.equal(map.exists(m, "b"), true, "map_exists_after_delete")
+
+// === empty map ===
+print("running map_exists_empty")
+var m3 = {}
+test.equal(map.exists(m3, "anything"), false, "map_exists_empty")
+
+// === int keys ===
+print("running map_exists_int")
+var m4 = {}
+m4[42] = "val"
+test.equal(map.exists(m4, 42), true, "map_exists_int")
+test.equal(map.exists(m4, 43), false, "map_exists_int")
+
+// === works on tree ===
+print("running map_exists_tree")
+var t = tree.new()
+t["x"] = 1
+t["y"] = null
+test.equal(map.exists(t, "x"), true, "map_exists_tree")
+test.equal(map.exists(t, "y"), true, "map_exists_tree")
+test.equal(map.exists(t, "z"), false, "map_exists_tree")
+
+// === tree .exists() method ===
+print("running tree_exists_method")
+test.equal(t.exists("x"), true, "tree_exists_method")
+test.equal(t.exists("y"), true, "tree_exists_method")
+test.equal(t.exists("z"), false, "tree_exists_method")
+
+print("running tree_exists_after_delete")
+t.delete("x")
+test.equal(t.exists("x"), false, "tree_exists_after_delete")
+
+test.done()

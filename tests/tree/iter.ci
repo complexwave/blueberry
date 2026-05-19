@@ -1,0 +1,151 @@
+// Tree iteration: for-in, order, repeated iteration
+var h = require("tests/test_helpers.ci")
+h()
+
+// === basic for-in ===
+print("running tree_iter_basic")
+var t = tree.new()
+t["c"] = 3
+t["a"] = 1
+t["b"] = 2
+
+var keys = []
+var vals = []
+for k, v in t {
+	keys.push(k)
+	vals.push(v)
+}
+test.equal(keys.len(), 3, "tree_iter_basic")
+test.equal(keys[0], "a", "tree_iter_basic")
+test.equal(keys[1], "b", "tree_iter_basic")
+test.equal(keys[2], "c", "tree_iter_basic")
+test.equal(vals[0], 1, "tree_iter_basic")
+test.equal(vals[1], 2, "tree_iter_basic")
+test.equal(vals[2], 3, "tree_iter_basic")
+
+// === iterate empty tree ===
+print("running tree_iter_empty")
+var t2 = tree.new()
+var count = 0
+for k, v in t2 {
+	count = count + 1
+}
+test.equal(count, 0, "tree_iter_empty")
+
+// === iterate single entry ===
+print("running tree_iter_single")
+var t3 = tree.new()
+t3["only"] = 42
+var sk = []
+var sv = []
+for k, v in t3 {
+	sk.push(k)
+	sv.push(v)
+}
+test.equal(sk.len(), 1, "tree_iter_single")
+test.equal(sk[0], "only", "tree_iter_single")
+test.equal(sv[0], 42, "tree_iter_single")
+
+// === int keys iterate in order ===
+print("running tree_iter_int_order")
+var t4 = tree.new()
+t4[50] = "e"
+t4[10] = "a"
+t4[30] = "c"
+t4[20] = "b"
+t4[40] = "d"
+
+var ik = []
+for k, v in t4 {
+	ik.push(k)
+}
+test.equal(ik[0], 10, "tree_iter_int_order")
+test.equal(ik[1], 20, "tree_iter_int_order")
+test.equal(ik[2], 30, "tree_iter_int_order")
+test.equal(ik[3], 40, "tree_iter_int_order")
+test.equal(ik[4], 50, "tree_iter_int_order")
+
+// === multiple iterations same tree ===
+print("running tree_iter_repeat")
+var t5 = tree.new()
+t5["x"] = 1
+t5["y"] = 2
+t5["z"] = 3
+
+var sum1 = 0
+for k, v in t5 {
+	sum1 = sum1 + v
+}
+
+var sum2 = 0
+for k, v in t5 {
+	sum2 = sum2 + v
+}
+
+var sum3 = 0
+for k, v in t5 {
+	sum3 = sum3 + v
+}
+test.equal(sum1, 6, "tree_iter_repeat")
+test.equal(sum2, 6, "tree_iter_repeat")
+test.equal(sum3, 6, "tree_iter_repeat")
+
+// === iterate after modification ===
+print("running tree_iter_after_modify")
+var t6 = tree.new()
+t6["a"] = 1
+t6["b"] = 2
+t6["c"] = 3
+t6.delete("b")
+t6["d"] = 4
+
+var mk = []
+for k, v in t6 {
+	mk.push(k)
+}
+test.equal(mk.len(), 3, "tree_iter_after_modify")
+test.equal(mk[0], "a", "tree_iter_after_modify")
+test.equal(mk[1], "c", "tree_iter_after_modify")
+test.equal(mk[2], "d", "tree_iter_after_modify")
+
+// === key-only iteration ===
+print("running tree_iter_key_only")
+var t7 = tree.new()
+t7[1] = "a"
+t7[2] = "b"
+t7[3] = "c"
+var ko = []
+for k in t7 {
+	ko.push(k)
+}
+test.equal(ko.len(), 3, "tree_iter_key_only")
+test.equal(ko[0], 1, "tree_iter_key_only")
+test.equal(ko[1], 2, "tree_iter_key_only")
+test.equal(ko[2], 3, "tree_iter_key_only")
+
+// === iterate large tree ===
+print("running tree_iter_large")
+var t8 = tree.new()
+var i = 0
+while i < 1000 {
+	t8[i] = i
+	i = i + 1
+}
+
+var prev = -1
+var ordered = true
+var iter_count = 0
+for k, v in t8 {
+	if k <= prev {
+		ordered = false
+	}
+	if k != v {
+		ordered = false
+	}
+	prev = k
+	iter_count = iter_count + 1
+}
+test.assert(ordered, "tree_iter_large")
+test.equal(iter_count, 1000, "tree_iter_large")
+
+test.done()

@@ -1,0 +1,61 @@
+// map.size() — get/set allocated size for maps, length for trees
+var h = require("tests/test_helpers.ci")
+h()
+
+// === map size >= len ===
+print("running map_size_basic")
+var m = {"a" => 1, "b" => 2, "c" => 3}
+var sz = map.size(m)
+var ln = map.len(m)
+test.assert(sz >= ln, "map_size_basic")
+
+// === empty map has size ===
+print("running map_size_empty")
+var m2 = {}
+test.assert(map.size(m2) > 0, "map_size_empty")
+
+// === size setter preallocates ===
+print("running map_size_set")
+var m3 = {}
+var before = map.size(m3)
+map.size(m3, 1000)
+var after = map.size(m3)
+test.assert(after > before, "map_size_set")
+test.assert(after >= 1000, "map_size_set")
+
+// === no rehash after preallocate ===
+print("running map_size_no_rehash")
+var m4 = {}
+map.size(m4, 500)
+var sz_before = map.size(m4)
+var i = 0
+while i < 500 {
+	m4[i] = i
+	i = i + 1
+}
+var sz_after = map.size(m4)
+test.equal(sz_before, sz_after, "map_size_no_rehash")
+
+// === tree size == len ===
+print("running tree_size_equals_len")
+var t = tree.new()
+t["a"] = 1
+t["b"] = 2
+t["c"] = 3
+test.equal(map.size(t), map.len(t), "tree_size_equals_len")
+test.equal(t.size(), t.len(), "tree_size_equals_len")
+
+// === tree size ignores setter arg ===
+print("running tree_size_ignores_arg")
+var t2 = tree.new()
+t2[1] = 1
+t2[2] = 2
+test.equal(t2.size(), 2, "tree_size_ignores_arg")
+
+// === tree size after mutations ===
+print("running tree_size_after_delete")
+t.delete("b")
+test.equal(t.size(), 2, "tree_size_after_delete")
+test.equal(t.size(), t.len(), "tree_size_after_delete")
+
+test.done()

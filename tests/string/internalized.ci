@@ -1,0 +1,10 @@
+
+
+var s = "abcde"
+
+print(s)
+
+"abcde".append("more")
+
+
+print("abcde")

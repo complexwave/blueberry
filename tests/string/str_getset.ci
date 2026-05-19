@@ -1,0 +1,63 @@
+// String tests: get, set, [] index access
+var h = require("tests/test_helpers.ci")
+h()
+
+var s = "hello".copy()
+
+// === get (alias for at) ===
+print("running str_get_basic")
+test.equal(s.get(0), 104, "str_get_basic")
+test.equal(s.get(4), 111, "str_get_basic")
+
+print("running str_get_oob")
+test.equal(s.get(5), null, "str_get_oob")
+test.equal(s.get(99), null, "str_get_oob")
+
+// === index get [] ===
+print("running str_index_get")
+test.equal(s[0], 104, "str_index_get")
+test.equal(s[1], 101, "str_index_get")
+test.equal(s[4], 111, "str_index_get")
+
+print("running str_index_get_oob")
+test.equal(s[5], null, "str_index_get_oob")
+
+// === set ===
+print("running str_set_basic")
+s.set(0, 72)
+test.equal(s.get(0), 72, "str_set_basic")
+test.equal(s[0], 72, "str_set_basic")
+
+print("running str_set_last")
+s.set(4, 79)
+test.equal(s[4], 79, "str_set_last")
+
+// === index set [] ===
+print("running str_index_set")
+s[1] = 69
+test.equal(s[1], 69, "str_index_set")
+test.equal(s.get(1), 69, "str_index_set")
+
+// === set returns self ===
+print("running str_set_chain")
+var t = "abc".copy()
+t.set(0, 65).set(1, 66).set(2, 67)
+test.equal(t.eq("ABC"), 1, "str_set_chain")
+
+// === verify round-trip ===
+print("running str_getset_roundtrip")
+var r = "abcde".copy()
+var i = 0
+while i < r.len() {
+	var v = r[i]
+	r[i] = v
+	test.equal(r[i], v, "str_getset_roundtrip")
+	i = i + 1
+}
+
+// === readonly literal [] get works ===
+print("running str_index_get_readonly")
+test.equal("abc"[0], 97, "str_index_get_readonly")
+test.equal("abc"[2], 99, "str_index_get_readonly")
+
+test.done()

@@ -1,0 +1,48 @@
+// String tests: repeat, replace
+var h = require("tests/test_helpers.ci")
+h()
+
+// === repeat ===
+print("running str_repeat")
+var r = "ab".repeat(3)
+test.equal(r.eq("ababab"), 1, "str_repeat")
+test.equal(r.len(), 6, "str_repeat")
+
+print("running str_repeat_one")
+test.equal("hi".repeat(1).eq("hi"), 1, "str_repeat_one")
+
+print("running str_repeat_zero")
+test.equal("hi".repeat(0).len(), 0, "str_repeat_zero")
+
+print("running str_repeat_neg")
+test.equal("hi".repeat(-1).len(), 0, "str_repeat_neg")
+
+print("running str_repeat_single_char")
+test.equal("x".repeat(5).eq("xxxxx"), 1, "str_repeat_single_char")
+
+// === replace ===
+print("running str_replace_basic")
+test.equal("hello world".replace("world", "there").eq("hello there"), 1, "str_replace_basic")
+
+print("running str_replace_multi")
+test.equal("aXbXc".replace("X", "-").eq("a-b-c"), 1, "str_replace_multi")
+
+print("running str_replace_miss")
+test.equal("hello".replace("xyz", "!").eq("hello"), 1, "str_replace_miss")
+
+print("running str_replace_empty_needle")
+test.equal("hello".replace("", "x").eq("hello"), 1, "str_replace_empty_needle")
+
+print("running str_replace_longer_needle")
+test.equal("ab".replace("abcdef", "x").eq("ab"), 1, "str_replace_longer_needle")
+
+print("running str_replace_grow")
+test.equal("a-b-c".replace("-", "---").eq("a---b---c"), 1, "str_replace_grow")
+
+print("running str_replace_shrink")
+test.equal("a---b---c".replace("---", "-").eq("a-b-c"), 1, "str_replace_shrink")
+
+print("running str_replace_to_empty")
+test.equal("xhxexlxlxox".replace("x", "").eq("hello"), 1, "str_replace_to_empty")
+
+test.done()

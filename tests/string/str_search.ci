@@ -1,0 +1,90 @@
+// String tests: find, contains, starts, ends
+var h = require("tests/test_helpers.ci")
+h()
+
+var s = "hello world"
+
+// === find ===
+print("running str_find_start")
+test.equal(s.find("hello"), 0, "str_find_start")
+
+print("running str_find_mid")
+test.equal(s.find("world"), 6, "str_find_mid")
+
+print("running str_find_single")
+test.equal(s.find("o"), 4, "str_find_single")
+
+print("running str_find_miss")
+test.equal(s.find("xyz"), false, "str_find_miss")
+
+print("running str_find_empty_needle")
+test.equal(s.find(""), 0, "str_find_empty_needle")
+
+print("running str_find_longer_needle")
+test.equal("ab".find("abcdef"), false, "str_find_longer_needle")
+
+print("running str_find_exact")
+test.equal("abc".find("abc"), 0, "str_find_exact")
+
+// === find with start offset ===
+print("running str_find_offset")
+test.equal(s.find("o", 5), 7, "str_find_offset")
+
+print("running str_find_offset_at")
+test.equal(s.find("o", 4), 4, "str_find_offset_at")
+
+print("running str_find_offset_past")
+test.equal(s.find("o", 8), false, "str_find_offset_past")
+
+print("running str_find_offset_neg")
+test.equal(s.find("o", -4), 7, "str_find_offset_neg")
+
+print("running str_find_offset_zero")
+test.equal(s.find("h", 0), 0, "str_find_offset_zero")
+
+// === contains ===
+print("running str_contains_yes")
+test.assert(s.contains("world"), "str_contains_yes")
+
+print("running str_contains_no")
+test.equal(s.contains("xyz"), false, "str_contains_no")
+
+print("running str_contains_at_zero")
+test.assert(s.contains("hello"), "str_contains_at_zero")
+
+print("running str_contains_empty")
+test.assert(s.contains(""), "str_contains_empty")
+
+// === starts ===
+print("running str_starts_yes")
+test.assert(s.starts("hello"), "str_starts_yes")
+
+print("running str_starts_no")
+test.equal(s.starts("world"), false, "str_starts_no")
+
+print("running str_starts_full")
+test.assert(s.starts("hello world"), "str_starts_full")
+
+print("running str_starts_longer")
+test.equal(s.starts("hello world!"), false, "str_starts_longer")
+
+print("running str_starts_empty")
+test.assert(s.starts(""), "str_starts_empty")
+
+// === ends ===
+print("running str_ends_yes")
+test.assert(s.ends("world"), "str_ends_yes")
+
+print("running str_ends_no")
+test.equal(s.ends("hello"), false, "str_ends_no")
+
+print("running str_ends_full")
+test.assert(s.ends("hello world"), "str_ends_full")
+
+print("running str_ends_longer")
+test.equal(s.ends("hello world!"), false, "str_ends_longer")
+
+print("running str_ends_empty")
+test.assert(s.ends(""), "str_ends_empty")
+
+test.done()

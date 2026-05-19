@@ -1,0 +1,116 @@
+// Tree stress test: bulk insert, delete, reinsert cycles
+var h = require("tests/test_helpers.ci")
+h()
+
+var t = tree.new()
+
+// === round 1: insert 100k ===
+print("running huge_insert_100k")
+var i = 0
+while i < 100000 {
+	t[i] = i
+	i = i + 1
+}
+test.equal(t.len(), 100000, "huge_insert_100k")
+
+// === spot check ===
+print("running huge_spot_check_1")
+test.equal(t[0], 0, "huge_spot_check_1")
+test.equal(t[50000], 50000, "huge_spot_check_1")
+test.equal(t[99999], 99999, "huge_spot_check_1")
+
+// === delete 80k (keys 0..79999) ===
+print("running huge_delete_80k")
+i = 0
+while i < 80000 {
+	t.delete(i)
+	i = i + 1
+}
+test.equal(t.len(), 20000, "huge_delete_80k")
+
+// verify deleted keys are gone
+print("running huge_deleted_gone")
+test.equal(t[0], null, "huge_deleted_gone")
+test.equal(t[79999], null, "huge_deleted_gone")
+
+// verify remaining keys intact
+print("running huge_remaining")
+test.equal(t[80000], 80000, "huge_remaining")
+test.equal(t[99999], 99999, "huge_remaining")
+
+// === insert 50k new keys (100000..149999) ===
+print("running huge_reinsert_50k")
+i = 100000
+while i < 150000 {
+	t[i] = i
+	i = i + 1
+}
+test.equal(t.len(), 70000, "huge_reinsert_50k")
+
+// === repeat cycle 10 times ===
+print("running huge_cycles")
+var round = 0
+while round < 10 {
+	// insert 10k
+	var base = 200000 + round * 20000
+
+	i = base
+	while i < base + 10000 {
+		t[i] = i
+		i = i + 1
+	}
+
+	var after_insert = t.len()
+
+	// delete 8k
+	i = base
+	while i < base + 8000 {
+		t.delete(i)
+		i = i + 1
+	}
+
+	var after_delete = t.len()
+	test.equal(after_insert - after_delete, 8000, "huge_cycles")
+
+	// reinsert 5k
+	i = base
+	while i < base + 5000 {
+		t[i] = i * 2
+		i = i + 1
+	}
+
+	round = round + 1
+}
+test.assert(t.len() > 0, "huge_cycles")
+
+// === verify iteration order after all mutations ===
+print("running huge_order_after_cycles")
+var prev = -1
+var ordered = true
+var iter_count = 0
+for k, v in t {
+	if k <= prev {
+		ordered = false
+	}
+	prev = k
+	iter_count = iter_count + 1
+}
+test.assert(ordered, "huge_order_after_cycles")
+test.equal(iter_count, t.len(), "huge_order_after_cycles")
+
+// === clear and verify ===
+print("running huge_clear")
+t.clear()
+test.equal(t.len(), 0, "huge_clear")
+
+// === fresh insert after clear ===
+print("running huge_after_clear")
+i = 0
+while i < 1000 {
+	t[i] = i
+	i = i + 1
+}
+test.equal(t.len(), 1000, "huge_after_clear")
+test.equal(t[500], 500, "huge_after_clear")
+
+test.done()

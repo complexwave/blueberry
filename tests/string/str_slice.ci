@@ -1,0 +1,69 @@
+// String tests: slice (copy), __slice (zero-copy), is_slice, slice_offset, parent
+var h = require("tests/test_helpers.ci")
+h()
+
+var s = "hello world"
+
+// === slice (safe copy) ===
+print("running str_slice_basic")
+var sl = s.slice(0, 5)
+test.equal(sl.eq("hello"), 1, "str_slice_basic")
+test.equal(sl.len(), 5, "str_slice_basic")
+
+print("running str_slice_mid")
+test.equal(s.slice(6, 11).eq("world"), 1, "str_slice_mid")
+
+print("running str_slice_single")
+test.equal(s.slice(0, 1).eq("h"), 1, "str_slice_single")
+
+print("running str_slice_no_end")
+test.equal(s.slice(6).eq("world"), 1, "str_slice_no_end")
+
+print("running str_slice_neg_start")
+test.equal(s.slice(-5).eq("world"), 1, "str_slice_neg_start")
+
+print("running str_slice_neg_end")
+test.equal(s.slice(0, -6).eq("hello"), 1, "str_slice_neg_end")
+
+print("running str_slice_clamp_end")
+test.equal(s.slice(0, 999).eq("hello world"), 1, "str_slice_clamp_end")
+
+print("running str_slice_empty")
+test.equal(s.slice(5, 5).len(), 0, "str_slice_empty")
+
+print("running str_slice_reversed")
+test.equal(s.slice(5, 3).len(), 0, "str_slice_reversed")
+
+// slice returns a copy, not a view
+print("running str_slice_is_copy")
+test.equal(sl.is_slice(), false, "str_slice_is_copy")
+test.equal(sl.is_readonly(), false, "str_slice_is_copy")
+
+// === __slice (unsafe zero-copy view) ===
+print("running str___slice_basic")
+var zs = s.__slice(0, 5)
+test.equal(zs.eq("hello"), 1, "str___slice_basic")
+test.equal(zs.len(), 5, "str___slice_basic")
+
+print("running str___slice_is_slice")
+test.assert(zs.is_slice(), "str___slice_is_slice")
+test.assert(zs.is_readonly(), "str___slice_is_slice")
+
+print("running str___slice_parent")
+test.assert(zs.parent(), "str___slice_parent")
+
+print("running str___slice_offset_zero")
+var zo = s.__slice(0, 5)
+test.equal(zo.slice_offset(), 0, "str___slice_offset_zero")
+
+print("running str___slice_offset_mid")
+var zo2 = s.__slice(6, 11)
+test.equal(zo2.slice_offset(), 6, "str___slice_offset_mid")
+
+print("running str_offset_non_slice")
+test.equal(s.slice_offset(), null, "str_offset_non_slice")
+
+print("running str_parent_non_slice")
+test.equal(s.parent(), null, "str_parent_non_slice")
+
+test.done()

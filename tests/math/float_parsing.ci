@@ -1,0 +1,76 @@
+// float() parsing tests — accepts inf/NaN unlike number()
+
+var h = require("tests/test_helpers.ci")
+h()
+
+fn eq(a, b, name) {
+	test.assert(math.cmp(a, b) == 0, name)
+}
+
+// === number() rejects inf/NaN ===
+
+print("running number_rejects_inf")
+test.equal(number("inf"), null, "number_rejects_inf")
+
+print("running number_rejects_plus_inf")
+test.equal(number("+inf"), null, "number_rejects_plus_inf")
+
+print("running number_rejects_minus_inf")
+test.equal(number("-inf"), null, "number_rejects_minus_inf")
+
+print("running number_rejects_nan")
+test.equal(number("NaN"), null, "number_rejects_nan")
+
+// === float() accepts inf/NaN ===
+
+print("running float_inf")
+eq(float("inf"), math.inf, "float_inf")
+
+print("running float_plus_inf")
+eq(float("+inf"), math.inf, "float_plus_inf")
+
+print("running float_minus_inf")
+eq(float("-inf"), -math.inf, "float_minus_inf")
+
+print("running float_nan")
+test.assert(math.isnan(float("NaN")), "float_nan")
+
+print("running float_inf_type")
+test.equal(math.type(float("inf")), "float", "float_inf_type")
+
+print("running float_nan_type")
+test.equal(math.type(float("NaN")), "float", "float_nan_type")
+
+// === float() whitespace around inf/NaN ===
+
+print("running float_inf_ws")
+eq(float("  inf  "), math.inf, "float_inf_ws")
+
+print("running float_nan_ws")
+test.assert(math.isnan(float("  NaN  ")), "float_nan_ws")
+
+// === float() rejects junk after inf/NaN ===
+
+print("running float_inf_junk")
+test.equal(float("infx"), null, "float_inf_junk")
+
+print("running float_nan_junk")
+test.equal(float("NaNx"), null, "float_nan_junk")
+
+// === float() still parses normal numbers ===
+
+print("running float_int")
+eq(float("42"), 42, "float_int")
+
+print("running float_decimal")
+eq(float("3.14"), 3.14, "float_decimal")
+
+// === float() passthrough ===
+
+print("running float_passthrough_int")
+eq(float(42), 42, "float_passthrough_int")
+
+print("running float_passthrough_null")
+test.equal(float(null), null, "float_passthrough_null")
+
+test.done()

@@ -1,0 +1,102 @@
+// Tree basics: constructor, set/get, delete, len, clear, keys, values
+var h = require("tests/test_helpers.ci")
+h()
+
+// === constructor ===
+print("running tree_new")
+var t = tree.new()
+test.equal(type(t), "tree", "tree_new")
+
+print("running tree_new_empty_len")
+test.equal(t.len(), 0, "tree_new_empty_len")
+
+// === set and get ===
+print("running tree_set_get")
+t.set("a", 1)
+t.set("b", 2)
+t.set("c", 3)
+test.equal(t.get("a"), 1, "tree_set_get")
+test.equal(t.get("b"), 2, "tree_set_get")
+test.equal(t.get("c"), 3, "tree_set_get")
+
+print("running tree_len_after_set")
+test.equal(t.len(), 3, "tree_len_after_set")
+
+// === get missing key ===
+print("running tree_get_missing")
+test.equal(t.get("z"), null, "tree_get_missing")
+
+// === set overwrites ===
+print("running tree_set_overwrite")
+t.set("b", 99)
+test.equal(t.get("b"), 99, "tree_set_overwrite")
+test.equal(t.len(), 3, "tree_set_overwrite")
+
+// === delete ===
+print("running tree_delete")
+var removed = t.delete("b")
+test.equal(removed, true, "tree_delete")
+test.equal(t.get("b"), null, "tree_delete")
+test.equal(t.len(), 2, "tree_delete")
+
+print("running tree_delete_missing")
+var removed2 = t.delete("zzz")
+test.equal(removed2, false, "tree_delete_missing")
+test.equal(t.len(), 2, "tree_delete_missing")
+
+// === clear ===
+print("running tree_clear")
+t.set("x", 10)
+t.set("y", 20)
+t.clear()
+test.equal(t.len(), 0, "tree_clear")
+test.equal(t.get("x"), null, "tree_clear")
+
+// === keys and values (sorted order) ===
+print("running tree_keys")
+var t2 = tree.new()
+t2.set("cherry", 3)
+t2.set("apple", 1)
+t2.set("banana", 2)
+var k = t2.keys()
+test.equal(k[0], "apple", "tree_keys")
+test.equal(k[1], "banana", "tree_keys")
+test.equal(k[2], "cherry", "tree_keys")
+
+print("running tree_values")
+var v = t2.values()
+test.equal(v[0], 1, "tree_values")
+test.equal(v[1], 2, "tree_values")
+test.equal(v[2], 3, "tree_values")
+
+// === integer keys ===
+print("running tree_int_keys")
+var t3 = tree.new()
+t3.set(30, "c")
+t3.set(10, "a")
+t3.set(20, "b")
+test.equal(t3.get(10), "a", "tree_int_keys")
+test.equal(t3.get(20), "b", "tree_int_keys")
+test.equal(t3.get(30), "c", "tree_int_keys")
+
+print("running tree_int_keys_order")
+var ik = t3.keys()
+test.equal(ik[0], 10, "tree_int_keys_order")
+test.equal(ik[1], 20, "tree_int_keys_order")
+test.equal(ik[2], 30, "tree_int_keys_order")
+
+// === set null keeps entry ===
+print("running tree_set_null")
+var t4 = tree.new()
+t4.set("k", 42)
+t4.set("k", null)
+test.equal(t4.len(), 1, "tree_set_null")
+test.equal(t4.get("k"), null, "tree_set_null")
+
+// === empty keys/values ===
+print("running tree_empty_keys")
+var t5 = tree.new()
+test.equal(t5.keys().len(), 0, "tree_empty_keys")
+test.equal(t5.values().len(), 0, "tree_empty_keys")
+
+test.done()

@@ -1,0 +1,85 @@
+// Tree [] operator: index_get / index_set metamethods
+var h = require("tests/test_helpers.ci")
+h()
+
+// === basic [] set and get ===
+print("running tree_index_set_get")
+var t = tree.new()
+t["a"] = 1
+t["b"] = 2
+t["c"] = 3
+test.equal(t["a"], 1, "tree_index_set_get")
+test.equal(t["b"], 2, "tree_index_set_get")
+test.equal(t["c"], 3, "tree_index_set_get")
+
+print("running tree_index_len")
+test.equal(t.len(), 3, "tree_index_len")
+
+// === [] missing key ===
+print("running tree_index_missing")
+test.equal(t["z"], null, "tree_index_missing")
+
+// === [] overwrite ===
+print("running tree_index_overwrite")
+t["b"] = 99
+test.equal(t["b"], 99, "tree_index_overwrite")
+test.equal(t.len(), 3, "tree_index_overwrite")
+
+// === [] with int keys ===
+print("running tree_index_int")
+var t2 = tree.new()
+t2[10] = "ten"
+t2[5] = "five"
+t2[20] = "twenty"
+test.equal(t2[10], "ten", "tree_index_int")
+test.equal(t2[5], "five", "tree_index_int")
+test.equal(t2[20], "twenty", "tree_index_int")
+
+print("running tree_index_int_order")
+var k = t2.keys()
+test.equal(k[0], 5, "tree_index_int_order")
+test.equal(k[1], 10, "tree_index_int_order")
+test.equal(k[2], 20, "tree_index_int_order")
+
+// === mix [] and .set/.get ===
+print("running tree_index_mix")
+var t3 = tree.new()
+t3.set("x", 1)
+t3["y"] = 2
+test.equal(t3["x"], 1, "tree_index_mix")
+test.equal(t3.get("y"), 2, "tree_index_mix")
+
+// === [] set null ===
+print("running tree_index_null")
+var t4 = tree.new()
+t4["k"] = 42
+t4["k"] = null
+test.equal(t4.len(), 1, "tree_index_null")
+test.equal(t4["k"], null, "tree_index_null")
+
+// === [] delete still works after [] set ===
+print("running tree_index_then_delete")
+var t5 = tree.new()
+t5["a"] = 1
+t5["b"] = 2
+t5["c"] = 3
+t5.delete("b")
+test.equal(t5.len(), 2, "tree_index_then_delete")
+test.equal(t5["b"], null, "tree_index_then_delete")
+test.equal(t5["a"], 1, "tree_index_then_delete")
+test.equal(t5["c"], 3, "tree_index_then_delete")
+
+// === many keys ===
+print("running tree_index_many")
+var t6 = tree.new()
+var i = 0
+while i < 100 {
+	t6[i] = i * 10
+	i = i + 1
+}
+test.equal(t6.len(), 100, "tree_index_many")
+test.equal(t6[0], 0, "tree_index_many")
+test.equal(t6[50], 500, "tree_index_many")
+test.equal(t6[99], 990, "tree_index_many")
+
+test.done()

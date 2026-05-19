@@ -1,0 +1,68 @@
+// String tests: eq, cmp, hash, is_readonly
+var h = require("tests/test_helpers.ci")
+h()
+
+// === eq ===
+print("running str_eq_same")
+test.equal("hello".eq("hello"), 1, "str_eq_same")
+
+print("running str_eq_diff")
+test.equal("hello".eq("world"), 0, "str_eq_diff")
+
+print("running str_eq_diff_len")
+test.equal("hello".eq("hell"), 0, "str_eq_diff_len")
+
+print("running str_eq_empty")
+test.equal("".eq(""), 1, "str_eq_empty")
+
+print("running str_eq_copy")
+var s = "hello"
+var c = s.copy()
+test.equal(s.eq(c), 1, "str_eq_copy")
+
+// === cmp ===
+print("running str_cmp_equal")
+test.equal("abc".cmp("abc"), 0, "str_cmp_equal")
+
+print("running str_cmp_less")
+test.equal("abc".cmp("abd"), -1, "str_cmp_less")
+
+print("running str_cmp_greater")
+test.equal("abd".cmp("abc"), 1, "str_cmp_greater")
+
+print("running str_cmp_prefix_shorter")
+test.equal("ab".cmp("abc"), -1, "str_cmp_prefix_shorter")
+
+print("running str_cmp_prefix_longer")
+test.equal("abc".cmp("ab"), 1, "str_cmp_prefix_longer")
+
+print("running str_cmp_empty")
+test.equal("".cmp(""), 0, "str_cmp_empty")
+
+print("running str_cmp_empty_vs_nonempty")
+test.equal("".cmp("a"), -1, "str_cmp_empty_vs_nonempty")
+
+// === hash ===
+print("running str_hash_consistent")
+var h1 = "hello".hash()
+var h2 = "hello".hash()
+test.equal(h1, h2, "str_hash_consistent")
+
+print("running str_hash_diff")
+var h3 = "world".hash()
+test.assert(h1 != h3, "str_hash_diff")
+
+print("running str_hash_copy_matches")
+var orig = "test string"
+var cp = orig.copy()
+test.equal(orig.hash(), cp.hash(), "str_hash_copy_matches")
+
+// === is_readonly ===
+print("running str_readonly_literal")
+test.assert("hello".is_readonly(), "str_readonly_literal")
+
+print("running str_readonly_copy")
+var rw = "hello".copy()
+test.equal(rw.is_readonly(), false, "str_readonly_copy")
+
+test.done()

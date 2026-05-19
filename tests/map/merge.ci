@@ -1,0 +1,59 @@
+// map._merge() — shallow merge maps
+var h = require("tests/test_helpers.ci")
+h()
+
+// === basic merge ===
+print("running merge_basic")
+var dst = {"a" => 1}
+var src = {"b" => 2, "c" => 3}
+map._merge(dst, src)
+test.equal(dst["a"], 1, "merge_basic")
+test.equal(dst["b"], 2, "merge_basic")
+test.equal(dst["c"], 3, "merge_basic")
+
+// === merge overwrites existing keys ===
+print("running merge_overwrite")
+var d2 = {"x" => 1, "y" => 2}
+var s2 = {"y" => 99, "z" => 3}
+map._merge(d2, s2)
+test.equal(d2["x"], 1, "merge_overwrite")
+test.equal(d2["y"], 99, "merge_overwrite")
+test.equal(d2["z"], 3, "merge_overwrite")
+
+// === merge empty src ===
+print("running merge_empty_src")
+var d3 = {"a" => 1}
+map._merge(d3, {})
+test.equal(d3["a"], 1, "merge_empty_src")
+test.equal(map.len(d3), 1, "merge_empty_src")
+
+// === merge into empty dst ===
+print("running merge_empty_dst")
+var d4 = {}
+map._merge(d4, {"a" => 1, "b" => 2})
+test.equal(d4["a"], 1, "merge_empty_dst")
+test.equal(d4["b"], 2, "merge_empty_dst")
+
+// === merge returns dst ===
+print("running merge_returns_dst")
+var d5 = {"a" => 1}
+var ret = map._merge(d5, {"b" => 2})
+test.equal(ret["a"], 1, "merge_returns_dst")
+test.equal(ret["b"], 2, "merge_returns_dst")
+
+// === merge null values ===
+print("running merge_null_value")
+var d6 = {"a" => 1}
+map._merge(d6, {"a" => null})
+test.assert(map.exists(d6, "a"), "merge_null_value")
+test.equal(d6["a"], null, "merge_null_value")
+
+// === src unchanged ===
+print("running merge_src_unchanged")
+var d7 = {}
+var s7 = {"x" => 10}
+map._merge(d7, s7)
+d7["x"] = 99
+test.equal(s7["x"], 10, "merge_src_unchanged")
+
+test.done()
