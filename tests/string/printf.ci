@@ -1,0 +1,154 @@
+// String tests: format/printf
+var h = require("tests/test_helpers.ci")
+h()
+
+// === literal passthrough ===
+print("running fmt_literal")
+var s = string.format("hello world")
+test.equal(s.eq("hello world"), 1, "fmt_literal")
+
+// === percent escape ===
+print("running fmt_percent_escape")
+s = string.format("100%% done")
+test.equal(s.eq("100% done"), 1, "fmt_percent_escape")
+
+// === %s string ===
+print("running fmt_string")
+s = string.format("hello %s!", "User")
+test.equal(s.eq("hello User!"), 1, "fmt_string")
+
+// === %d integer ===
+print("running fmt_int")
+s = string.format("val=%d end", 42)
+test.equal(s.eq("val=42 end"), 1, "fmt_int")
+
+// === mixed %d and %s ===
+print("running fmt_mixed")
+s = string.format("I have %d %s", 1234, "apples")
+test.equal(s.eq("I have 1234 apples"), 1, "fmt_mixed")
+
+// === %d negative ===
+print("running fmt_neg_int")
+s = string.format("%d", -7)
+test.equal(s.eq("-7"), 1, "fmt_neg_int")
+
+// === %d zero-padded width ===
+print("running fmt_int_zeropad")
+s = string.format("id=%08d", 42)
+test.equal(s.eq("id=00000042"), 1, "fmt_int_zeropad")
+
+// === %d negative zero-padded ===
+print("running fmt_neg_zeropad")
+s = string.format("v=%06d", -7)
+test.equal(s.eq("v=-00007"), 1, "fmt_neg_zeropad")
+
+// === %s right-align with width ===
+print("running fmt_str_width_right")
+s = string.format("[%10s]", "hi")
+test.equal(s.eq("[        hi]"), 1, "fmt_str_width_right")
+
+// === %s left-align ===
+print("running fmt_str_width_left")
+s = string.format("[%-10s]", "hi")
+test.equal(s.eq("[hi        ]"), 1, "fmt_str_width_left")
+
+// === %-d left-align int ===
+print("running fmt_int_left")
+s = string.format("[%-8d]", 42)
+test.equal(s.eq("[42      ]"), 1, "fmt_int_left")
+
+// === %x lowercase hex ===
+print("running fmt_hex_lower")
+s = string.format("%x", 0xDEAD)
+test.equal(s.eq("dead"), 1, "fmt_hex_lower")
+
+// === %X uppercase hex ===
+print("running fmt_hex_upper")
+s = string.format("%X", 0xBEEF)
+test.equal(s.eq("BEEF"), 1, "fmt_hex_upper")
+
+// === %x zero-padded ===
+print("running fmt_hex_pad")
+s = string.format("%08x", 0xFF)
+test.equal(s.eq("000000ff"), 1, "fmt_hex_pad")
+
+// === %-x left-align hex ===
+print("running fmt_hex_left")
+s = string.format("[%-10x]", 0xFF)
+test.equal(s.eq("[ff        ]"), 1, "fmt_hex_left")
+
+// === %o octal ===
+print("running fmt_octal")
+s = string.format("%o", 511)
+test.equal(s.eq("777"), 1, "fmt_octal")
+
+// === %b binary ===
+print("running fmt_binary")
+s = string.format("%b", 42)
+test.equal(s.eq("101010"), 1, "fmt_binary")
+
+// === %c ASCII char ===
+print("running fmt_char_ascii")
+s = string.format("%c", 65)
+test.equal(s.eq("A"), 1, "fmt_char_ascii")
+
+// === %c UTF-8 emoji ===
+print("running fmt_char_emoji")
+s = string.format("%c", 0x1F600)
+test.equal(s.len(), 4, "fmt_char_emoji")
+
+// === %c UTF-8 cyrillic ===
+print("running fmt_char_cyrillic")
+s = string.format("%c", 0x0416)
+test.equal(s.len(), 2, "fmt_char_cyrillic")
+
+// === %f float ===
+print("running fmt_float")
+s = string.format("pi=%0.2f", 3.14)
+test.equal(s.eq("pi=3.14"), 1, "fmt_float")
+
+// === %f zero-padded width ===
+print("running fmt_float_zeropad")
+s = string.format("x=%08.2f!", 3.14)
+test.equal(s.eq("x=00003.14!"), 1, "fmt_float_zeropad")
+
+// === %d truncates float ===
+print("running fmt_float_as_int")
+s = string.format("%d", 11.7)
+test.equal(s.eq("11"), 1, "fmt_float_as_int")
+
+// === %d truncates negative float ===
+print("running fmt_neg_float_as_int")
+s = string.format("%d", -3.9)
+test.equal(s.eq("-3"), 1, "fmt_neg_float_as_int")
+
+// === method style: append to existing string ===
+print("running fmt_method_append")
+var base = string.new(64)
+base.format("count=%d", 99)
+test.equal(base.eq("count=99"), 1, "fmt_method_append")
+
+// === method style: accumulates ===
+print("running fmt_method_accumulate")
+base.format(" extra=%s", "yes")
+test.equal(base.eq("count=99 extra=yes"), 1, "fmt_method_accumulate")
+
+// === multiple args ===
+print("running fmt_multi_args")
+s = string.format("%d+%d=%d", 1, 2, 3)
+test.equal(s.eq("1+2=3"), 1, "fmt_multi_args")
+
+// === no arg gives <!ARG> ===
+print("running fmt_noarg")
+s = string.format("val=%d oops")
+test.equal(s.eq("val=<!ARG> oops"), 1, "fmt_noarg")
+
+// === typeof interned string ===
+print("running typeof_string_interned")
+test.equal(type("hello") == "string", true, "typeof_string_interned")
+
+print("running typeof_format_result")
+s = string.format("test")
+test.equal(type(s) == "string", true, "typeof_format_result")
+
+test.done()

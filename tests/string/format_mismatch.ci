@@ -1,0 +1,68 @@
+// String tests: format type mismatch — never crashes, prints debug markers
+var h = require("tests/test_helpers.ci")
+h()
+
+// === %s with non-string (number → prints as number) ===
+print("running fmt_s_int")
+var s = string.format("%s", 42)
+test.equal(s.eq("42"), 1, "fmt_s_int")
+
+print("running fmt_s_neg_int")
+s = string.format("%s", -7)
+test.equal(s.eq("-7"), 1, "fmt_s_neg_int")
+
+print("running fmt_s_large_int")
+s = string.format("%s", 999999)
+test.equal(s.eq("999999"), 1, "fmt_s_large_int")
+
+print("running fmt_s_float")
+s = string.format("%s", 3.14)
+test.equal(s.eq("3.14"), 1, "fmt_s_float")
+
+print("running fmt_s_zero")
+s = string.format("%s", 0)
+test.equal(s.eq("0"), 1, "fmt_s_zero")
+
+// === %s with non-string non-number → <!STR> ===
+print("running fmt_s_null")
+s = string.format("%s", null)
+test.equal(s.eq("<!STR>"), 1, "fmt_s_null")
+
+print("running fmt_s_bool_true")
+s = string.format("%s", true)
+test.equal(s.eq("<!STR>"), 1, "fmt_s_bool_true")
+
+print("running fmt_s_bool_false")
+s = string.format("%s", false)
+test.equal(s.eq("<!STR>"), 1, "fmt_s_bool_false")
+
+print("running fmt_s_array")
+s = string.format("%s", [1, 2, 3])
+test.equal(s.eq("<!STR>"), 1, "fmt_s_array")
+
+print("running fmt_s_map")
+s = string.format("%s", {"a" => 1})
+test.equal(s.eq("<!STR>"), 1, "fmt_s_map")
+
+// === %d with non-number → <!NUM> ===
+print("running fmt_d_string")
+s = string.format("%d", "hello")
+test.equal(s.eq("<!NUM>"), 1, "fmt_d_string")
+
+print("running fmt_d_null")
+s = string.format("%d", null)
+test.equal(s.eq("<!NUM>"), 1, "fmt_d_null")
+
+print("running fmt_d_bool")
+s = string.format("%d", true)
+test.equal(s.eq("<!NUM>"), 1, "fmt_d_bool")
+
+print("running fmt_d_array")
+s = string.format("%d", [1])
+test.equal(s.eq("<!NUM>"), 1, "fmt_d_array")
+
+print("running fmt_d_map")
+s = string.format("%d", {})
+test.equal(s.eq("<!NUM>"), 1, "fmt_d_map")
+
+test.done()

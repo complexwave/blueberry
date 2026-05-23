@@ -1,0 +1,110 @@
+// String tests: format — octal, binary, char, float, left-align
+var h = require("tests/test_helpers.ci")
+h()
+
+// === %o variations ===
+print("running fmt_o_zero")
+var s = string.format("%o", 0)
+test.equal(s.eq("0"), 1, "fmt_o_zero")
+
+print("running fmt_o_one")
+s = string.format("%o", 1)
+test.equal(s.eq("1"), 1, "fmt_o_one")
+
+print("running fmt_o_eight")
+s = string.format("%o", 8)
+test.equal(s.eq("10"), 1, "fmt_o_eight")
+
+print("running fmt_o_255")
+s = string.format("%o", 255)
+test.equal(s.eq("377"), 1, "fmt_o_255")
+
+print("running fmt_o_64")
+s = string.format("%o", 64)
+test.equal(s.eq("100"), 1, "fmt_o_64")
+
+// === %b variations ===
+print("running fmt_b_zero")
+s = string.format("%b", 0)
+test.equal(s.eq("0"), 1, "fmt_b_zero")
+
+print("running fmt_b_one")
+s = string.format("%b", 1)
+test.equal(s.eq("1"), 1, "fmt_b_one")
+
+print("running fmt_b_255")
+s = string.format("%b", 255)
+test.equal(s.eq("11111111"), 1, "fmt_b_255")
+
+print("running fmt_b_power2")
+s = string.format("%b", 128)
+test.equal(s.eq("10000000"), 1, "fmt_b_power2")
+
+print("running fmt_b_10")
+s = string.format("%b", 10)
+test.equal(s.eq("1010"), 1, "fmt_b_10")
+
+// === %c variations ===
+print("running fmt_c_space")
+s = string.format("%c", 32)
+test.equal(s.eq(" "), 1, "fmt_c_space")
+
+print("running fmt_c_zero_char")
+s = string.format("%c", 48)
+test.equal(s.eq("0"), 1, "fmt_c_zero_char")
+
+print("running fmt_c_tilde")
+s = string.format("%c", 126)
+test.equal(s.eq("~"), 1, "fmt_c_tilde")
+
+print("running fmt_c_newline")
+s = string.format("%c", 10)
+test.equal(s.eq("\n"), 1, "fmt_c_newline")
+
+print("running fmt_c_Z")
+s = string.format("%c", 90)
+test.equal(s.eq("Z"), 1, "fmt_c_Z")
+
+// === %f variations ===
+print("running fmt_f_zero")
+s = string.format("%0.1f", 0.0)
+test.equal(s.eq("0"), 1, "fmt_f_zero")
+
+print("running fmt_f_neg")
+s = string.format("%0.2f", -1.5)
+test.equal(s.eq("-1.5"), 1, "fmt_f_neg")
+
+print("running fmt_f_large")
+s = string.format("%0.1f", 9999.9)
+test.equal(s.eq("9999.9"), 1, "fmt_f_large")
+
+print("running fmt_f_prec3")
+s = string.format("%0.3f", 1.2345)
+test.equal(s.eq("1.234"), 1, "fmt_f_prec3")
+
+print("running fmt_f_prec0")
+s = string.format("%0.0f", 3.7)
+test.equal(s.eq("3.7"), 1, "fmt_f_prec0")
+
+// === left-align variations ===
+print("running fmt_left_s_wide")
+s = string.format("[%-15s]", "test")
+test.equal(s.eq("[test           ]"), 1, "fmt_left_s_wide")
+
+print("running fmt_left_d_neg")
+s = string.format("[%-8d]", -5)
+test.equal(s.eq("[-5      ]"), 1, "fmt_left_d_neg")
+
+print("running fmt_left_d_zero")
+s = string.format("[%-6d]", 0)
+test.equal(s.eq("[0     ]"), 1, "fmt_left_d_zero")
+
+print("running fmt_left_x_wide")
+s = string.format("[%-8x]", 0xAB)
+test.equal(s.eq("[ab      ]"), 1, "fmt_left_x_wide")
+
+print("running fmt_left_s_exact")
+s = string.format("[%-3s]", "abc")
+test.equal(s.eq("[abc]"), 1, "fmt_left_s_exact")
+
+test.done()
