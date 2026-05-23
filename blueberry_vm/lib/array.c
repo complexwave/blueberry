@@ -3,13 +3,12 @@
  */
 
 /* array.new(size?) — create a new array */
-static ci_ptr bb_array_new(bb_coro_arg *c, ci_ptr self, ci_ptr size_arg) {
-	(void)c; (void)self;
+static ci_ptr bb_array_new(bb_coro_arg *c, ci_ptr_arg self, ci_ptr size_arg) {
 	uint32_t sz = 16;
-	
+
 	if (CI_IS_INT(size_arg))
 		sz = (uint32_t)CI_INT(size_arg);
-	
+
 	ci_array *a = ci_arr_new(sz);
 	return (ci_ptr)a;
 }

@@ -130,8 +130,7 @@ static uint8_t *bb_cma_strdup(ci_ptr s, size_t *out_len) {
  * ================================================================ */
 
 /* cma.P(str) — literal string match */
-static ci_ptr bb_cma_P(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
-	(void)c; (void)self; (void)a1;
+static ci_ptr bb_cma_P(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0) {
 	BB_CHECK_STRING(a0);
 
 	size_t len;
@@ -146,8 +145,7 @@ static ci_ptr bb_cma_P(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
 }
 
 /* cma.Pi(str) — case-insensitive literal */
-static ci_ptr bb_cma_Pi(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
-	(void)c; (void)self; (void)a1;
+static ci_ptr bb_cma_Pi(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0) {
 	BB_CHECK_STRING(a0);
 
 	size_t len;
@@ -162,8 +160,7 @@ static ci_ptr bb_cma_Pi(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
 }
 
 /* cma.R(spec) — character range, e.g. "a-zA-Z0-9" */
-static ci_ptr bb_cma_R(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
-	(void)c; (void)self; (void)a1;
+static ci_ptr bb_cma_R(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0) {
 	BB_CHECK_STRING(a0);
 
 	char pbuf[256];
@@ -181,8 +178,7 @@ static ci_ptr bb_cma_R(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
 }
 
 /* cma.S(chars) — character set from individual chars in string */
-static ci_ptr bb_cma_S(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
-	(void)c; (void)self; (void)a1;
+static ci_ptr bb_cma_S(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0) {
 	BB_CHECK_STRING(a0);
 
 	cma_op_set *raw = b_malloc(sizeof(cma_op_set));
@@ -194,8 +190,7 @@ static ci_ptr bb_cma_S(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
 }
 
 /* cma.any(n) — match any n bytes */
-static ci_ptr bb_cma_any(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
-	(void)c; (void)self; (void)a1;
+static ci_ptr bb_cma_any(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0) {
 	BB_CHECK_INT(a0);
 
 	uint32_t n = (uint32_t)CI_INT(a0);
@@ -217,8 +212,7 @@ static ci_ptr bb_cma_any(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
 }
 
 /* cma.endl() — match end of input */
-static ci_ptr bb_cma_endl(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
-	(void)c; (void)self; (void)a0; (void)a1;
+static ci_ptr bb_cma_endl(bb_coro_arg *c, ci_ptr_arg self) {
 
 	cma_op *raw = b_malloc(sizeof(cma_op));
 	memset(raw, 0, sizeof(cma_op));
@@ -260,36 +254,41 @@ static bb_cma_op *bb_cma_build_seq(bb_coro *c, uint16_t type, size_t n, ci_ptr *
 }
 
 /* cma.seq / cma.and / cma.SEQ — sequence; accepts array arg or varargs */
-static ci_ptr bb_cma_seq(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args) {
-	(void)self;
+static bb_var_ret bb_cma_seq(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
+	(void)self; (void)nrets;
 	BB_VARARG_OR_ARRAY;
 	if (nargs == 0)
 		bb_coro_error(c, "cma.seq: need at least one pattern");
 	if (nargs == 1) {
 		BB_CHECK_CMA_OP(args[0]);
 		ci_inc(args[0]);
-		return args[0];
+		BB_PUSH_RET(args[0]);
+		return 1;
 	}
-	return (ci_ptr)bb_cma_build_seq(c, CMA_AND, nargs, args);
+	ci_ptr result = (ci_ptr)bb_cma_build_seq(c, CMA_AND, nargs, args);
+	BB_PUSH_RET(result);
+	return 1;
 }
 
 /* cma.alt / cma.or / cma.ALT — ordered choice; accepts array arg or varargs */
-static ci_ptr bb_cma_alt(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args) {
-	(void)self;
+static bb_var_ret bb_cma_alt(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
+	(void)self; (void)nrets;
 	BB_VARARG_OR_ARRAY;
 	if (nargs == 0)
 		bb_coro_error(c, "cma.alt: need at least one pattern");
 	if (nargs == 1) {
 		BB_CHECK_CMA_OP(args[0]);
 		ci_inc(args[0]);
-		return args[0];
+		BB_PUSH_RET(args[0]);
+		return 1;
 	}
-	return (ci_ptr)bb_cma_build_seq(c, CMA_OR, nargs, args);
+	ci_ptr result = (ci_ptr)bb_cma_build_seq(c, CMA_OR, nargs, args);
+	BB_PUSH_RET(result);
+	return 1;
 }
 
 /* cma.neg(p) — negation, consumes nothing */
-static ci_ptr bb_cma_neg(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
-	(void)c; (void)self; (void)a1;
+static ci_ptr bb_cma_neg(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0) {
 	BB_CHECK_CMA_OP(a0);
 
 	cma_op_wrap *raw = b_malloc(sizeof(cma_op_wrap));
@@ -306,8 +305,7 @@ static ci_ptr bb_cma_neg(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
 }
 
 /* cma.ahead(p) — positive lookahead, consumes nothing */
-static ci_ptr bb_cma_ahead(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
-	(void)c; (void)self; (void)a1;
+static ci_ptr bb_cma_ahead(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0) {
 	BB_CHECK_CMA_OP(a0);
 
 	cma_op_wrap *raw = b_malloc(sizeof(cma_op_wrap));
@@ -324,8 +322,8 @@ static ci_ptr bb_cma_ahead(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
 }
 
 /* cma.rep(min, max, p) — bounded repetition; vararg to fit 3 args past self */
-static ci_ptr bb_cma_rep(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args) {
-	(void)self;
+static bb_var_ret bb_cma_rep(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
+	(void)self; (void)nrets;
 	if (nargs != 3)
 		bb_coro_error(c, "cma.rep: expected (min, max, pattern)");
 	BB_CHECK_INT(args[0]);
@@ -347,12 +345,13 @@ static ci_ptr bb_cma_rep(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args) {
 
 	bb_cma_op *w = bb_cma_new_with_children(CMA_REP, (cma_op *)raw, children);
 	ci_dec(children);
-	return (ci_ptr)w;
+	BB_PUSH_RET((ci_ptr)w);
+	return nargs;
 }
 
 /* cma.cap(p [, name]) — capture; optional name is any ci_ptr, stored directly (ci_inc'd) */
-static ci_ptr bb_cma_cap(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args) {
-	(void)self;
+static bb_var_ret bb_cma_cap(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
+	(void)self; (void)nrets;
 	if (nargs < 1 || nargs > 2)
 		bb_coro_error(c, "cma.cap: expected (pattern [, name])");
 	BB_CHECK_CMA_OP(args[0]);
@@ -372,7 +371,8 @@ static ci_ptr bb_cma_cap(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args) {
 
 	bb_cma_op *w = bb_cma_new_with_children(CMA_CAP, (cma_op *)raw, children);
 	ci_dec(children);
-	return (ci_ptr)w;
+	BB_PUSH_RET((ci_ptr)w);
+	return nargs;
 }
 
 /* ================================================================
@@ -382,8 +382,7 @@ static ci_ptr bb_cma_cap(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args) {
 /* cma.match(pat, str) → false | true | [ci_str_slice...]
  * Each slice points into the source string. Named captures have ctx set
  * to the ci_ptr name stored in the pattern (via capn). */
-static ci_ptr bb_cma_match(bb_coro_arg *c, ci_ptr self, ci_ptr a0, ci_ptr a1) {
-	(void)c; (void)self;
+static ci_ptr bb_cma_match(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0, ci_ptr a1) {
 	BB_CHECK_CMA_OP(a0);
 	BB_CHECK_STRING(a1);
 

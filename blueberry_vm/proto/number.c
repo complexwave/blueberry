@@ -88,7 +88,7 @@ static ci_ptr bb_number_meta_tostring(bb_coro *c, ci_ptr a, ci_ptr b) {
 }
 
 /* number(x) — box a tagged int, parse a string, or return existing ci_number as-is */
-static ci_ptr bb_native_number(bb_coro_arg *c, ci_ptr a, ci_ptr b, ci_ptr _) {
+static ci_ptr bb_native_number(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a, ci_ptr_arg b, ci_ptr_arg _) {
 	if (CI_IS_NUMBER(a))
 		return a;
 
@@ -106,20 +106,22 @@ static ci_ptr bb_native_number(bb_coro_arg *c, ci_ptr a, ci_ptr b, ci_ptr _) {
 	return NULL;
 }
 
+#define float_tolower(c) ((uint8_t)((c) | 0x20))
+
 /*
- * Try to match a keyword (case-sensitive) after skipping whitespace.
+ * Try to match a keyword (case-insensitive) after skipping whitespace.
  * Returns pointer past the keyword, or NULL on mismatch.
  */
 static const uint8_t *bb_float_match(const uint8_t *s, const uint8_t *end, const char *kw) {
 	while (*kw) {
-		if (s >= end || *s != (uint8_t)*kw) return NULL;
+		if (s >= end || float_tolower(*s) != float_tolower(*kw)) return NULL;
 		s++; kw++;
 	}
 	return s;
 }
 
 /* float(x) — like number(x) but also accepts inf, +inf, -inf, NaN */
-static ci_ptr bb_native_float(bb_coro_arg *c, ci_ptr a, ci_ptr b, ci_ptr _) {
+static ci_ptr bb_native_float(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a, ci_ptr_arg b, ci_ptr_arg _) {
 	if (CI_IS_NUMBER(a))
 		return a;
 
@@ -142,10 +144,12 @@ static ci_ptr bb_native_float(bb_coro_arg *c, ci_ptr a, ci_ptr b, ci_ptr _) {
 			const uint8_t *tail = NULL;
 			double val = 0;
 
-			if (*src == 'N') {
-				tail = bb_float_match(src, end, "NaN");
+			uint8_t lo = float_tolower(*src);
+
+			if (lo == 'n') {
+				tail = bb_float_match(src, end, "nan");
 				if (tail) val = NAN;
-			} else if (*src == 'i') {
+			} else if (lo == 'i') {
 				tail = bb_float_match(src, end, "inf");
 				if (tail) val = INFINITY;
 			} else if (*src == '+') {

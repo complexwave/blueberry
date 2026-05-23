@@ -5,6 +5,9 @@
 #ifndef BLUEBERRY_H
 #define BLUEBERRY_H
 
+#define BB_MUSTTAIL    __attribute__((musttail))
+#define BB_PRESERVE_NONE __attribute__((preserve_none))
+
 typedef struct bb_vm bb_vm;
 typedef struct bb_unit bb_unit;
 typedef struct bb_function bb_function;
@@ -15,11 +18,32 @@ typedef struct bb_cached_op bb_cached_op;
 
 typedef ci_ptr (*bb_op_fn)(bb_coro *c, ci_ptr a, ci_ptr b);
 typedef void  (*bb_op_fn_ext)(bb_coro *c, ci_ptr a, ci_ptr b, ci_ptr d);
-typedef size_t vm_dipatch_arg;
+typedef intptr_t vm_dipatch_arg;
 typedef __attribute__((preserve_none)) void (*bb_fast_fn)(bb_coro *co, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg c);
 
-typedef ci_ptr (*bb_cfn)(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2);
-typedef ci_ptr (*bb_cfn_var)(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args);
+typedef ci_ptr (*bb_cfn)(bb_coro *c, ci_ptr self, ci_ptr a0, ci_ptr a1, ci_ptr a2);
+
+typedef size_t bb_var_ret;
+
+/* varargs: (c, self, nargs, args, nrets)
+ * returns are written in-place at args[nargs..nargs+nrets-1]
+ * function returns nargs (advanced past written rets)
+ * caller computes ret count as returned_nargs - orig_nargs */
+typedef bb_var_ret (*bb_cfn_var)(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets);
+
+/* Write one return value into the ret window.
+ * Reuses nargs as write cursor, nrets as remaining count. */
+#define BB_PUSH_RET(val) \
+    if (nrets) { args[nargs++] = (val); nrets--; }
+
+/* Push N values, then return nargs.
+ * Usage: BB_RETURN(a, b, c)  or  BB_RETURN(a) */
+#define BB_RETURN(...) do {                          \
+    ci_ptr _bb_rv[] = { __VA_ARGS__ };               \
+    for (size_t _i = 0; _i < sizeof(_bb_rv)/sizeof(_bb_rv[0]) && nrets; _i++) \
+        { args[nargs++] = _bb_rv[_i]; nrets--; }    \
+    return nargs;                                    \
+} while(0)
 
 struct bb_cached_op {
 	bb_fast_fn fn;
@@ -45,6 +69,7 @@ struct bb_unit {
 };
 
 #define bb_coro_arg  bb_coro __attribute__((unused))
+#define ci_ptr_arg   ci_ptr __attribute__((unused))
 
 struct bb_function {
 	bb_unit *unit;
@@ -84,28 +109,31 @@ enum {
 	BB_CORO_NEW       = (1 << 1) | BB_CORO_RUNNABLE,
 	BB_CORO_SUSPENDED = (1 << 2) | BB_CORO_RUNNABLE,
 	BB_CORO_DONE      = (1 << 3) | BB_CORO_RUNNABLE,
-	BB_CORO_ERROR     = (1 << 4),
-	BB_CORO_RETURNED  = (1 << 5)
+	BB_CORO_ERROR     = (1 << 4)
 };
 
 struct bb_coro {
 	CI_GC_HDR;
-	bb_vm *vm;
-	uint32_t flags;
-
-	ci_array *stack;
-
+	ci_ptr *fast_stack;
+	
+	bb_cached_op *pc;
+	bb_cached_op *ops_base;
+	
 	bb_frame *fstack;
 	uint32_t fstack_pos;
 	uint32_t fstack_cap;
-
-	uint32_t lastreturn_idx;
-	uint32_t lastreturn_cnt;
-	uint32_t stop_frame;
-
-	ci_ptr *fast_stack;
-	bb_cached_op *pc;
-	bb_cached_op *ops_base;
+	
+	ci_array *stack;
+	
+	bb_vm *vm;
+	uint32_t flags;
+	
+	struct {
+		bb_coro *caller;
+		ci_ptr* args;
+		size_t nargs;
+		size_t nrets;
+	} yield;
 };
 
 struct bb_closure {
@@ -129,7 +157,7 @@ struct bb_closure {
 
 #define BB_FN_NATIVE      (1u << 0)
 #define BB_FN_NATIVE_VAR  (1u << 1)
-#define BB_FN_NATIVE_METHOD (1u << 2)
+#define BB_FN_ADVANCED      (1u << 3)
 
 /* ================================================================
  *  Metaproto — ci_map subtype with inline metamethod pointers

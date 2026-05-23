@@ -506,6 +506,45 @@ static ci_ptr bb_str_set(bb_coro_arg *c, ci_ptr s, ci_ptr idx, ci_ptr val) {
 	return s;
 }
 
+/* ---- format/printf ---- */
+
+/*
+ * format(fmt, args...) — append formatted content to self, return self.
+ * "hello".format("%d world", 42) → "hello42 world"
+ */
+static bb_var_ret bb_str_format(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
+	(void)nrets;
+
+	if (nargs < 1)
+		bb_coro_error(c, "format: need at least a format string");
+
+	ci_ptr fmt_arg = args[0];
+	BB_CHECK_STRING(fmt_arg);
+
+	const uint8_t *fmt = ci_str_head(fmt_arg);
+	size_t fmtlen = ci_str_len(fmt_arg);
+	ci_ptr *fargs = args + 1;
+	size_t farg_cnt = nargs - 1;
+
+	ci_str *dst;
+
+	if (CI_IS_ANY_STR(self)) {
+		dst = (ci_str *)self;
+		BB_CHECK_STRING_WRITABLE(dst);
+	} else {
+		/* called as string.format() — self is the prototype map, create new */
+		size_t est = ci_printf_estimate(fmt, fmtlen, fargs, farg_cnt);
+		dst = ci_str_new(est);
+		if (!dst) bb_coro_error(c, "format: out of memory");
+		self = (ci_ptr)dst;
+	}
+
+	ci_printf((ci_ptr)dst, fmt, fmtlen, fargs, farg_cnt);
+
+	BB_PUSH_RET(self);
+	return nargs;
+}
+
 /* ---- registration ---- */
 
 static void bb_proto_string_init(bb_vm *vm) {
@@ -519,7 +558,6 @@ static void bb_proto_string_init(bb_vm *vm) {
 		{ "set",         bb_str_set,          0 },
 		{ "slice",       bb_str_slice,       0 },
 		{ "__slice",     bb_str__slice,      0 },
-		{ "is_slice",    bb_str_is_slice,    0 },
 		{ "slice_offset", bb_str_slice_offset, 0 },
 		{ "ctx",         bb_str_ctx,         0 },
 		{ "parent",      bb_str_parent,      0 },
@@ -545,10 +583,14 @@ static void bb_proto_string_init(bb_vm *vm) {
 		{ "bytes",    bb_str_bytes,    0 },
 		/* query */
 		{ "is_readonly", bb_str_is_readonly, 0 },
+		{ "is_slice",    bb_str_is_slice,    0 },
 		/* compare */
 		{ "hash",     bb_str_hash,     0 },
 		{ "eq",       bb_str_eq,       0 },
 		{ "cmp",      bb_str_cmp,      0 },
+		/* format */
+		{ "format",   bb_str_format,   BB_FN_NATIVE_VAR },
+		{ "printf",   bb_str_format,   BB_FN_NATIVE_VAR },
 	};
 	bb_metaproto *mp = bb_proto_register_meta(vm, "string");
 	mp->index_get = (void *)bb_str_at;

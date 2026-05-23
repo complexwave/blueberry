@@ -120,10 +120,10 @@ static ci_ptr bb_arr_set(bb_coro_arg *c, ci_ptr arr, ci_ptr idx, ci_ptr val) {
 	uint32_t i = ci_arr_wrapindex(a, CI_INT(idx));
 	if (i >= ci_arr_len(a)){
 		if(i >= INT32_MAX) return NULL;
-			
+
 		ci_arr_extend(a, i + 1);
 	}
-	
+
 	ci_inc(val);
 	ci_ptr old = ci_arr_index(a, i);
 	ci_dec(old);
@@ -131,7 +131,8 @@ static ci_ptr bb_arr_set(bb_coro_arg *c, ci_ptr arr, ci_ptr idx, ci_ptr val) {
 	return NULL;
 }
 
-static ci_ptr bb_arr_merge(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *args) {
+static bb_var_ret bb_arr_merge(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
+	(void)nrets;
 	BB_CHECK_ARRAY(self);
 
 	ci_array *dst = (ci_array *)self;
@@ -142,42 +143,45 @@ static ci_ptr bb_arr_merge(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *ar
 	for (size_t i = 0; i < nargs; i++) {
 		if (!CI_IS_ANY_ARR(args[i]))
 			bb_coro_error(c, "merge: argument is not an array");
-		
+
 		ci_array *src = (ci_array *)args[i];
 		BB_NO_OVERFLOW_ADD(total, src->length, total);
-		
+
 		if (src->length > 0 && (src->offset + src->length) > src->size)
 			all_contiguous = 0;
 	}
 
-	if (total == 0) return (ci_ptr)dst;
+	if (total == 0) {
+		BB_PUSH_RET((ci_ptr)dst);
+		return nargs;
+	}
 
 	/* ensure space — may linearize dst (sets offset to 0) */
 	ci_arr_ensure_space(dst, total);
 
 	/* fastpath: dst offset==0 and all srcs contiguous → memcpy */
 	if (dst->offset == 0 && all_contiguous) {
-		
+
 		for (size_t i = 0; i < nargs; i++) {
 			ci_array *src = (ci_array *)args[i];
-			
+
 			if (src->length == 0) continue;
-			
+
 			memcpy(dst->data + dst->length,
 			       src->data + src->offset,
 			       src->length * sizeof(ci_ptr));
 			dst->length += src->length;
 		}
-		
+
 	} else {
 		/* slowpath: element-by-element through circular index */
 		for (size_t i = 0; i < nargs; i++) {
 			ci_array *src = (ci_array *)args[i];
-			
+
 			for (uint32_t j = 0; j < src->length; j++) {
 				size_t dst_idx = ci_arr__idx(dst, dst->length);
 				size_t src_idx = ci_arr__idx(src, j);
-				
+
 				dst->data[dst_idx] = src->data[src_idx];
 				dst->length++;
 			}
@@ -185,7 +189,8 @@ static ci_ptr bb_arr_merge(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *ar
 	}
 
 	/* TODO: ci_inc each copied element when refcounting */
-	return (ci_ptr)dst;
+	BB_PUSH_RET((ci_ptr)dst);
+	return nargs;
 }
 
 /* core splice: operates on raw pointer + count for inserts. no malloc. */
@@ -252,7 +257,8 @@ static ci_ptr bb_arr__splice(bb_coro_arg *c, ci_array *a,
 }
 
 /* splice(start, deleteCount, ...inserts) — vararg */
-static ci_ptr bb_arr_splice(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *args) {
+static bb_var_ret bb_arr_splice(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
+	(void)nrets;
 	BB_CHECK_ARRAY(self);
 	if (nargs < 2)
 		bb_coro_error(c, "splice: need at least start and deleteCount");
@@ -260,13 +266,15 @@ static ci_ptr bb_arr_splice(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *a
 	BB_CHECK_INT(args[1]);
 
 	uint32_t ins_n = (nargs > 2) ? (uint32_t)(nargs - 2) : 0;
-	return bb_arr__splice(c, (ci_array *)self,
+	BB_PUSH_RET(bb_arr__splice(c, (ci_array *)self,
 	                      CI_INT(args[0]), CI_INT(args[1]),
-	                      ins_n, args + 2);
+	                      ins_n, args + 2));
+	return nargs;
 }
 
 /* splice_arr(start, deleteCount, insertArray) — vararg, reads array from args[2] */
-static ci_ptr bb_arr_splice_arr(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *args) {
+static bb_var_ret bb_arr_splice_arr(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
+	(void)nrets;
 	BB_CHECK_ARRAY(self);
 	if (nargs < 2)
 		bb_coro_error(c, "splice_arr: need at least start and deleteCount");
@@ -284,8 +292,9 @@ static ci_ptr bb_arr_splice_arr(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_pt
 		}
 	}
 
-	return bb_arr__splice(c, (ci_array *)self,
-	                      CI_INT(args[0]), CI_INT(args[1]), n, head);
+	BB_PUSH_RET(bb_arr__splice(c, (ci_array *)self,
+	                      CI_INT(args[0]), CI_INT(args[1]), n, head));
+	return nargs;
 }
 
 /* ---- registration ---- */

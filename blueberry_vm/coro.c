@@ -20,9 +20,8 @@ static bb_coro *bb_coro_new(bb_vm *vm) {
 	if (!c)
 		bb_vm_error(vm, "bb_coro_new: out of memory");
 	c->vm    = vm;
-	c->flags = BB_CORO_SUSPENDED;
+	c->flags = BB_CORO_NEW;
 	c->pc    = 0;
-	c->stop_frame = 0;
 
 	c->stack = ci_arr_new(256*3);
 
@@ -150,20 +149,15 @@ static ci_ptr bb_coro_call(bb_coro *c, bb_closure *cl, ci_ptr a, ci_ptr b, ci_pt
 
 	if (cl->fn->flags & BB_FN_NATIVE) {
 		if (cl->fn->flags & BB_FN_NATIVE_VAR) {
-			ci_ptr gathered[3] = { a, b, c_arg };
+			ci_ptr gathered[4] = { a, b, c_arg, NULL };
 			uint32_t n = !!a + !!b + !!c_arg;
-			return cl->fn->cfn_var(c, self, n, gathered);
+			cl->fn->cfn_var(c, self, n, gathered, 1);
+			return gathered[n];
 		}
-		if (cl->fn->flags & BB_FN_NATIVE_METHOD)
-			return cl->fn->cfn(c, self, a, b);
-
-		return cl->fn->cfn(c, a, b, c_arg);
+		return cl->fn->cfn(c, self, a, b, c_arg);
 	}
 
 	/* bytecode call */
-	uint32_t saved_stop = c->stop_frame;
-	uint32_t saved_flags = c->flags;
-	c->stop_frame = c->fstack_pos;
 
 	bb_coro_pushcall(c, cl);
 	ci_ptr *sk = c->fast_stack;
@@ -176,16 +170,12 @@ static ci_ptr bb_coro_call(bb_coro *c, bb_closure *cl, ci_ptr a, ci_ptr b, ci_pt
 	bb_vm_execute(c);
 
 	ci_ptr result = NULL;
-	if (c->lastreturn_cnt > 0)
-		result = c->stack->data[c->lastreturn_idx];
 
 	if (c->fstack_pos > 1)
 		bb_coro_popcall(c);
 	else
 		c->fstack_pos = 0;
 
-	c->stop_frame = saved_stop;
-	c->flags = saved_flags;
 
 	return result;
 }
@@ -201,13 +191,22 @@ static void bb_coro_call_var(bb_coro *c, bb_closure *cl,
 		ci_ptr result;
 
 		if (cl->fn->flags & BB_FN_NATIVE_VAR) {
-			result = cl->fn->cfn_var(c, self, nargs, args);
-		} else if (cl->fn->flags & BB_FN_NATIVE_METHOD) {
-			result = cl->fn->cfn(c, self,
-				nargs > 0 ? args[0] : NULL,
-				nargs > 1 ? args[1] : NULL);
+			/* args and rets are separate buffers here, not in-place.
+			 * Build a combined window: [args...][ret slots...] */
+			ci_ptr combined[64] = {};
+			uint32_t cn = nargs < 32 ? nargs : 32;
+			for (uint32_t i = 0; i < cn; i++) combined[i] = args[i];
+			uint32_t rn = nrets < 32 ? nrets : 32;
+
+			size_t end = cl->fn->cfn_var(c, self, cn, combined, rn);
+			uint32_t written = (uint32_t)(end - cn);
+			for (uint32_t i = 0; i < written && i < nrets; i++)
+				rets[i] = combined[cn + i];
+			for (uint32_t i = written; i < nrets; i++)
+				rets[i] = NULL;
+			return;
 		} else {
-			result = cl->fn->cfn(c,
+			result = cl->fn->cfn(c, self,
 				nargs > 0 ? args[0] : NULL,
 				nargs > 1 ? args[1] : NULL,
 				nargs > 2 ? args[2] : NULL);
@@ -219,10 +218,6 @@ static void bb_coro_call_var(bb_coro *c, bb_closure *cl,
 	}
 
 	/* bytecode call */
-	uint32_t saved_stop = c->stop_frame;
-	uint32_t saved_flags = c->flags;
-	c->stop_frame = c->fstack_pos;
-
 	bb_coro_pushcall(c, cl);
 	ci_ptr *sk = c->fast_stack;
 	sk[0] = bb_closure_self(cl);
@@ -232,28 +227,13 @@ static void bb_coro_call_var(bb_coro *c, bb_closure *cl,
 	c->flags = BB_CORO_RUNNING;
 	bb_vm_execute(c);
 
-	uint32_t got = c->lastreturn_cnt;
-	ci_ptr *ret_base = c->stack->data + c->lastreturn_idx;
-	for (uint32_t i = 0; i < nrets; i++)
-		rets[i] = (i < got) ? ret_base[i] : NULL;
-
 	if (c->fstack_pos > 1)
 		bb_coro_popcall(c);
 	else
 		c->fstack_pos = 0;
 
-	c->stop_frame = saved_stop;
-	c->flags = saved_flags;
 }
 
-static ci_ptr bb_coro_result(bb_coro *c, uint32_t idx) {
-	if (idx >= c->lastreturn_cnt) return NULL;
-	return c->stack->data[c->lastreturn_idx + idx];
-}
-
-static uint32_t bb_coro_nresults(bb_coro *c) {
-	return c->lastreturn_cnt;
-}
 
 static void bb_coro_yield(bb_coro *c, ci_ptr val) {
 	(void)val;

@@ -1,9 +1,9 @@
-.PHONY: parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim ci_number_test clean
+.PHONY: parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim ci_number_test ci_printf_test bytecode-dbg asan clean
 
 .DEFAULT_GOAL := blueberry
 
 CC = clang-23
-CFLAGS = -Wall -O3 -march=native -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER -DCI_DISABLE_REFCOUNTING
+CFLAGS = -Wall -O3 -march=native -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER -DCI_DISABLE_REFCOUNTING 
 #-DBB_VM_DEBUG
 
 parser:
@@ -29,6 +29,16 @@ ci_timer_sim:
 
 ci_number_test:
 	$(CC) $(CFLAGS) -o ci_number_test ci_number_test.c -lm
+
+ci_printf_test:
+	$(CC) $(CFLAGS) -o ci_printf_test_simple ci_printf_test_simple.c
+
+bytecode-dbg:
+	$(CC) $(CFLAGS) -DB_DEBUG -o bytecode bytecode.c cma/cma.c
+
+asan:
+	$(CC) $(CFLAGS) -fsanitize=address -fno-omit-frame-pointer -o blueberry blueberry.c cma/cma.c -lm
+	$(CC) $(CFLAGS) -fsanitize=address -fno-omit-frame-pointer -o bytecode bytecode.c cma/cma.c
 
 clean:
 	rm -f parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim

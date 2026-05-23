@@ -18,7 +18,6 @@
 #include "encoder.c"
 #else
 #include "ciobj.c"
-#include "ci_number.c"
 #endif
 
 
@@ -195,7 +194,6 @@ static inline ci_ptr bb_proto_find(bb_vm *vm, ci_ptr obj, ci_ptr key) {
 
 	if (CI_IS_MAP(obj))
 		return bb_map_proto_find(vm, (const ci_map *)obj, key);
-
 	
 	if (CI_IS_PTR(obj)) {
 		ci_map *proto = bb_obj_arena_prototype(obj);
@@ -228,18 +226,18 @@ static void bb_print_val(ci_ptr v) {
 		printf("<obj:%p>", (void *)v);
 }
 
-static ci_ptr bb_native_print(bb_coro *c, ci_ptr self, size_t n, ci_ptr *args) {
+static bb_var_ret bb_native_print(bb_coro *c, ci_ptr self, size_t n, ci_ptr *args, size_t nrets) {
+	(void)nrets;
 	for(size_t i = 0; i < n; i++){
 		bb_print_val(args[i]);
 		printf(" ");
 	}
 	printf("\n");
-	return NULL;
+	return n;
 }
 
 
-static ci_ptr bb_native_require(bb_coro_arg *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
-	(void)a1; (void)a2;
+static ci_ptr bb_native_require(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0, ci_ptr_arg a1, ci_ptr_arg a2) {
 	if (!CI_IS_ANY_STR(a0))
 		bb_coro_error(c, "require: argument must be a string");
 
@@ -267,8 +265,7 @@ static ci_ptr bb_native_require(bb_coro_arg *c, ci_ptr a0, ci_ptr a1, ci_ptr a2)
 #endif
 }
 
-static ci_ptr bb_native_stacktrace(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) {
-	(void)a1; (void)a2;
+static ci_ptr bb_native_stacktrace(bb_coro *c, ci_ptr_arg self, ci_ptr a0, ci_ptr_arg a1, ci_ptr_arg a2) {
 	int dumpregs = 0;
 	if (CI_IS_INT(a0))
 		dumpregs = (int)CI_INT(a0);
@@ -347,7 +344,7 @@ static ci_ptr bb_native_stacktrace(bb_coro *c, ci_ptr a0, ci_ptr a1, ci_ptr a2) 
  * During precache, RRI8 imm8 is widened to imm16 in the same slot.
  */
 
-#define VM_OP __attribute__((preserve_none))
+#define VM_OP BB_PRESERVE_NONE
 
 #define VM_OP_ACCESS_STACK       ci_ptr *sk = c->fast_stack;
 #define VM_OP_STACK(idx)         sk[idx]
@@ -742,22 +739,6 @@ static void bb_vm_execute(bb_coro *c) {
  *  Coro call API
  * ================================================================ */
 
-
-/* varargs call macros */
-#define BB_CORO_VCALL(c, cl, args, nargs) \
-	ci_ptr __bb_vrets[32] = {}; \
-	uint32_t __bb_vret_cnt = 0; \
-	do { \
-		__bb_vret_cnt = 32; \
-		bb_coro_call_var(c, cl, args, nargs, __bb_vrets, __bb_vret_cnt); \
-		__bb_vret_cnt = (c)->lastreturn_cnt < 32 ? (c)->lastreturn_cnt : 32; \
-	} while(0)
-
-#define BB_VRET_CNT  __bb_vret_cnt
-#define BB_VRET(i)   __bb_vrets[i]
-#define BB_VRET_FINALIZE ci_dec_multi(__bb_vrets, 32)
-
-
 /* ================================================================
  *  File I/O
  * ================================================================ */
@@ -771,6 +752,7 @@ static void bb_vm_execute(bb_coro *c) {
 #include "blueberry_vm/lib/proto.c"
 #include "blueberry_vm/lib/callapi.c"
 #include "blueberry_vm/lib/math.c"
+#include "blueberry_vm/lib/string.c"
 
 /* ================================================================
  *  Compile .ci to .cbc
@@ -866,6 +848,7 @@ int main(int argc, char **argv) {
 	bb_lib_callapi_init(vm);
 	bb_lib_coro_init(vm);
 	bb_lib_math_init(vm);
+	bb_lib_string_init(vm);
 
 	/* expose script arguments as global argv array */
 	{

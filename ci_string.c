@@ -39,6 +39,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "ci_string_utf8.c"
 
 /* ============================================================
 * Tag definitions  (16-bit tags: upper byte | lower byte)

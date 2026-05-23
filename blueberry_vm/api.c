@@ -129,30 +129,23 @@ static inline void *bb_meta_find(bb_coro *c, ci_ptr a, ci_ptr b, size_t offset) 
 	bb_coro_error(c, "%s", msg); \
 } while(0)
 
-/* ---- native method flag ---- */
-
-#define BB_FN_NATIVE_METHOD (1u << 2)
-
 /* ---- cfunc descriptor ---- */
 
 typedef struct {
 	const char *name;
-	void       *fn;     /* bb_cfn */
-	uint32_t    flags;  /* BB_FN_NATIVE_METHOD, BB_FN_NATIVE_VAR, etc */
+	void       *fn;     /* bb_cfn or bb_cfn_var */
+	uint32_t    flags;  /* 0 = default (bb_cfn), BB_FN_NATIVE_VAR, etc */
 } bb_cfunc;
 
-/* create a closure from a cfunc descriptor.
- * flags == 0: BB_FN_NATIVE_METHOD (method, self prepended as a0).
- * flags != 0: use exactly as specified (BB_FN_NATIVE_VAR, etc.). */
+/* create a closure from a cfunc descriptor. */
 static bb_closure *bb_vm_cfunc(bb_vm *vm, const bb_cfunc *desc) {
 	bb_function *fn = b_malloc(sizeof(bb_function));
 	memset(fn, 0, sizeof(bb_function));
 
-	uint32_t flags = desc->flags ? desc->flags : BB_FN_NATIVE_METHOD;
-	fn->flags = BB_FN_NATIVE | flags;
+	fn->flags = BB_FN_NATIVE | desc->flags;
 	fn->name  = bb_vm_istring(vm, desc->name, (uint32_t)strlen(desc->name));
 
-	if (flags & BB_FN_NATIVE_VAR)
+	if (desc->flags & BB_FN_NATIVE_VAR)
 		fn->cfn_var = (bb_cfn_var)desc->fn;
 	else
 		fn->cfn = (bb_cfn)desc->fn;

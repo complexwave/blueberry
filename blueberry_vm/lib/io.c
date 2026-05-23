@@ -30,8 +30,7 @@ static char *bb_io_cpath(ci_ptr s, char *buf, size_t bufsz) {
 
 /* ---- file_read(path) ---- */
 
-static ci_ptr bb_io_file_read(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)c; (void)a1; (void)a2;
+static ci_ptr bb_io_file_read(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path) {
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -69,8 +68,7 @@ static ci_ptr bb_io_file_read(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2)
 
 /* ---- file_write(path, data) ---- */
 
-static ci_ptr bb_io_file_write(bb_coro_arg *c, ci_ptr path, ci_ptr data, ci_ptr a2) {
-	(void)c; (void)a2;
+static ci_ptr bb_io_file_write(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path, ci_ptr data) {
 	BB_CHECK_STRING(path);
 	BB_CHECK_STRING(data);
 
@@ -93,8 +91,7 @@ static ci_ptr bb_io_file_write(bb_coro_arg *c, ci_ptr path, ci_ptr data, ci_ptr 
 
 /* ---- file_append(path, data) ---- */
 
-static ci_ptr bb_io_file_append(bb_coro_arg *c, ci_ptr path, ci_ptr data, ci_ptr a2) {
-	(void)c; (void)a2;
+static ci_ptr bb_io_file_append(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path, ci_ptr data) {
 	BB_CHECK_STRING(path);
 	BB_CHECK_STRING(data);
 
@@ -117,8 +114,7 @@ static ci_ptr bb_io_file_append(bb_coro_arg *c, ci_ptr path, ci_ptr data, ci_ptr
 
 /* ---- file_exists(path) ---- */
 
-static ci_ptr bb_io_file_exists(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)c; (void)a1; (void)a2;
+static ci_ptr bb_io_file_exists(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path) {
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -130,8 +126,7 @@ static ci_ptr bb_io_file_exists(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a
 
 /* ---- file_size(path) ---- */
 
-static ci_ptr bb_io_file_size(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)c; (void)a1; (void)a2;
+static ci_ptr bb_io_file_size(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path) {
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -146,8 +141,7 @@ static ci_ptr bb_io_file_size(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2)
 
 /* ---- file_remove(path) ---- */
 
-static ci_ptr bb_io_file_remove(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)c; (void)a1; (void)a2;
+static ci_ptr bb_io_file_remove(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path) {
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -158,8 +152,7 @@ static ci_ptr bb_io_file_remove(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a
 
 /* ---- file_rename(old, new) ---- */
 
-static ci_ptr bb_io_file_rename(bb_coro_arg *c, ci_ptr oldp, ci_ptr newp, ci_ptr a2) {
-	(void)c; (void)a2;
+static ci_ptr bb_io_file_rename(bb_coro_arg *c, ci_ptr_arg self, ci_ptr oldp, ci_ptr newp) {
 	BB_CHECK_STRING(oldp);
 	BB_CHECK_STRING(newp);
 
@@ -172,8 +165,7 @@ static ci_ptr bb_io_file_rename(bb_coro_arg *c, ci_ptr oldp, ci_ptr newp, ci_ptr
 
 /* ---- dir_list(path) → array of filename strings ---- */
 
-static ci_ptr bb_io_dir_list(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)c; (void)a1; (void)a2;
+static ci_ptr bb_io_dir_list(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path) {
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -204,8 +196,7 @@ static ci_ptr bb_io_dir_list(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) 
 
 /* ---- dir_exists(path) ---- */
 
-static ci_ptr bb_io_dir_exists(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)c; (void)a1; (void)a2;
+static ci_ptr bb_io_dir_exists(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path) {
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -217,8 +208,7 @@ static ci_ptr bb_io_dir_exists(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2
 
 /* ---- dir_create(path) ---- */
 
-static ci_ptr bb_io_dir_create(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2) {
-	(void)c; (void)a1; (void)a2;
+static ci_ptr bb_io_dir_create(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path) {
 	BB_CHECK_STRING(path);
 
 	char pbuf[4096];
@@ -229,8 +219,7 @@ static ci_ptr bb_io_dir_create(bb_coro_arg *c, ci_ptr path, ci_ptr a1, ci_ptr a2
 
 /* ---- exit(code) ---- */
 
-static ci_ptr bb_io_exit(bb_coro_arg *c, ci_ptr code, ci_ptr a1, ci_ptr a2) {
-	(void)c; (void)a1; (void)a2;
+static ci_ptr bb_io_exit(bb_coro_arg *c, ci_ptr_arg self, ci_ptr code) {
 
 	int status = 0;
 	if (code)
@@ -242,8 +231,7 @@ static ci_ptr bb_io_exit(bb_coro_arg *c, ci_ptr code, ci_ptr a1, ci_ptr a2) {
 
 /* ---- str2int(s) ---- */
 
-static ci_ptr bb_io_str2int(bb_coro_arg *c, ci_ptr s, ci_ptr a1, ci_ptr a2) {
-	(void)c; (void)a1; (void)a2;
+static ci_ptr bb_io_str2int(bb_coro_arg *c, ci_ptr_arg self, ci_ptr s) {
 	BB_CHECK_STRING(s);
 
 	char buf[64];
@@ -263,23 +251,23 @@ static ci_ptr bb_io_str2int(bb_coro_arg *c, ci_ptr s, ci_ptr a1, ci_ptr a2) {
 /* ---- registration ---- */
 
 static void bb_lib_io_init(bb_vm *vm) {
-	static const struct { const char *name; bb_cfn fn; } io_lib[] = {
-		{ "file_read",   (bb_cfn)bb_io_file_read   },
-		{ "file_write",  (bb_cfn)bb_io_file_write  },
-		{ "file_append", (bb_cfn)bb_io_file_append },
-		{ "file_exists", (bb_cfn)bb_io_file_exists },
-		{ "file_size",   (bb_cfn)bb_io_file_size   },
-		{ "file_remove", (bb_cfn)bb_io_file_remove },
-		{ "file_rename", (bb_cfn)bb_io_file_rename },
-		{ "dir_list",    (bb_cfn)bb_io_dir_list    },
-		{ "dir_exists",  (bb_cfn)bb_io_dir_exists  },
-		{ "dir_create",  (bb_cfn)bb_io_dir_create  },
-		{ "exit",        (bb_cfn)bb_io_exit        },
-		{ "str2int",     (bb_cfn)bb_io_str2int     },
+	static const struct { const char *name; void* fn; } io_lib[] = {
+		{ "file_read",   bb_io_file_read   },
+		{ "file_write",  bb_io_file_write  },
+		{ "file_append", bb_io_file_append },
+		{ "file_exists", bb_io_file_exists },
+		{ "file_size",   bb_io_file_size   },
+		{ "file_remove", bb_io_file_remove },
+		{ "file_rename", bb_io_file_rename },
+		{ "dir_list",    bb_io_dir_list    },
+		{ "dir_exists",  bb_io_dir_exists  },
+		{ "dir_create",  bb_io_dir_create  },
+		{ "exit",        bb_io_exit        },
+		{ "str2int",     bb_io_str2int     },
 	};
 
 	for (size_t i = 0; i < sizeof(io_lib) / sizeof(io_lib[0]); i++) {
-		bb_closure *cl = bb_vm_native(vm, io_lib[i].name, io_lib[i].fn);
+		bb_closure *cl = bb_vm_native(vm, io_lib[i].name, (bb_cfn)io_lib[i].fn);
 		ci_map_put(vm->globals, cl->fn->name, (ci_ptr)cl);
 	}
 }

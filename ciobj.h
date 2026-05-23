@@ -37,6 +37,7 @@
 
 #include "tgmemlib/tgmemlib.h"
 #include <assert.h>
+#include <unistd.h>
 
 /* ---- tag bit definitions ---- */
 
@@ -127,7 +128,7 @@ typedef void* ci_ptr;
 
 #define CI_IS_BOOL(p)  ( ((uintptr_t)(p) & 0x03) == 0x02)
 
-#define CI_IS_PTR(p)  ( ! ((uintptr_t)(p) & 0x03) )
+#define CI_IS_PTR(p)  ( p && !((uintptr_t)(p) & 0x03) )
 
 /*
  * CI_UPPER_TAG(v) — shift value v into upper byte of tag
@@ -269,4 +270,12 @@ static inline uint16_t ci_refcnt(void *ptr) {
 
 static inline int ci_is_refcountable(void *ptr) {
 	return CI_IS_REFCOUNTABLE(ptr);
+}
+
+/* ---- warn event ---- */
+
+static inline void ci_warn_event(ci_ptr ctx, const char *msg) {
+	(void)ctx;
+	write(2, msg, strlen(msg));
+	write(2, "\n", 1);
 }

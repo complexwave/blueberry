@@ -377,8 +377,7 @@ static inline void bb_op_hashaccess_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch
 		strings++;
 		if (!*strings) break;
 	}
-
-	retval:
+	
 	ci_inc(current);
 	ci_dec(stack[dst_reg]);
 	stack[dst_reg] = current;
@@ -482,13 +481,19 @@ VM_OP static void __vmop_call(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm
 		ci_ptr result;
 
 		if (cl->fn->flags & BB_FN_NATIVE_VAR) {
-			result = cl->fn->cfn_var(c, self_val, (size_t)nargs, args);
-		} else if (cl->fn->flags & BB_FN_NATIVE_METHOD) {
-			result = cl->fn->cfn(c, self_val,
-				nargs > 0 ? args[0] : NULL,
-				nargs > 1 ? args[1] : NULL);
+			size_t end = cl->fn->cfn_var(c, self_val, nargs, args, nrets);
+			size_t written = end - nargs;
+			nrets -= written;
+			rets += written;
+			goto zero_rets;
+
+		} else if (cl->fn->flags & BB_FN_ADVANCED) {
+			bb_fast_fn adv = (bb_fast_fn) (void*)cl->fn->cfn;
+			
+			printf("adv called with %p %p %p %p args\n", c, win, nargs, nrets);
+			BB_MUSTTAIL return adv(c, (vm_dipatch_arg)win, nargs, nrets);
 		} else {
-			result = cl->fn->cfn(c,
+			result = cl->fn->cfn(c, self_val,
 				nargs > 0 ? args[0] : NULL,
 				nargs > 1 ? args[1] : NULL,
 				nargs > 2 ? args[2] : NULL);

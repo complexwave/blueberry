@@ -13,6 +13,12 @@
 /* set to 1 to disable hashaccess opcode chaining (emit individual RRR ops) */
 static int HASH_DONT_CHAIN = 1;
 
+#ifdef B_DEBUG
+#define B_DBG(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define B_DBG(...) ((void)0)
+#endif
+
 /* ================================================================
  *  Checked allocator
  * ================================================================ */
@@ -319,11 +325,15 @@ struct b_codeblock {
 	uint8_t      reg_next;
 	uint8_t      free_count;
 	uint8_t      free_list[256];
+	uint8_t      sched_count;      /* staged frees — not yet reusable */
+	uint8_t      sched_list[256];
+	uint8_t      is_local[256];    /* per-root: marks register numbers owned by locals */
 	uint32_t     current_loop_id;  /* 0 if not in loop, otherwise unique loop ID */
 };
 
 static b_reg b_reg_reg(b_codeblock *cb, b_reg r);
 static void b_reg_release(b_codeblock *cb, b_reg r);
+static b_codeblock *b_codeblock_root(b_codeblock *cb);
 
 static b_unit *b_unit_new(void) {
 	b_unit *u = b_malloc(sizeof(b_unit));
@@ -397,9 +407,11 @@ static b_codeblock *b_codeblock_new(b_function *func, b_codeblock *parent) {
 	cb->func       = func;
 	cb->parent     = parent;
 	cb->locals     = ci_map_new(8);
-	cb->reg_next   = parent ? parent->reg_next : 0;
+	cb->reg_next   = 0; /* only root's reg_next is used */
 	cb->free_count = 0;
+	cb->sched_count = 0;
 	cb->current_loop_id = 0;
+	memset(cb->is_local, 0, sizeof(cb->is_local));
 	if (!parent) {
 		b_codeblock_declare(cb, "self", 4);
 		/* add _global as a reserved local pointing to register 255 */
@@ -412,20 +424,29 @@ static b_codeblock *b_codeblock_new(b_function *func, b_codeblock *parent) {
 }
 
 static b_reg b_reg_alloc(b_codeblock *cb) {
-	if (cb->reg_next == 255)
+	b_codeblock *root = b_codeblock_root(cb);
+	if (root->reg_next >= 254)
 		b_error("register overflow");
-	return b_reg_new(cb->reg_next++, B_REG_REG);
+	uint8_t num = root->reg_next++;
+	root->is_local[num] = 1;
+	return b_reg_new(num, B_REG_REG);
 }
 
 static uint32_t b_reg_tmp__alloc_number(b_codeblock *cb) {
-	if (cb->free_count > 0){
-		return cb->free_list[--cb->free_count];
+	b_codeblock *root = b_codeblock_root(cb);
+	if (root->free_count > 0){
+		uint8_t num = root->free_list[--root->free_count];
+		if (root->is_local[num]) {
+			fprintf(stderr, "FATAL: tmp alloc got local register %u from freelist\n", num);
+			abort();
+		}
+		return num;
 	}
-	
-	if (cb->reg_next == 254)
+
+	if (root->reg_next >= 254)
 		b_error("register overflow");
-	
-	return cb->reg_next++;
+
+	return root->reg_next++;
 }
 
 int freelist_compare(const void* a, const void* b) {
@@ -433,7 +454,22 @@ int freelist_compare(const void* a, const void* b) {
 }
 
 static void b_reg_sort_freelist(b_codeblock *cb) {
-	qsort(cb->free_list, cb->free_count, sizeof(uint8_t), freelist_compare);
+	b_codeblock *root = b_codeblock_root(cb);
+	qsort(root->free_list, root->free_count, sizeof(uint8_t), freelist_compare);
+}
+
+static void b_dump_freelist(b_codeblock *cb, const char *label) {
+#ifdef B_DEBUG
+	b_codeblock *root = b_codeblock_root(cb);
+	B_DBG("next[%u] freelist [%s] (%u):", root->reg_next, label, root->free_count);
+	for (uint32_t i = 0; i < root->free_count; i++) {
+		uint8_t num = root->free_list[i];
+		B_DBG(" %s(%u)", root->is_local[num] ? "R" : "T", num);
+	}
+	B_DBG("\n");
+#else
+	(void)cb; (void)label;
+#endif
 }
 
 static b_reg b_reg_tmp(b_codeblock *cb) {
@@ -441,33 +477,47 @@ static b_reg b_reg_tmp(b_codeblock *cb) {
 }
 
 static b_reg b_reg_tmp_fresh(b_codeblock *cb) {
-	if (cb->reg_next == 254)
+	b_codeblock *root = b_codeblock_root(cb);
+	if (root->reg_next == 254)
 		b_error("register overflow");
-	
-	return b_reg_new( cb->reg_next++ , B_REG_TMP);
+
+	return b_reg_new( root->reg_next++ , B_REG_TMP);
 }
 
 static void b_reg_tmp_continuous(b_codeblock *cb, b_reg* dst, int32_t registers_required) {
+	b_codeblock *root = b_codeblock_root(cb);
 	b_reg_sort_freelist(cb);
+	b_dump_freelist(cb, "continuous");
 
-	int32_t end = cb->free_count - registers_required;
+	int32_t end = root->free_count - registers_required;
+
+	// regs [     [end]....[pos] ]
 
 	if(end < 0) goto alloc_new;
 
-	int32_t pos = cb->free_count-1;
+	int32_t pos = root->free_count-1;
 	while(pos > end){
-		if( (cb->free_list[pos]-1) != cb->free_list[pos-1]) goto alloc_new;
+		if( (root->free_list[pos]-1) != root->free_list[pos-1]) goto alloc_new;
 		pos--;
 	}
 
-	while(end < cb->free_count){
-		*dst = b_reg_new( cb->free_list[end] , B_REG_TMP);
+	b_reg* start = dst;
+	
+	while(end < (int32_t)root->free_count){
+		uint8_t num = root->free_list[end];
+		if (root->is_local[num]) {
+			fprintf(stderr, "FATAL: continuous tmp alloc got local register %u from freelist\n", num);
+			abort();
+		}
+		*dst = b_reg_new( num , B_REG_TMP);
 
 		end++;
 		dst++;
 	}
 
-	cb->free_count -= registers_required;
+	root->free_count -= registers_required;
+
+	B_DBG("Allocated freelist range %u -> %u \n", start[0]->number, dst[-1]->number);
 	
 	return;
 
@@ -492,13 +542,27 @@ static void b_reg_free(b_codeblock *cb, b_reg r) {
 		//b_error("b_reg_free: register double free");
 		return;
 	}
-	
+
 	if (!b_reg_is_tmp(r))
 		b_error("b_reg_free: not a tmp (type=%u)", r->type);
-	
-	cb->free_list[cb->free_count++] = r->number;
-	
+
+	b_codeblock *root = b_codeblock_root(cb);
+	root->sched_list[root->sched_count++] = r->number;
+
 	r->freed = 1;
+}
+
+static void b_commit_freelist(b_codeblock *cb) {
+	b_codeblock *root = b_codeblock_root(cb);
+	if (!root->sched_count)
+		return;
+
+	for (uint32_t i = 0; i < root->sched_count; i++)
+		root->free_list[root->free_count++] = root->sched_list[i];
+
+	root->sched_count = 0;
+
+	qsort(root->free_list, root->free_count, sizeof(uint8_t), freelist_compare);
 }
 
 /* mark register as no longer needed by the calling opcode.
@@ -624,9 +688,10 @@ static b_reg b_codeblock_get_ident(b_codeblock *cb, const char *name, uint32_t l
 
 /* declare a local with a specific register */
 static b_reg b_codeblock_declare_reg(b_codeblock *cb, const char *name, uint32_t len, b_reg r) {
-	if (r->type == B_REG_TMP)
+	if (r->type == B_REG_TMP) {
 		r->type = B_REG_REG;
-	else if (r->type != B_REG_REG)
+		b_codeblock_root(cb)->is_local[r->number] = 1;
+	} else if (r->type != B_REG_REG)
 		b_error("declare_reg: expected tmp or reg, got type %u", r->type);
 
 	char *key = b_malloc(len + 1);
@@ -639,6 +704,9 @@ static b_reg b_codeblock_declare_reg(b_codeblock *cb, const char *name, uint32_t
 		return existing;
 	}
 
+	b_dump_freelist(cb, "before_decl");
+	B_DBG("declared \"%.*s\" to reg %u\n", len, name, r->number);
+	
 	ci_map_set_str(cb->locals, key, (ci_ptr)r);
 	return r;
 }
@@ -1303,9 +1371,9 @@ static void b_emit_regmove(b_codeblock *cb, uint8_t optype, b_reg *base, b_reg *
 	if (cnt == 0)
 		return;
 
-	uint8_t renamed[256];
-	for (uint32_t i = 0; i < cnt; i++)
-		renamed[i] = b_reg_rename(cb, regs[i], base[i]);
+	uint8_t renamed[256] = {};
+	//for (uint32_t i = 0; i < cnt; i++)
+	//	renamed[i] = b_reg_rename(cb, regs[i], base[i]);
 
 	/* trim renamed from head */
 	uint32_t head = 0;
@@ -1347,7 +1415,6 @@ static void b_emit_movefrom(b_codeblock *cb, b_reg* base, b_reg *regs, uint32_t 
 }
 
 static b_reg b_emit_call(b_codeblock *cb, ast_node *n, uint32_t ctx) {
-	(void)ctx;
 
 	/* evaluate fn and self before allocating the window */
 	b_reg fn;
@@ -1361,11 +1428,16 @@ static b_reg b_emit_call(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 		nargs = b_expr_cnt(args);
 	}
 
-	uint32_t nrets = 1;
+	uint32_t nrets = ctx ? ctx : 1;
 	uint32_t window_size = 2 + nargs + nrets; /* fn, self, args..., rets... */
 
 	/* release fn + self + args*/
 	uint32_t args_end = 2 + nargs;
+
+	if (args) {
+		for (uint32_t i = 0; i < nargs; i++)
+			arg_regs[i] = b_consume_ast(cb, b_expr_idx(args, i));
+	}
 	
 	/* allocate contiguous window */
 	b_reg* window = malloc(sizeof(b_reg)*256);
@@ -1376,13 +1448,6 @@ static b_reg b_emit_call(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	} else {
 		fn = b_consume_ast(cb, n->args[0]);
 		self_reg = fn;
-	}
-	
-	if (args) {
-		nargs = b_expr_cnt(args);
-		
-		for (uint32_t i = 0; i < nargs; i++)
-			arg_regs[i] = b_consume_ast(cb, b_expr_idx(args, i));
 	}
 	
 	/* gather [fn, self, arg0..argN-1] into window via MOVETO */
@@ -1552,10 +1617,9 @@ static b_reg b_emit_assign(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	/* special case: rhs is a single CALL — multi-return via MOVEFROM */
 	if (rcnt == 1 && A_TYPE(b_expr_idx(rhs, 0)->type) == A_CALL) {
 		ast_node *call_node = b_expr_idx(rhs, 0);
-
-		/* emit the call — returns default single ret tmp */
-		b_reg default_ret = b_consume_ast(cb, call_node);
-
+	
+		b_reg default_ret = b_emit_call(cb, call_node, lcnt);
+		
 		/* find the CALL opcode we just emitted */
 		ci_array *bc = cb->func->bytecode;
 		b_opcode *call_op = NULL;
@@ -1564,14 +1628,10 @@ static b_reg b_emit_assign(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 			if (op->op == B_CALL) { call_op = op; break; }
 		}
 
-		/* patch nrets — don't free default_ret, it's inside the window */
-		(void)default_ret;
-		call_op->call.nrets = lcnt;
-
 		/* ret slots are at base + 2 + nargs, contiguous */
 
 		/* build destination reg list for MOVEFROM */
-		b_reg dst_regs[256];
+		b_reg dst_regs[256] = {};
 		b_reg last = NULL;
 		for (uint32_t i = 0; i < lcnt; i++) {
 			ast_node *lid = b_expr_idx(lhs, i);
@@ -1757,7 +1817,7 @@ static b_reg b_emit_while(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	b_codeblock *body_cb = b_codeblock_new(cb->func, cb);
 	body_cb->current_loop_id = loop_id;
 	b_consume_codelist(body_cb, n->op_loop.body);
-	cb->reg_next = body_cb->reg_next;
+	/* reg_next lives on root — no sync needed */
 
 	b_emit_label(cb, lbl_cond);
 
@@ -1865,6 +1925,8 @@ static b_reg b_emit_function(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 		snprintf(name, 32, "anon_%u", u->anon_next++);
 	}
 
+	B_DBG("Started emitting [%s]\n", name);
+	
 	/* create function in unit */
 	b_function *f = b_function_new(u, name);
 	n->op_function.function_id = f->id;
@@ -1886,13 +1948,15 @@ static b_reg b_emit_function(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 	b_consume_codelist(fn_cb, n->op_function.body);
 
 	/* named function → desugar to: name = function(){...} */
+	B_DBG("Ended emitting [%s]\n", name);
+	
 	if (n->op_function.name) {
 		ast_node *assign = ast_newnode(n->parent, A_ASSIGN | A_ARG_2, n->token);
 		assign->args[0] = n->op_function.name;
 		assign->args[1] = n;
 		return b_emit_assign(cb, assign, 0);
 	}
-
+	
 	/* anonymous — emit LOADFN, reenter hits the guard above */
 	return b_emit_function(cb, n, 0);
 }
@@ -2152,6 +2216,7 @@ static b_reg b_consume_ast(b_codeblock *cb, ast_node *n) {
 
 	for (uint32_t i = 0; i < B_DISPATCH_COUNT; i++) {
 		if (b_dispatch[i].ast_type == kind) {
+			B_DBG("emit [%s]\n", (kind < A_COUNT) ? ast_kind_names[kind] : "???");
 			return b_dispatch[i].emit(cb, n, b_dispatch[i].ctx);
 		}
 	}
@@ -2171,6 +2236,7 @@ static void b_consume_codelist(b_codeblock *cb, ast_node *block) {
 	for (uint32_t i = 0; i < ast_node_list_length(block); i++) {
 		if (prev)
 			b_reg_release(cb, prev);
+		b_commit_freelist(cb);
 		prev = b_consume_ast(cb, ast_node_list(block, i));
 	}
 	
@@ -2182,6 +2248,10 @@ static void b_consume_codelist(b_codeblock *cb, ast_node *block) {
 /* ================================================================
  *  Dumper
  * ================================================================ */
+
+static const char *b_reg_prefix(b_codeblock *cb, uint8_t num) {
+	return b_codeblock_root(cb)->is_local[num] ? "R" : "T";
+}
 
 static void b_dump_reg(b_reg r) {
 	switch (r->type) {
@@ -2301,19 +2371,24 @@ static void b_dump_bytecode(b_function *f) {
 			break;
 		}
 		case B_ENC_CALL: {
+			b_codeblock *rcb = f->cb;
 			uint8_t base = op->call.base->number;
 			uint16_t nargs = op->call.nargs;
 			uint16_t nrets = op->call.nrets;
-			printf("fn=R(%u) self=R(%u)", base, base + 1);
+			printf("fn=%s(%u) self=%s(%u)", b_reg_prefix(rcb, base), base, b_reg_prefix(rcb, base+1), base + 1);
 			if (nargs) {
 				printf(" [");
-				for (uint16_t a = 0; a < nargs; a++)
-					printf("%sR(%u)", a ? ", " : " ", base + 2 + a);
+				for (uint16_t a = 0; a < nargs; a++) {
+					uint8_t n = base + 2 + a;
+					printf("%s%s(%u)", a ? ", " : " ", b_reg_prefix(rcb, n), n);
+				}
 				printf(" ]");
 			}
 			printf(" -> [");
-			for (uint16_t r = 0; r < nrets; r++)
-				printf("%sR(%u)", r ? ", " : " ", base + 2 + nargs + r);
+			for (uint16_t r = 0; r < nrets; r++) {
+				uint8_t n = base + 2 + nargs + r;
+				printf("%s%s(%u)", r ? ", " : " ", b_reg_prefix(rcb, n), n);
+			}
 			printf(" ]");
 			break;
 		}

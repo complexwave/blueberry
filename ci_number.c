@@ -53,6 +53,7 @@ static inline void ci_number_set_cmp_precision(double eps) {
 #define CI_NUMBER  ((uint16_t)(CI_FAMILY_ENTRY(CI_VM_FAMILY, 6) | CI_REFCOUNTABLE))
 
 #define CI_IS_NUMBER(p)  CI_CHECK_MASK_FAMILY(p, CI_NUMBER, CI_VM_FAMILY)
+#define CI_IS_ANY_NUMBER(p) (CI_IS_INT(p) || CI_IS_NUMBER(p))
 
 /* ============================================================
  * Subtype flags (gc.flags lower 8 bits)
@@ -509,6 +510,9 @@ static void ci_number_print(ci_ptr p) {
 #define CI_NUMBER_PRINT_MAX_FLOAT_DIGITS_SCI -6
 #define CI_NUMBER_BUF_INT128  42  /* 39 digits + sign + null + spare */
 #define CI_NUMBER_BUF_DEFAULT 25  /* 64-bit int (20) or double (24) + null */
+#define CI_NUMBER_BUF_HEX    34  /* 32 hex digits + "0f" prefix + null + spare */
+#define CI_NUMBER_BUF_OCT    46  /* 43 octal digits + "0f" + null + spare */
+#define CI_NUMBER_BUF_BIN   130  /* 128 binary digits + "0f" + null + spare */
 
 /*
  * ci_number_stringmax — return required buffer size for printing.
@@ -564,21 +568,197 @@ static int ci_number_itoa128(uint8_t * restrict buf, unsigned __int128 v) {
 }
 
 /*
+ * ci_number_bits2hex — raw bytes to hex string.
+ * Emits 2 hex chars per byte, big-endian order.
+ * Returns number of bytes written.
+ */
+static int ci_number_bits2hex(uint8_t * restrict buf,
+                              const void *data, size_t len, int uppercase)
+{
+	const char *digits = uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
+	const uint8_t *src = (const uint8_t *)data;
+	int n = 0;
+
+	/* big-endian: high byte first */
+	for (size_t i = len; i-- > 0; ) {
+		buf[n++] = digits[(src[i] >> 4) & 0xF];
+		buf[n++] = digits[src[i] & 0xF];
+	}
+
+	return n;
+}
+
+/*
+ * ci_number_bits2oct — raw bytes to octal string.
+ * Operates on the full bit width, 3 bits per digit.
+ * Returns number of bytes written.
+ */
+static int ci_number_bits2oct(uint8_t * restrict buf,
+                              const void *data, size_t len)
+{
+	const uint8_t *src = (const uint8_t *)data;
+	int total_bits = (int)(len * 8);
+	int n = 0;
+
+	/* top partial group (1 or 2 bits if total_bits % 3 != 0) */
+	int top = total_bits % 3;
+	if (!top) top = 3;
+
+	unsigned __int128 v = 0;
+	for (size_t i = len; i-- > 0; )
+		v = (v << 8) | src[i];
+
+	int shift = total_bits - top;
+
+	uint8_t d = (uint8_t)((v >> shift) & ((1 << top) - 1));
+	buf[n++] = '0' + d;
+
+	for (shift -= 3; shift >= 0; shift -= 3) {
+		buf[n++] = '0' + (uint8_t)((v >> shift) & 7);
+	}
+
+	return n;
+}
+
+/*
+ * ci_number_bits2bin — raw bytes to binary string.
+ * Returns number of bytes written.
+ */
+static int ci_number_bits2bin(uint8_t * restrict buf,
+                              const void *data, size_t len)
+{
+	const uint8_t *src = (const uint8_t *)data;
+	int n = 0;
+
+	for (size_t i = len; i-- > 0; ) {
+		for (int bit = 7; bit >= 0; bit--)
+			buf[n++] = '0' + ((src[i] >> bit) & 1);
+	}
+
+	return n;
+}
+
+/*
+ * ci_number_strip_leading — strip leading '0' chars, keep at least 1.
+ * Shifts content in-place, returns new length.
+ */
+static inline int ci_number_strip_leading(uint8_t *buf, int len) {
+	int skip = 0;
+	while (skip < len - 1 && buf[skip] == '0') skip++;
+	if (skip) {
+		len -= skip;
+		memmove(buf, buf + skip, len);
+	}
+	return len;
+}
+
+/*
+ * ci_number_tostring_hex — number to hex string.
+ * Ints: two's complement, stripped leading zeros.
+ * Floats: "0f" prefix + raw IEEE 754 hex.
+ */
+static int ci_number_tostring_hex(ci_ptr p, uint8_t * restrict buf, int uppercase) {
+	if (CI_IS_INT(p)) {
+		intptr_t v = CI_INT(p);
+		int n = ci_number_bits2hex(buf, &v, sizeof(v), uppercase);
+		return ci_number_strip_leading(buf, n);
+	}
+
+	if (!CI_IS_NUMBER(p)) return 0;
+
+	ci_number *num = (ci_number *)p;
+
+	if (CI_NUMBER_IS_DOUBLE(num)) {
+		buf[0] = '0'; buf[1] = 'f';
+		return 2 + ci_number_bits2hex(buf + 2, &num->f64, 8, uppercase);
+	}
+
+	/* i128 — two's complement */
+	int n = ci_number_bits2hex(buf, &num->i128, 16, uppercase);
+	return ci_number_strip_leading(buf, n);
+}
+
+/*
+ * ci_number_tostring_oct — number to octal string.
+ * Ints: two's complement, stripped leading zeros.
+ * Floats: "0f" prefix + raw IEEE 754 octal.
+ */
+static int ci_number_tostring_oct(ci_ptr p, uint8_t * restrict buf) {
+	if (CI_IS_INT(p)) {
+		intptr_t v = CI_INT(p);
+		int n = ci_number_bits2oct(buf, &v, sizeof(v));
+		return ci_number_strip_leading(buf, n);
+	}
+
+	if (!CI_IS_NUMBER(p)) return 0;
+
+	ci_number *num = (ci_number *)p;
+
+	if (CI_NUMBER_IS_DOUBLE(num)) {
+		buf[0] = '0'; buf[1] = 'f';
+		return 2 + ci_number_bits2oct(buf + 2, &num->f64, 8);
+	}
+
+	int n = ci_number_bits2oct(buf, &num->i128, 16);
+	return ci_number_strip_leading(buf, n);
+}
+
+/*
+ * ci_number_tostring_bin — number to binary string.
+ * Ints: two's complement, stripped leading zeros.
+ * Floats: "0f" prefix + raw IEEE 754 binary.
+ */
+static int ci_number_tostring_bin(ci_ptr p, uint8_t * restrict buf) {
+	if (CI_IS_INT(p)) {
+		intptr_t v = CI_INT(p);
+		int n = ci_number_bits2bin(buf, &v, sizeof(v));
+		return ci_number_strip_leading(buf, n);
+	}
+
+	if (!CI_IS_NUMBER(p)) return 0;
+
+	ci_number *num = (ci_number *)p;
+
+	if (CI_NUMBER_IS_DOUBLE(num)) {
+		buf[0] = '0'; buf[1] = 'f';
+		return 2 + ci_number_bits2bin(buf + 2, &num->f64, 8);
+	}
+
+	int n = ci_number_bits2bin(buf, &num->i128, 16);
+	return ci_number_strip_leading(buf, n);
+}
+
+/*
  * ci_number_dtoa — double to string (pretty format).
  * Returns number of bytes written.
  */
 #define CI_DTOA_COPY while (src < end) *out++ = *src++;
 #define CI_DTOA_CH(ch) *out++ = ch;
 
+#define CI_DTOA_INT_ONLY 0x00FFFFFF
+
 static int ci_number_dtoa(uint8_t * restrict dst, double f, int max_ints, int fdmax) {
 	uint8_t *out = dst;
+
+	if (f != f) { /* nan */
+		memcpy(dst, "nan", 3);
+		return 3;
+	}
 
 	if (f < 0) {
 		*out++ = '-';
 		f = -f;
 	}
 
-	/* TODO: handle 0, inf, nan */
+	if (f == 0.0) {
+		*out++ = '0';
+		return (int)(out - dst);
+	}
+
+	if (f == (1.0/0.0)) {
+		memcpy(out, "inf", 3);
+		return (int)(out - dst) + 3;
+	}
 
 	uscale_digits r = uscale_dtoa_short(f);
 
@@ -606,7 +786,7 @@ static int ci_number_dtoa(uint8_t * restrict dst, double f, int max_ints, int fd
 			goto finalize;
 		}
 	}
-
+	
 	int float_total_print_digits = -p;
 	int int_print_length = int_digits - float_total_print_digits;
 	if (int_print_length < 0) int_print_length = 0;
@@ -626,6 +806,7 @@ static int ci_number_dtoa(uint8_t * restrict dst, double f, int max_ints, int fd
 	if (!fdmax && leading_zeroes) {
 		goto print_normalized;
 	}
+	
 
 	if (int_print_length > 0) {
 		if (int_print_length > max_ints)
@@ -633,12 +814,14 @@ static int ci_number_dtoa(uint8_t * restrict dst, double f, int max_ints, int fd
 
 		while (int_print_length--)
 			*out++ = *src++;
-
-		CI_DTOA_CH('.');
 	} else {
 		CI_DTOA_CH('0');
-		CI_DTOA_CH('.');
 	}
+	
+	if(max_ints == CI_DTOA_INT_ONLY) 
+		goto finalize;
+	
+	CI_DTOA_CH('.');
 
 	if (fdmax) {
 		while (leading_zeroes-- && fdmax) {
@@ -701,6 +884,9 @@ finalize:
 #define CI_ATOD_MAX_INT64_DIGITS   17  /* 10^17 < INT64_MAX */
 #define CI_ATOD_MAX_I128_DIGITS    37  /* 10^37 < INT128_MAX */
 #define CI_ATOD_MAX_FLOAT_DIGITS   19  /* uscale handles up to 19 */
+
+#define CI_ATOD_MAX_DIGITS CI_NUMBER_BUF_INT128
+
 
 #define CI_IS_DIGIT(c)  ((unsigned)((c) - '0') <= 9)
 #define CI_IS_WS(c)     ((c) == ' ' || (c) == '\t' || (c) == '\r' || (c) == '\n')
@@ -852,7 +1038,8 @@ static ci_ptr ci_number_fromstring(const uint8_t *src, size_t len) {
  * Returns number of bytes written (no null terminator added).
  * Caller must preallocate buf via ci_number_stringmax().
  */
-static int ci_number_tostring(ci_ptr p, uint8_t * restrict buf, int max_ints, int fdmax) {
+
+static int ci_number_tostring(ci_ptr p, uint8_t * restrict buf, int max_ints, int32_t fdmax) {
 	if (CI_IS_INT(p)) {
 		intptr_t v = CI_INT(p);
 		if (v < 0) {
