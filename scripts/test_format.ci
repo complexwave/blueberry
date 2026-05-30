@@ -1,0 +1,23 @@
+// string.format() — creates new string
+var s = string.format("%d + %d = %d", 1, 2, 3)
+print(s)
+
+// str.format() — appends to existing
+var buf = string.new(64)
+buf.format("hello %s, ", "world")
+buf.format("you are %d years old", 42)
+print(buf)
+
+// chaining
+var r = string.new(32).format("%s=%d", "x", 10).format(" %s=%d", "y", 20)
+print(r)
+
+// printf synonym
+var p = string.format("pi=%.2f", 3.14159)
+print(p)
+
+// format on existing string content
+var ex = string.new(16)
+ex.append("prefix: ")
+ex.printf("%x", 255)
+print(ex)

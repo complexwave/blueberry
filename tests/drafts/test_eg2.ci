@@ -1,0 +1,24 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+// %e with number()
+print(string.format("[%e]", number("1.5e10")))
+print(string.format("[%e]", number("1.5e-10")))
+print(string.format("[%e]", number("1e100")))
+print(string.format("[%e]", number("1e-100")))
+print(string.format("[%e]", number("9.99e5")))
+print(string.format("[%e]", number("2.5e-3")))
+print(string.format("[%e]", number("6.022e23")))
+print(string.format("[%e]", number("-6.022e23")))
+print(string.format("[%e]", number("1e0")))
+print(string.format("[%e]", number("1e1")))
+print(string.format("[%e]", number("5e2")))
+print(string.format("[%e]", number("3.14159e0")))
+
+// %e with width
+print(string.format("[%20e]", 3.14))
+print(string.format("[%-20e]", 3.14))
+print(string.format("[%020e]", 3.14))
+print(string.format("[%20e]", number("1.5e10")))
+
+test.done()

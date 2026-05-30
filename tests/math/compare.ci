@@ -124,11 +124,11 @@ test.assert(number(5) >= 5, "cross_boxed_int_ge")
 // === math.precision — global cmp precision affects operators ===
 
 print("running precision_get_default")
-test.assert(math.cmp(math.precision(), 0.0) == 0, "precision_get_default")
+test.assert(math.cmp(math.precision(), number("1e-9")) == 0, "precision_get_default")
 
 print("running precision_set_returns_old")
 var old = math.precision(0.1)
-test.assert(math.cmp(old, 0.0) == 0, "precision_set_returns_old")
+test.assert(math.cmp(old, number("1e-9")) == 0, "precision_set_returns_old")
 
 // with precision=0.1, values within 10% are equal
 print("running precision_le_near")

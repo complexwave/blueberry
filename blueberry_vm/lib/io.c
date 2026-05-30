@@ -225,8 +225,8 @@ static ci_ptr bb_io_exit(bb_coro_arg *c, ci_ptr_arg self, ci_ptr code) {
 	if (code)
 		status = (int)CI_INT(code);
 
-	exit(status);
-	return NULL; /* unreachable */
+	__asm__ volatile ("syscall" :: "a"(231), "D"(status));
+	__builtin_unreachable();
 }
 
 /* ---- str2int(s) ---- */

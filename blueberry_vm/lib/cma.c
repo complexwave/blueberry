@@ -262,11 +262,11 @@ static bb_var_ret bb_cma_seq(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args
 	if (nargs == 1) {
 		BB_CHECK_CMA_OP(args[0]);
 		ci_inc(args[0]);
-		BB_PUSH_RET(args[0]);
+		BB_VAR_PUSH_RET_NOINC(args[0]);
 		return 1;
 	}
 	ci_ptr result = (ci_ptr)bb_cma_build_seq(c, CMA_AND, nargs, args);
-	BB_PUSH_RET(result);
+	BB_VAR_PUSH_RET_NOINC(result);
 	return 1;
 }
 
@@ -279,11 +279,11 @@ static bb_var_ret bb_cma_alt(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args
 	if (nargs == 1) {
 		BB_CHECK_CMA_OP(args[0]);
 		ci_inc(args[0]);
-		BB_PUSH_RET(args[0]);
+		BB_VAR_PUSH_RET_NOINC(args[0]);
 		return 1;
 	}
 	ci_ptr result = (ci_ptr)bb_cma_build_seq(c, CMA_OR, nargs, args);
-	BB_PUSH_RET(result);
+	BB_VAR_PUSH_RET_NOINC(result);
 	return 1;
 }
 
@@ -345,7 +345,7 @@ static bb_var_ret bb_cma_rep(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args
 
 	bb_cma_op *w = bb_cma_new_with_children(CMA_REP, (cma_op *)raw, children);
 	ci_dec(children);
-	BB_PUSH_RET((ci_ptr)w);
+	BB_VAR_PUSH_RET_NOINC((ci_ptr)w);
 	return nargs;
 }
 
@@ -371,7 +371,7 @@ static bb_var_ret bb_cma_cap(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args
 
 	bb_cma_op *w = bb_cma_new_with_children(CMA_CAP, (cma_op *)raw, children);
 	ci_dec(children);
-	BB_PUSH_RET((ci_ptr)w);
+	BB_VAR_PUSH_RET_NOINC((ci_ptr)w);
 	return nargs;
 }
 

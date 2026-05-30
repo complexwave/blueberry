@@ -111,6 +111,10 @@ typedef void* ci_ptr;
 // simple pointer tagging
 // 1 in lowest bit means this is integer
 
+#define CI_INT_BITS       ((int)(sizeof(intptr_t) * 8 - 1))
+#define CI_INT_MAX        ((intptr_t)((uintptr_t)1 << (CI_INT_BITS - 1)) - 1)
+#define CI_INT_MIN        ((intptr_t)(-(intptr_t)((uintptr_t)1 << (CI_INT_BITS - 1))))
+
 #define CI_IS_INT(p)  ((uintptr_t)(p) & 0x01)
 #define CI_INT(p)  ((intptr_t)(p) >> 1)
 #define CI_PACKINT(p)  ((void*)( ((intptr_t)(p) << 1) | 0x01))

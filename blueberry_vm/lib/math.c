@@ -102,12 +102,13 @@ static bb_var_ret bb_math_clamp(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_pt
 	BB_CHECK_NUMBER(args[0]);
 	BB_CHECK_NUMBER(args[1]);
 	BB_CHECK_NUMBER(args[2]);
+	ci_ptr ret = args[0];
 	double x  = ci_number_to_double(args[0]);
 	double lo = ci_number_to_double(args[1]);
 	double hi = ci_number_to_double(args[2]);
-	if (x < lo) x = lo;
-	if (x > hi) x = hi;
-	BB_PUSH_RET((ci_ptr)ci_number_floating(x));
+	if (x < lo) ret = args[1];
+	else if (x > hi) ret = args[2];
+	BB_VAR_PUSH_RET_INC(ret);
 	return nargs;
 }
 
@@ -117,13 +118,14 @@ static bb_var_ret bb_math_min(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr 
 	if (nargs < 1)
 		bb_coro_error(c, "math.min: need at least 1 arg");
 	BB_CHECK_NUMBER(args[0]);
-	double best = ci_number_to_double(args[0]);
+	ci_ptr best = args[0];
+	double best_v = ci_number_to_double(best);
 	for (size_t i = 1; i < nargs; i++) {
 		BB_CHECK_NUMBER(args[i]);
 		double v = ci_number_to_double(args[i]);
-		if (v < best) best = v;
+		if (v < best_v) { best = args[i]; best_v = v; }
 	}
-	BB_PUSH_RET((ci_ptr)ci_number_floating(best));
+	BB_VAR_PUSH_RET_INC(best);
 	return nargs;
 }
 
@@ -132,13 +134,14 @@ static bb_var_ret bb_math_max(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr 
 	if (nargs < 1)
 		bb_coro_error(c, "math.max: need at least 1 arg");
 	BB_CHECK_NUMBER(args[0]);
-	double best = ci_number_to_double(args[0]);
+	ci_ptr best = args[0];
+	double best_v = ci_number_to_double(best);
 	for (size_t i = 1; i < nargs; i++) {
 		BB_CHECK_NUMBER(args[i]);
 		double v = ci_number_to_double(args[i]);
-		if (v > best) best = v;
+		if (v > best_v) { best = args[i]; best_v = v; }
 	}
-	BB_PUSH_RET((ci_ptr)ci_number_floating(best));
+	BB_VAR_PUSH_RET_INC(best);
 	return nargs;
 }
 
@@ -178,7 +181,7 @@ static bb_var_ret bb_math_cmp(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr 
 		eps = ci_number_to_double(args[2]);
 
 	int r = ci_number_cmp_eps(a, b, eps);
-	BB_PUSH_RET(CI_PACKINT(r));
+	BB_VAR_PUSH_RET_NOINC(CI_PACKINT(r));
 	return nargs;
 }
 
@@ -192,7 +195,7 @@ static bb_var_ret bb_math_eq(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr *
 	if (nargs >= 3 && bb_is_number(args[2]))
 		eps = ci_number_to_double(args[2]);
 
-	BB_PUSH_RET(CI_BOOL(ci_number_cmp_eps(args[0], args[1], eps) == 0));
+	BB_VAR_PUSH_RET_NOINC(CI_BOOL(ci_number_cmp_eps(args[0], args[1], eps) == 0));
 	return nargs;
 }
 
@@ -202,6 +205,16 @@ static ci_ptr bb_math_precision(bb_coro_arg *c, ci_ptr_arg self, ci_ptr x) {
 	if (x && bb_is_number(x))
 		ci_number_set_cmp_precision(ci_number_to_double(x));
 	return (ci_ptr)ci_number_floating(old);
+}
+
+/* math.dividebyzero(val?) — get or set div-by-zero throw behaviour.
+ * No arg / null → return current (true = throws, false = inf/nan).
+ * Any value → set: truthy = throw, falsy = produce inf/nan. Returns old value. */
+static ci_ptr bb_math_dividebyzero(bb_coro_arg *c, ci_ptr_arg self, ci_ptr x) {
+	ci_ptr old = CI_BOOL(ci_div_by_zero_get());
+	if (x != NULL)
+		ci_div_by_zero_set(!CI_IS_FALSY(x));
+	return old;
 }
 
 /* ---- registration ---- */
@@ -249,7 +262,8 @@ static void bb_lib_math_init(bb_vm *vm) {
 		{ "boxed",     bb_math_boxed,     0 },
 		{ "cmp",       bb_math_cmp,       BB_FN_NATIVE_VAR },
 		{ "eq",        bb_math_eq,        BB_FN_NATIVE_VAR },
-		{ "precision", bb_math_precision, 0 },
+		{ "precision",    bb_math_precision,    0 },
+		{ "dividebyzero", bb_math_dividebyzero, 0 },
 	};
 
 	bb_func2map(vm, ns, math_lib, sizeof(math_lib) / sizeof(math_lib[0]));
@@ -263,6 +277,20 @@ static void bb_lib_math_init(bb_vm *vm) {
 	_DEF_FLOAT_CONSTANT(ns, "inf",  INFINITY);
 	_DEF_FLOAT_CONSTANT(ns, "nan",  NAN);
 	_DEF_FLOAT_CONSTANT(ns, "huge", HUGE_VAL);
+
+#define _DEF_INT_CONSTANT(map, name, value) \
+	ci_map_put(map, BB_CSTR(vm, name), CI_PACKINT((intptr_t)(value)))
+
+	_DEF_INT_CONSTANT(ns, "u32", 0xFFFFFFFFu);
+
+	/* u64 doesn't fit in a tagged int — store as boxed i128 */
+	{
+		ci_number *u64 = ci_number_new(CI_NUM_I128);
+		u64->i128 = (__int128)(uint64_t)0xFFFFFFFFFFFFFFFFull;
+		ci_map_put(ns, BB_CSTR(vm, "u64"), (ci_ptr)u64);
+	}
+
+#undef _DEF_INT_CONSTANT
 
 #undef _DEF_FLOAT_CONSTANT
 

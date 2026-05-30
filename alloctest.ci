@@ -1,0 +1,25 @@
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// === get basic ===
+print("running arr_get_basic")
+var a = [10, 20, 30]
+
+print(a)
+gc.print_refcnt(a);
+
+test.equal(1, 1, "arr_get_basic")
+
+
+
+
+gc.print_refcnt(a);
+
+exit(0)
+
+
+
+
+
+

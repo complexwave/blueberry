@@ -109,18 +109,6 @@ test.skip("pow_small_tagged")
 // test.equal(math.type(r), "int", "pow_large_type")
 test.skip("pow_large_boxes")
 
-// === div by zero → float ===
-
-print("running div_zero_float")
-r = number(5) / number(0)
-test.equal(math.type(r), "float", "div_zero_float_type")
-test.assert(math.isinf(r), "div_zero_is_inf")
-
-print("running mod_zero_float")
-r = number(5) % number(0)
-test.equal(math.type(r), "float", "mod_zero_float_type")
-test.assert(math.isnan(r), "mod_zero_is_nan")
-
 // === neg of float stays float ===
 
 print("running neg_float_stays_float")

@@ -20,14 +20,14 @@ static ci_ptr bb_map_new(bb_coro_arg *c, ci_ptr_arg self, ci_ptr size_arg) {
 		sz = (uint32_t)CI_INT(size_arg);
 
 	ci_map *m = ci_map_ident_new(sz);
-	return (ci_ptr)m;
+	BB_RETURN_NOINC(m);
 }
 
 /* map.len(m) — length of map or ordered_map */
 static ci_ptr bb_map_lib_len(bb_coro_arg *c, ci_ptr_arg self, ci_ptr m) {
 	BB_MAP_OR_TREE(m, bb_tree_len, (c, m));
 
-	return CI_PACKINT(ci_map_len((ci_map *)m));
+	return CI_PACKINT(ci_map_len((ci_map *)m));  /* scalar */
 }
 
 /* map.keys(m) — array of keys */
@@ -46,7 +46,7 @@ static ci_ptr bb_map_keys(bb_coro_arg *c, ci_ptr_arg self, ci_ptr m) {
 		*out++ = kv->key;
 
 	arr->length = len;
-	return (ci_ptr)arr;
+	BB_RETURN_NOINC(arr);
 }
 
 /* map.values(m) — array of values */
@@ -65,7 +65,7 @@ static ci_ptr bb_map_values(bb_coro_arg *c, ci_ptr_arg self, ci_ptr m) {
 		*out++ = kv->val;
 
 	arr->length = len;
-	return (ci_ptr)arr;
+	BB_RETURN_NOINC(arr);
 }
 
 /* map.delete(m, key) — delete a key, returns bool */
@@ -73,7 +73,7 @@ static ci_ptr bb_map_lib_delete(bb_coro_arg *c, ci_ptr_arg self, ci_ptr m, ci_pt
 	BB_MAP_OR_TREE(m, bb_tree_delete, (c, m, key));
 
 	int removed = ci_map_delete((ci_map *)m, key);
-	return CI_BOOL(removed);
+	return CI_BOOL(removed);  /* scalar */
 }
 
 /* map.exists(m, key) — true if key exists (distinguishes null from missing) */
@@ -81,7 +81,7 @@ static ci_ptr bb_map_lib_exists(bb_coro_arg *c, ci_ptr_arg self, ci_ptr m, ci_pt
 	BB_MAP_OR_TREE(m, bb_tree_exists, (c, m, key));
 
 	ci_map_kv *kv = ci_map_find_kv((ci_map *)m, key);
-	return CI_BOOL(kv != NULL);
+	return CI_BOOL(kv != NULL);  /* scalar */
 }
 
 /* map.size(m, newsize?) — get/set allocated bucket count. tree: returns length, ignores setter */
@@ -91,7 +91,7 @@ static ci_ptr bb_map_lib_size(bb_coro_arg *c, ci_ptr_arg self, ci_ptr m, ci_ptr 
 	if (CI_IS_INT(size_arg))
 		ci_map_ensure_space((ci_map *)m, (uint32_t)CI_INT(size_arg));
 
-	return CI_PACKINT(ci_map_buckets((ci_map *)m));
+	return CI_PACKINT(ci_map_buckets((ci_map *)m));  /* scalar */
 }
 
 /* map._merge(dst, src) — shallow merge src into dst, maps only */
@@ -112,7 +112,7 @@ static ci_ptr bb_map_lib_merge(bb_coro_arg *c, ci_ptr_arg self, ci_ptr dst, ci_p
 		ci_map_put(d, kv->key, kv->val);
 	}
 
-	return dst;
+	BB_RETURN(dst);
 }
 
 /* ---- registration ---- */

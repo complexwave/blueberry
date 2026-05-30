@@ -32,17 +32,17 @@ static bb_var_ret bb_native_callproxy_var(bb_coro *c, ci_ptr self, size_t nargs,
 	bb_coro_call_var(c, cl, call_args, call_nargs, call_rets, 32);
 
 	for (uint32_t i = 0; i < 32; i++) {
-		BB_PUSH_RET(call_rets[i]);
+		BB_VAR_PUSH_RET_INC(call_rets[i]);
 	}
 	return nargs;
 }
 
-/* varrets_example() — demo: returns 10, 20, 30 via BB_PUSH_RET */
+/* varrets_example() — demo: returns 10, 20, 30 via BB_VAR_PUSH_RET */
 static bb_var_ret bb_native_varrets_example(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
 	(void)c; (void)self;
-	BB_PUSH_RET(CI_PACKINT(10));
-	BB_PUSH_RET(CI_PACKINT(20));
-	BB_PUSH_RET(CI_PACKINT(30));
+	BB_VAR_PUSH_RET_NOINC(CI_PACKINT(10));
+	BB_VAR_PUSH_RET_NOINC(CI_PACKINT(20));
+	BB_VAR_PUSH_RET_NOINC(CI_PACKINT(30));
 	return nargs;
 }
 
@@ -50,7 +50,7 @@ static bb_var_ret bb_native_varrets_example(bb_coro *c, ci_ptr self, size_t narg
 static bb_var_ret bb_native_varrets_return(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
 	(void)c; (void)self;
 	intptr_t a = nargs > 0 ? CI_INT(args[0]) : 0;
-	BB_RETURN(CI_PACKINT(a), CI_PACKINT(a + 1), CI_PACKINT(a + 2));
+	BB_VAR_RETURN(CI_PACKINT(a), CI_PACKINT(a + 1), CI_PACKINT(a + 2));
 }
 
 static void bb_lib_callapi_init(bb_vm *vm) {

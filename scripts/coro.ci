@@ -1,0 +1,11 @@
+// test BB_PUSH_RET — returns 10, 20, 30
+var a, b, c = varrets_example()
+print(a)
+print(b)
+print(c)
+
+// test BB_RETURN — returns 100, 101, 102
+a, b, c = varrets_return(100)
+print(a)
+print(b)
+print(c)

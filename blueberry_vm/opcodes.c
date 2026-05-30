@@ -44,10 +44,15 @@ static inline ci_ptr bb_op_mul(bb_coro *c, ci_ptr a, ci_ptr b) {
 static inline ci_ptr bb_op_div(bb_coro *c, ci_ptr a, ci_ptr b) {
 	if (CI_IS_INT(a) && CI_IS_INT(b)) {
 		intptr_t bv = CI_INT(b);
-		
-		if (bv == 0)
-			bb_coro_error(c, "DIV: division by zero");
-		
+
+		if (bv == 0) {
+			if (ci_div_by_zero_get()) {
+				bb_coro_error(c, "DIV: division by zero");
+			}
+			intptr_t av = CI_INT(a);
+			return (ci_ptr)ci_number_floating((av < 0) ? -INFINITY : INFINITY);
+		}
+
 		return CI_PACKINT(CI_INT(a) / bv);
 	}
 	BB_META_DISPATCH(c, a, b, op_div, "DIV: type error");
@@ -56,11 +61,14 @@ static inline ci_ptr bb_op_div(bb_coro *c, ci_ptr a, ci_ptr b) {
 static inline ci_ptr bb_op_mod(bb_coro *c, ci_ptr a, ci_ptr b) {
 	if (CI_IS_INT(a) && CI_IS_INT(b)) {
 		intptr_t bv = CI_INT(b);
-		
-		if (bv == 0){
-			bb_coro_error(c, "MOD: division by zero");
+
+		if (bv == 0) {
+			if (ci_div_by_zero_get()) {
+				bb_coro_error(c, "MOD: division by zero");
+			}
+			return (ci_ptr)ci_number_floating(NAN);
 		}
-		
+
 		return CI_PACKINT(CI_INT(a) % bv);
 	}
 	BB_META_DISPATCH(c, a, b, op_mod, "MOD: type error");
@@ -109,8 +117,16 @@ static inline ci_ptr bb_op_bin_xor(bb_coro *c, ci_ptr a, ci_ptr b) {
 }
 
 static inline ci_ptr bb_op_bin_lshift(bb_coro *c, ci_ptr a, ci_ptr b) {
-	if (CI_IS_INT(a) && CI_IS_INT(b))
-		return CI_PACKINT(CI_INT(a) << CI_INT(b));
+	if (CI_IS_INT(a) && CI_IS_INT(b)) {
+		intptr_t va = CI_INT(a);
+		intptr_t vb = CI_INT(b);
+		if (vb >= 0 && vb < CI_INT_BITS - 1) {
+			intptr_t r = va << vb;
+			if ((r >> vb) == va && r >= CI_INT_MIN && r <= CI_INT_MAX)
+				return CI_PACKINT(r);
+		}
+		return ci_number_lshift(CI_PACKINT(va), (int)vb);
+	}
 	BB_META_DISPATCH(c, a, b, op_bin_lshift, "BIN_LSHIFT: type error");
 }
 

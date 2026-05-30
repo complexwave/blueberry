@@ -51,8 +51,8 @@ static ci_map *bb_get_proto(bb_vm *vm, ci_ptr obj) {
 static ci_ptr bb_typeof(bb_vm *vm, ci_ptr obj) {
 	if (!obj)
 		return BB_CSTR(vm, "null");
-	if (CI_IS_INT(obj))
-		return BB_CSTR(vm, "int");
+	if (CI_IS_ANY_NUMBER(obj))
+		return BB_CSTR(vm, "number");
 	if (CI_IS_BOOL(obj))
 		return BB_CSTR(vm, "bool");
 
@@ -72,7 +72,13 @@ static ci_ptr bb_typeof(bb_vm *vm, ci_ptr obj) {
 	if (CI_IS_CLOSURE(obj))
 		return BB_CSTR(vm, "function");
 
-	return NULL;
+	if (CI_IS_REFCOUNTABLE(obj))
+		return BB_CSTR(vm, "function");
+	
+	if (CI_IS_REFCOUNTABLE(obj))
+		return BB_CSTR(vm, "object");
+	
+	return BB_CSTR(vm, "unknown");
 }
 
 /* global type(obj) */

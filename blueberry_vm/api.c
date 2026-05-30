@@ -29,6 +29,29 @@
 } while(0)
 
 
+/* For bb_cfn (simple calling convention).
+ * BB_RETURN: value lives elsewhere (self, existing ref) — callee incs, VM dec's if discarded. */
+#define BB_RETURN(val)       do { ci_ptr _bb_r = (ci_ptr)(val); ci_inc(_bb_r); return _bb_r; } while(0)
+
+/* BB_RETURN_NOINC: new object (ci_new rc=1) or ownership transfer — rc already correct. */
+#define BB_RETURN_NOINC(val) return (ci_ptr)(val)
+
+/* Write one return value into the ret window (existing ref — incs). */
+#define BB_VAR_PUSH_RET_INC(val) \
+    do { if (nrets) { ci_ptr _r = (ci_ptr)(val); ci_inc(_r); args[nargs++] = _r; nrets--; } } while(0)
+
+/* Write one return value into the ret window (new object / ownership transfer — no inc). */
+#define BB_VAR_PUSH_RET_NOINC(val) \
+    do { if (nrets) { args[nargs++] = (ci_ptr)(val); nrets--; } } while(0)
+
+/* Push N values (scalars / no inc), then return nargs. */
+#define BB_VAR_RETURN(...) do {                          \
+    ci_ptr _bb_rv[] = { __VA_ARGS__ };               \
+    for (size_t _i = 0; _i < sizeof(_bb_rv)/sizeof(_bb_rv[0]) && nrets; _i++) \
+        { args[nargs++] = _bb_rv[_i]; nrets--; }    \
+    return nargs;                                    \
+} while(0)
+
 /* ---- CHECK macros (return NULL on type mismatch) ---- */
 
 #define BB_CHECK_STRING(a) do { \

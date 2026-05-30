@@ -19,6 +19,11 @@
 #include "tgmemlib_strategy_reserve.c"
 #endif
 
+#ifdef TGMEMLIB_TRACKING
+/* global pointer so tg_free (which has no allocator arg) can bump the counter */
+tg_allocator_t *tg_track_allocator;
+#endif
+
 /* ==== Arena internals ==== */
 
 static tg_arena_t *tg_arena_new(tg_allocator_t *alloc, uint16_t tag, uint16_t obj_size) {
@@ -35,6 +40,10 @@ static tg_arena_t *tg_arena_new(tg_allocator_t *alloc, uint16_t tag, uint16_t ob
 	ar->end        = (char *)mem + ARENA_SIZE;
 	ar->next       = NULL;
 	ar->ops        = alloc->ops[tag];
+
+	/* poison all data slots — unpoison individually on alloc */
+	TG_ASAN_POISON(ARENA_DATA(ar), (size_t)(ar->end - ARENA_DATA(ar)));
+
 	return ar;
 }
 
@@ -45,7 +54,16 @@ static void tg_arena_destroy(tg_allocator_t *alloc, tg_arena_t *ar) {
 /* returns NULL when freelist empty and bump exhausted */
 static void *tg_arena_alloc(tg_arena_t *ar) {
 	void *obj;
-	
+
+#ifdef TG_ASAN
+	/* ASan mode: bump only, never reuse freed slots */
+	if (ar->bump + ar->obj_size <= ar->end) {
+		obj       = ar->bump;
+		ar->bump += ar->obj_size;
+	} else {
+		return NULL;
+	}
+#else
 	if (ar->freelist) {
 		obj          = ar->freelist;
 		ar->freelist = *(void **)obj;
@@ -55,7 +73,9 @@ static void *tg_arena_alloc(tg_arena_t *ar) {
 	} else {
 		return NULL;
 	}
-	
+#endif
+
+	TG_ASAN_UNPOISON(obj, ar->obj_size);
 	ar->live_count++;
 	return obj;
 }
@@ -136,13 +156,22 @@ static void *tg_arena_bubblesort_freelist(tg_arena_t *ar, int need) {
  * Tries freelist sort first (to exercise that path), then bump.
  */
 static void *tg_arena_alloc_linked(tg_arena_t *ar, int count) {
-	void *ptr = tg_arena_bubblesort_freelist(ar, count);
-	if (ptr) return ptr;
+	size_t total = (size_t)count * ar->obj_size;
 
-	if (ar->bump + (size_t)count * ar->obj_size <= ar->end) {
+#ifndef TG_ASAN
+	void *ptr = tg_arena_bubblesort_freelist(ar, count);
+	if (ptr) {
+		TG_ASAN_UNPOISON(ptr, total);
+		return ptr;
+	}
+#endif
+
+	void *ptr;
+	if (ar->bump + total <= ar->end) {
 		ptr = ar->bump;
-		ar->bump += (size_t)count * ar->obj_size;
+		ar->bump += total;
 		ar->live_count += count;
+		TG_ASAN_UNPOISON(ptr, total);
 		return ptr;
 	}
 
@@ -168,6 +197,10 @@ tg_allocator_t *tg_allocator_new(void) {
 	}
 
 	alloc->strategy = tg_strategy_probe();  /* addr-tag: tag bits baked into pointer address */
+
+#ifdef TGMEMLIB_TRACKING
+	tg_track_allocator = alloc;
+#endif
 	return alloc;
 }
 
@@ -185,6 +218,7 @@ void tg_allocator_destroy(tg_allocator_t *alloc) {
 	if (alloc->strategy.destroy)
 		alloc->strategy.destroy(alloc->strategy.ctx);
 	
+	free(alloc->newalloc);
 	free(alloc->heads);
 	free(alloc->obj_sizes);
 	free(alloc->ops);
@@ -234,14 +268,38 @@ tg_arena_t *tg_allocator_new_arena(tg_allocator_t *alloc, uint16_t tag) {
 	return ar;
 }
 
+/* append to newalloc stack; trigger cleanup at low watermark */
+static inline void tg_newalloc_push(tg_allocator_t *alloc, void *obj) {
+	if (!alloc->newalloc) return;
+
+	alloc->newalloc[alloc->newalloc_pos++] = obj;
+
+	if (alloc->newalloc_pos >= alloc->newalloc_lo) {
+		tg_newalloc_cleanup(alloc);
+	}
+}
+
 void *tg_alloc(tg_allocator_t *alloc, uint16_t tag) {
 	void *obj = tg_arena_alloc(alloc->heads[tag]);
-	if (obj) return obj;
+	if (obj) {
+#ifdef TGMEMLIB_TRACKING
+		alloc->track_alloc_total++;
+#endif
+		tg_newalloc_push(alloc, obj);
+		return obj;
+	}
 
 	tg_arena_t *ar = tg_allocator_new_arena(alloc, tag);
 	if (!ar) return NULL;
-	
-	return tg_arena_alloc(ar);
+
+	obj = tg_arena_alloc(ar);
+	if (obj) {
+#ifdef TGMEMLIB_TRACKING
+		alloc->track_alloc_total++;
+#endif
+		tg_newalloc_push(alloc, obj);
+	}
+	return obj;
 }
 
 void tg_free(void *ptr) {
@@ -251,30 +309,43 @@ void tg_free(void *ptr) {
 		ar->ops.destructor(ptr, ar);
 	}
 
+#ifdef TG_ASAN
+	/* poison the slot — any later access will trap */
+	TG_ASAN_POISON(ptr, ar->obj_size);
+#else
 	*(void **)ptr  = ar->freelist;
 	ar->freelist   = ptr;
+#endif
 	ar->live_count--;
+
+#ifdef TGMEMLIB_TRACKING
+	if (tg_track_allocator) tg_track_allocator->track_free_total++;
+#endif
 }
 
 void *tg_alloc_linked(tg_allocator_t *alloc, uint16_t tag, size_t byte_size) {
 	int count = TG_SLOT_COUNT(byte_size, alloc->obj_sizes[tag]);
 	assert(count >= 1);
 
+	void *ptr;
+
 	/* try existing head arena */
-	void *ptr = tg_arena_alloc_linked(alloc->heads[tag], count);
-	if (ptr) return ptr;
+	ptr = tg_arena_alloc_linked(alloc->heads[tag], count);
+	if (ptr) { tg_newalloc_push(alloc, ptr); return ptr; }
 
 	/* walk older arenas */
 	for (tg_arena_t *ar = alloc->heads[tag]->next; ar; ar = ar->next) {
 		ptr = tg_arena_alloc_linked(ar, count);
-		if (ptr) return ptr;
+		if (ptr) { tg_newalloc_push(alloc, ptr); return ptr; }
 	}
 
 	/* new arena — bump always has contiguous space */
 	tg_arena_t *ar = tg_allocator_new_arena(alloc, tag);
 	if (!ar) return NULL;
 
-	return tg_arena_alloc_linked(ar, count);
+	ptr = tg_arena_alloc_linked(ar, count);
+	if (ptr) tg_newalloc_push(alloc, ptr);
+	return ptr;
 }
 
 void tg_free_linked(void *ptr, size_t byte_size) {
@@ -283,12 +354,42 @@ void tg_free_linked(void *ptr, size_t byte_size) {
 	char *slot = (char *)ptr + ar->obj_size;
 
 	for (int i = 0; i < extra; i++) {
+#ifdef TG_ASAN
+		TG_ASAN_POISON(slot, ar->obj_size);
+#else
 		*(void **)slot = ar->freelist;
 		ar->freelist   = slot;
+#endif
 		ar->live_count--;
 		slot += ar->obj_size;
 	}
 }
+
+/* ==== Newalloc stack ==== */
+
+void tg_newalloc_resize(tg_allocator_t *alloc, int count) {
+	free(alloc->newalloc);
+
+	alloc->newalloc      = malloc((size_t)count * sizeof(void *));
+	alloc->newalloc_size = count;
+	alloc->newalloc_pos  = 0;
+	alloc->newalloc_lo   = (int)(count * 0.70);
+	alloc->newalloc_hi   = (int)(count * 0.90);
+}
+
+/* default cleanup: just drain the stack.
+ * define TG_NEWALLOC_CLEANUP_OVERRIDE before including to provide your own. */
+#ifndef TG_NEWALLOC_CLEANUP_OVERRIDE
+void tg_newalloc_cleanup(tg_allocator_t *alloc) {
+	alloc->newalloc_pos = 0;
+}
+#endif
+
+/* ==== Debug / introspection ==== */
+
+#include "tgmemlib_debug.c"
+
+/* ==== Cleanup ==== */
 
 int tg_cleanup(tg_allocator_t *alloc, uint16_t tag) {
 	tg_arena_t *ar = alloc->heads[tag];

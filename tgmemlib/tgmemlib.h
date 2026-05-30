@@ -28,6 +28,25 @@
 #define TG_ADDR_TAG 1
 #endif
 
+/* ---- sanitizer integration ---- */
+
+#if defined(__has_feature)
+  #if __has_feature(address_sanitizer)
+    #define TG_ASAN 1
+  #endif
+#elif defined(__SANITIZE_ADDRESS__)
+  #define TG_ASAN 1
+#endif
+
+#ifdef TG_ASAN
+#include <sanitizer/asan_interface.h>
+#define TG_ASAN_POISON(addr, size)   __asan_poison_memory_region((addr), (size))
+#define TG_ASAN_UNPOISON(addr, size) __asan_unpoison_memory_region((addr), (size))
+#else
+#define TG_ASAN_POISON(addr, size)   ((void)0)
+#define TG_ASAN_UNPOISON(addr, size) ((void)0)
+#endif
+
 /* ---- constants ---- */
 
 #define ARENA_SIZE	(64u * 1024u)		/* bytes per arena, must be power of 2 */
@@ -100,6 +119,19 @@ typedef struct {
 	uint16_t          *obj_sizes;		/* [MAX_TYPES] registered obj_size per tag */
 	tg_arena_ops      *ops;			/* [MAX_TYPES] ops template; copied into each new arena */
 	tg_mmap_strategy_t strategy;
+
+	/* ---- newalloc stack: tracks every allocation for deferred refcount ---- */
+	void             **newalloc;		/* flat array of recently allocated ptrs */
+	int                newalloc_pos;	/* next write position */
+	int                newalloc_size;	/* allocated capacity (element count) */
+	int                newalloc_lo;		/* low watermark (70% of size): triggers cleanup */
+	int                newalloc_hi;		/* high watermark (90% of size): reserved */
+
+#ifdef TGMEMLIB_TRACKING
+	/* ---- allocation tracking ---- */
+	uint64_t           track_alloc_total;	/* total tg_alloc calls */
+	uint64_t           track_free_total;	/* total tg_free calls (refcnt → 0) */
+#endif
 } tg_allocator_t;
 
 /* ---- internal layout macros ---- */
@@ -188,6 +220,23 @@ void tg_free_linked(void *ptr, size_t byte_size);
  */
 int tg_cleanup(tg_allocator_t *alloc, uint16_t tag);
 
+/* ---- newalloc stack ---- */
+
+/*
+ * tg_newalloc_resize — (re)allocate the newalloc stack to `count` entries.
+ * Sets low watermark to 70% and high watermark to 90%.
+ * Resets pos to 0.  Previous contents are lost — call after cleanup.
+ */
+void tg_newalloc_resize(tg_allocator_t *alloc, int count);
+
+/*
+ * tg_newalloc_cleanup — process the newalloc stack (deferred refcount pass).
+ * Called automatically when pos reaches the low watermark.
+ * Override this with your own implementation for actual GC work.
+ * Default: just resets pos to 0 (drains the stack).
+ */
+void tg_newalloc_cleanup(tg_allocator_t *alloc);
+
 /* ---- strategy constructors ---- */
 
 /* Pool: reserve pool_size virtual bytes (PROT_NONE), commit per-arena on alloc
@@ -207,6 +256,24 @@ tg_mmap_strategy_t tg_strategy_probe(void);
  * max_stripes: how many stripes to reserve (each = 4 MiB virtual).
  * Returns simple strategy on reservation failure. */
 tg_mmap_strategy_t tg_strategy_reserve(int max_stripes);
+#endif
+
+/* ---- tracking (TGMEMLIB_TRACKING) ---- */
+
+#ifdef TGMEMLIB_TRACKING
+#include <stdio.h>
+
+/* global so tg_free() (no allocator arg) can bump track_free_total */
+extern tg_allocator_t *tg_track_allocator;
+
+/*
+ * tg_track_report — print all live (not freed) objects with refcount.
+ * Shows per-type breakdown + totals.  Call before tg_allocator_destroy.
+ */
+void tg_track_report(FILE *f, tg_allocator_t *alloc);
+
+/* convenience: report to stderr */
+void tg_track_report_stderr(tg_allocator_t *alloc);
 #endif
 
 /* ---- inline helpers ---- */

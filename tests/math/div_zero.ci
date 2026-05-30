@@ -1,0 +1,55 @@
+// div/mod by zero — default produces inf/nan, throwing mode optional
+
+var h = require("tests/test_helpers.ci")
+h()
+
+// === default: inf/nan (tagged ints) ===
+
+print("running tagged_div_zero_inf")
+var r = 5 / 0
+test.equal(math.type(r), "float", "tagged_div_zero_type")
+test.assert(math.isinf(r), "tagged_div_zero_is_inf")
+
+print("running tagged_div_neg_zero_inf")
+r = -5 / 0
+test.assert(math.isinf(r), "tagged_div_neg_zero_is_inf")
+
+print("running tagged_mod_zero_nan")
+r = 5 % 0
+test.equal(math.type(r), "float", "tagged_mod_zero_type")
+test.assert(math.isnan(r), "tagged_mod_zero_is_nan")
+
+// === default: inf/nan (boxed numbers) ===
+
+print("running boxed_div_zero_inf")
+r = number(5) / number(0)
+test.equal(math.type(r), "float", "boxed_div_zero_type")
+test.assert(math.isinf(r), "boxed_div_zero_is_inf")
+
+print("running boxed_mod_zero_nan")
+r = number(5) % number(0)
+test.equal(math.type(r), "float", "boxed_mod_zero_type")
+test.assert(math.isnan(r), "boxed_mod_zero_is_nan")
+
+// === knob: get default ===
+
+print("running dividebyzero_default_false")
+test.equal(math.dividebyzero(), false, "dividebyzero_default_false")
+
+// === knob: set true → throws, then restore ===
+
+print("running dividebyzero_set_true")
+var old = math.dividebyzero(true)
+test.equal(old, false, "dividebyzero_set_returns_old")
+test.equal(math.dividebyzero(), true, "dividebyzero_now_true")
+
+math.dividebyzero(false)
+test.equal(math.dividebyzero(), false, "dividebyzero_restored")
+
+// === crashing test last: throw mode, tagged int ===
+
+print("running dividebyzero_throws")
+math.dividebyzero(true)
+var x = 5 / 0
+
+test.done()

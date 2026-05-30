@@ -1,0 +1,33 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+// %e with integers
+print(string.format("[%e]", 0))
+print(string.format("[%e]", 1))
+print(string.format("[%e]", -1))
+print(string.format("[%e]", 42))
+print(string.format("[%e]", 100))
+print(string.format("[%e]", 1000))
+print(string.format("[%e]", 999999))
+print(string.format("[%e]", 123456789))
+print(string.format("[%e]", -123456789))
+print(string.format("[%e]", 7))
+print(string.format("[%e]", 10))
+print(string.format("[%e]", 1000000))
+
+// %e with floats
+print(string.format("[%e]", 0.5))
+print(string.format("[%e]", -0.5))
+print(string.format("[%e]", 3.14))
+print(string.format("[%e]", -3.14))
+print(string.format("[%e]", 0.001))
+print(string.format("[%e]", 0.0001))
+print(string.format("[%e]", 0.00001))
+print(string.format("[%e]", 0.1))
+print(string.format("[%e]", 0.01))
+print(string.format("[%e]", 0.123))
+print(string.format("[%e]", 99.99))
+print(string.format("[%e]", 9.999))
+print(string.format("[%e]", 1.23456789))
+
+test.done()

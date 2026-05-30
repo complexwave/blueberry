@@ -3,7 +3,7 @@
 .DEFAULT_GOAL := blueberry
 
 CC = clang-23
-CFLAGS = -Wall -O3 -march=native -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER -DCI_DISABLE_REFCOUNTING 
+CFLAGS = -Wall -O3 -march=native -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER
 #-DBB_VM_DEBUG
 
 parser:
@@ -36,9 +36,14 @@ ci_printf_test:
 bytecode-dbg:
 	$(CC) $(CFLAGS) -DB_DEBUG -o bytecode bytecode.c cma/cma.c
 
+tracking:
+	$(CC) $(CFLAGS) -DTGMEMLIB_TRACKING -o blueberry blueberry.c cma/cma.c -lm
+
+ASAN_FLAGS = -O0 -g3 -fno-omit-frame-pointer -fno-inline -fno-pie -no-pie -fsanitize=address -DTGMEMLIB_TRACKING -DCI_LEXER -std=c11 -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -Wno-unused-function
+
 asan:
-	$(CC) $(CFLAGS) -fsanitize=address -fno-omit-frame-pointer -o blueberry blueberry.c cma/cma.c -lm
-	$(CC) $(CFLAGS) -fsanitize=address -fno-omit-frame-pointer -o bytecode bytecode.c cma/cma.c
+	$(CC) $(ASAN_FLAGS) -o blueberry blueberry.c cma/cma.c -lm
+	$(CC) $(ASAN_FLAGS) -o bytecode bytecode.c cma/cma.c
 
 clean:
 	rm -f parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim

@@ -31,14 +31,14 @@ VM_OP_INLINE ci_ptr bb_op_hashaccess_rrr(bb_coro *c, ci_ptr a, ci_ptr b) {
 	ci_map* m = a;
 	ci_ptr key = b;
 	
-	return bb_proto_find(c->vm, a, b);
+	BB_RETURN(bb_proto_find(c->vm, a, b));
 	
 	if (!CI_IS_MAP(a))
-		return bb_proto_find(c->vm, a, b);
+		BB_RETURN(bb_proto_find(c->vm, a, b));
 	
 	do {
 		ci_map_kv* kv = ci_map_find_kv_inline(m, key);
-		if(kv) return kv->val;
+		if(kv) BB_RETURN(kv->val);
 	} while ( (m = ((const ci_map *)m)->prototype) );
 		
 	return NULL;
@@ -57,7 +57,7 @@ static inline ci_ptr bb_op_loadfalse(bb_coro *c, ci_ptr a, ci_ptr b) {
 static inline ci_ptr bb_op_mapaccess(bb_coro *c, ci_ptr map, ci_ptr key) {
 	if (!CI_IS_MAP(map))
 		bb_coro_error(c, "MAPACCESS: operand is not a MAP");
-	return ci_map_find(map, key);
+	BB_RETURN(ci_map_find(map, key));
 }
 
 static inline ci_ptr bb_op_methodbind(bb_coro *c, ci_ptr obj, ci_ptr key) {
@@ -70,13 +70,13 @@ static inline ci_ptr bb_op_methodbind(bb_coro *c, ci_ptr obj, ci_ptr key) {
 	bb_closure *bound = bb_vm_closure(c->vm, ((bb_closure *)method)->fn);
 	ci_inc(obj);
 	bound->self = obj;
-	return (ci_ptr)bound;
+	BB_RETURN_NOINC(bound);
 }
 
 static inline ci_ptr bb_op_arraccess(bb_coro *c, ci_ptr arr, ci_ptr idx) {
 	if (!CI_IS_ANY_ARR(arr)) {
 		if (CI_IS_MAP(arr))
-			return ci_map_find(arr, idx);
+			BB_RETURN(bb_proto_find(c->vm, arr, idx));
 
 		BB_META_DISPATCH_INDEX_GET(c, arr, idx, "ARRACCESS: operand is not an array");
 	}
@@ -90,7 +90,7 @@ static inline ci_ptr bb_op_arraccess(bb_coro *c, ci_ptr arr, ci_ptr idx) {
 	if (i >= ci_arr_len(a))
 		return NULL;
 
-	return ci_arr_index(a, i);
+	BB_RETURN(ci_arr_index(a, i));
 }
 
 /* ================================================================
@@ -314,7 +314,6 @@ static void bb_op_newmap_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uin
 		ci_map_put(new_map, key, val);
 	}
 
-	ci_inc((ci_ptr)new_map);
 	ci_dec(stack[dst_reg]);
 	stack[dst_reg] = (ci_ptr)new_map;
 }
@@ -333,7 +332,6 @@ static void bb_op_newarray_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, u
 		ci_arr_push(new_array, elem);
 	}
 
-	ci_inc((ci_ptr)new_array);
 	ci_dec(stack[dst_reg]);
 	stack[dst_reg] = (ci_ptr)new_array;
 }
@@ -444,6 +442,10 @@ VM_OP static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg 
 		rets++;
 		list++;
 	}
+	
+
+	bb_frame *this_function = bb_coro_frame_top(c);
+	ci_dec_multi(stack, this_function->closure->fn->regs);
 	
 	
 	bb_coro_popcall(c);

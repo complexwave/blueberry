@@ -1,0 +1,16 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+print(string.format("[%e]", float("inf")))
+print(string.format("[%e]", float("Inf")))
+print(string.format("[%e]", float("INF")))
+print(string.format("[%e]", float("-inf")))
+print(string.format("[%e]", float("-Inf")))
+print(string.format("[%e]", float("-INF")))
+print(string.format("[%e]", float("nan")))
+print(string.format("[%e]", float("NaN")))
+print(string.format("[%e]", float("NAN")))
+print(type(float("nan")))
+print(type(float("NaN")))
+
+test.done()

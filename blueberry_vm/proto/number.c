@@ -87,16 +87,13 @@ static ci_ptr bb_number_meta_tostring(bb_coro *c, ci_ptr a, ci_ptr b) {
 	return (ci_ptr)s;
 }
 
-/* number(x) — box a tagged int, parse a string, or return existing ci_number as-is */
+/* number(x) — parse a string into a number, or return existing numbers as-is */
 static ci_ptr bb_native_number(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a, ci_ptr_arg b, ci_ptr_arg _) {
 	if (CI_IS_NUMBER(a))
 		return a;
 
-	if (CI_IS_INT(a)) {
-		ci_number *n = ci_number_new(CI_NUM_I128);
-		n->i128 = (__int128)CI_INT(a);
-		return (ci_ptr)n;
-	}
+	if (CI_IS_INT(a))
+		return a;
 
 	if (CI_IS_ANY_STR(a)) {
 		ci_ptr r = ci_number_fromstring(ci_str_head(a), ci_str_len(a));

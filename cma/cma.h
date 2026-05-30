@@ -22,7 +22,11 @@
 typedef struct cma_state cma_state;
 typedef struct cma_op    cma_op;
 
+#if defined(__SANITIZE_ADDRESS__) || (defined(__has_feature) && __has_feature(address_sanitizer))
+#define CMA_OP int
+#else
 #define CMA_OP __attribute__((preserve_none)) int
+#endif
 
 typedef CMA_OP (*cma_match_fn)(cma_state *s, cma_op *op);
 

@@ -11,8 +11,17 @@ static ci_ptr bb_str_len(bb_coro_arg *c, ci_ptr s) {
 	return CI_PACKINT((intptr_t)ci_str_len(s));
 }
 
-static ci_ptr bb_str_size(bb_coro_arg *c, ci_ptr s) {
+static ci_ptr bb_str_size(bb_coro_arg *c, ci_ptr s, ci_ptr n) {
 	BB_CHECK_STRING(s);
+	if (CI_IS_INT(n)) {
+		intptr_t nb = CI_INT(n);
+		if (nb > 0) {
+			BB_CHECK_STRING_WRITABLE(s);
+			if (!ci_str_ensure_tail((ci_str *)s, (size_t)nb))
+				bb_coro_error(c, "size: out of memory");
+		}
+		BB_RETURN(s);
+	}
 	return CI_PACKINT((intptr_t)ci_str_size(s));
 }
 
@@ -57,21 +66,21 @@ BB_ALWAYS_INLINE ci_ptr bb_str_slice_impl(bb_coro_arg *c, ci_ptr s, ci_ptr a_sta
 
 	if (si >= ei) {
 		if (use_slice)
-			return (ci_ptr)ci_str_slice_new((const uint8_t *)"", 0, NULL);
-		return (ci_ptr)ci_str_from_cstr("");
+			BB_RETURN_NOINC(ci_str_slice_new((const uint8_t *)"", 0, NULL));
+		BB_RETURN_NOINC(ci_str_from_cstr(""));
 	}
 
 	if (use_slice) {
 		ci_str *r = ci_str_slice_new(head + si, slen, s);
 		if (!r) bb_coro_error(c, "slice: out of memory");
-		return (ci_ptr)r;
+		BB_RETURN_NOINC(r);
 	}
 
 	ci_str *r = ci_str_new(slen);
 	if (!r) bb_coro_error(c, "slice: out of memory");
 	memcpy(ci_str_head(r), head + si, slen);
 	ci_str_put_tail(r, slen);
-	return (ci_ptr)r;
+	BB_RETURN_NOINC(r);
 }
 
 /* slice(start, end) — safe copy substring */
@@ -108,7 +117,7 @@ static ci_ptr bb_str_ctx(bb_coro_arg *c, ci_ptr s) {
 	BB_CHECK_STRING(s);
 	if (!CI_IS_SLICE(s))
 		return NULL;
-	return ((ci_str_slice *)s)->ctx;
+	BB_RETURN(((ci_str_slice *)s)->ctx);
 }
 
 /* parent() — owning string of a slice; null for non-slices */
@@ -116,7 +125,7 @@ static ci_ptr bb_str_parent(bb_coro_arg *c, ci_ptr s) {
 	BB_CHECK_STRING(s);
 	if (!CI_IS_SLICE(s))
 		return NULL;
-	return ((ci_str_slice *)s)->parent;
+	BB_RETURN(((ci_str_slice *)s)->parent);
 }
 
 /* ---- search ---- */
@@ -190,7 +199,7 @@ static ci_ptr bb_str_append(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
 
 	size_t olen = ci_str_len(other);
 	if (olen == 0)
-		return s;
+		BB_RETURN(s);
 
 	/* upgrade small string if needed */
 	if (CI_IS_STR_SMALL(s)) {
@@ -201,7 +210,7 @@ static ci_ptr bb_str_append(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
 
 	if (!ci_str_append((ci_str *)s, ci_str_head(other), olen))
 		bb_coro_error(c,"append: out of memory");
-	return s;
+	BB_RETURN(s);
 }
 
 /* prepend(other) */
@@ -211,7 +220,7 @@ static ci_ptr bb_str_prepend(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
 
 	size_t olen = ci_str_len(other);
 	if (olen == 0)
-		return s;
+		BB_RETURN(s);
 
 	if (CI_IS_STR_SMALL(s)) {
 		ci_str *upgraded = ci_str_upgrade(s);
@@ -221,24 +230,25 @@ static ci_ptr bb_str_prepend(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
 
 	if (!ci_str_prepend((ci_str *)s, ci_str_head(other), olen))
 		bb_coro_error(c,"prepend: out of memory");
-	return s;
+	BB_RETURN(s);
 }
 
 /* clear() */
 static ci_ptr bb_str_clear(bb_coro_arg *c, ci_ptr s) {
 	BB_CHECK_STRING_WRITABLE(s);
 	ci_str_clear((ci_str *)s);
-	return s;
+	BB_RETURN(s);
 }
 
 /* ---- produce new strings ---- */
 
-/* copy() — deep copy */
-static ci_ptr bb_str_copy(bb_coro_arg *c, ci_ptr s) {
+/* copy(extra?) — deep copy; extra reserves additional buffer capacity */
+static ci_ptr bb_str_copy(bb_coro_arg *c, ci_ptr s, ci_ptr extra) {
 	BB_CHECK_STRING(s);
-	ci_str *r = ci_str_copy(s, 0);
+	size_t xtra = CI_IS_INT(extra) ? (size_t)CI_INT(extra) : 0;
+	ci_str *r = ci_str_copy(s, xtra);
 	if (!r) bb_coro_error(c,"copy: out of memory");
-	return (ci_ptr)r;
+	BB_RETURN_NOINC(r);
 }
 
 /* upper() — uppercase self in-place, return self */
@@ -251,7 +261,7 @@ static ci_ptr bb_str_upper(bb_coro_arg *c, ci_ptr s) {
 			p[i] -= 32;
 	}
 	ci_str_reset_hash(s);
-	return s;
+	BB_RETURN(s);
 }
 
 /* lower() — lowercase self in-place, return self */
@@ -264,7 +274,7 @@ static ci_ptr bb_str_lower(bb_coro_arg *c, ci_ptr s) {
 			p[i] += 32;
 	}
 	ci_str_reset_hash(s);
-	return s;
+	BB_RETURN(s);
 }
 
 /* trim() — remove leading/trailing whitespace in-place, return self */
@@ -284,7 +294,7 @@ static ci_ptr bb_str_trim(bb_coro_arg *c, ci_ptr s) {
 	if (head_cut) ci_str_rmhead((ci_str *)s, head_cut);
 	if (tail_cut) ci_str_rmtail((ci_str *)s, tail_cut);
 	ci_str_reset_hash(s);
-	return s;
+	BB_RETURN(s);
 }
 
 /* rev() — reverse self in-place, return self */
@@ -298,7 +308,7 @@ static ci_ptr bb_str_rev(bb_coro_arg *c, ci_ptr s) {
 		p[len - 1 - i] = tmp;
 	}
 	ci_str_reset_hash(s);
-	return s;
+	BB_RETURN(s);
 }
 
 /* repeat(n) — new string, self repeated n times */
@@ -307,7 +317,7 @@ static ci_ptr bb_str_repeat(bb_coro_arg *c, ci_ptr s, ci_ptr n) {
 	BB_CHECK_INT(n);
 	intptr_t count = CI_INT(n);
 	if (count <= 0)
-		return (ci_ptr)ci_str_from_cstr("");
+		BB_RETURN_NOINC(ci_str_from_cstr(""));
 
 	size_t len = ci_str_len(s);
 	intptr_t total_check;
@@ -322,7 +332,7 @@ static ci_ptr bb_str_repeat(bb_coro_arg *c, ci_ptr s, ci_ptr n) {
 		dst += len;
 	}
 	ci_str_put_tail(r, total);
-	return (ci_ptr)r;
+	BB_RETURN_NOINC(r);
 }
 
 /* ---- conversion ---- */
@@ -350,7 +360,7 @@ static ci_ptr bb_str_split(bb_coro_arg *c, ci_ptr s, ci_ptr delim) {
 			ci_str_put_tail(part, 1);
 			ci_arr_push(arr, (ci_ptr)part);
 		}
-		return (ci_ptr)arr;
+		BB_RETURN_NOINC(arr);
 	}
 
 	if (dlen > hlen) {
@@ -360,7 +370,7 @@ static ci_ptr bb_str_split(bb_coro_arg *c, ci_ptr s, ci_ptr delim) {
 		memcpy(dst, h, hlen);
 		ci_str_put_tail(part, hlen);
 		ci_arr_push(arr, (ci_ptr)part);
-		return (ci_ptr)arr;
+		BB_RETURN_NOINC(arr);
 	}
 
 	size_t prev = 0;
@@ -385,8 +395,7 @@ static ci_ptr bb_str_split(bb_coro_arg *c, ci_ptr s, ci_ptr delim) {
 	memcpy(dst, h + prev, plen);
 	ci_str_put_tail(part, plen);
 	ci_arr_push(arr, (ci_ptr)part);
-
-	return (ci_ptr)arr;
+	BB_RETURN_NOINC(arr);
 }
 
 /* bytes() — array of ints (byte values) */
@@ -400,7 +409,7 @@ static ci_ptr bb_str_bytes(bb_coro_arg *c, ci_ptr s) {
 
 	for (size_t i = 0; i < len; i++)
 		ci_arr_push(arr, CI_PACKINT(h[i]));
-	return (ci_ptr)arr;
+	BB_RETURN_NOINC(arr);
 }
 
 /* is_readonly() — check gc header readonly flag */
@@ -415,17 +424,17 @@ static ci_ptr bb_str_hash(bb_coro_arg *c, ci_ptr s) {
 	return CI_PACKINT((intptr_t)ci_str_hash((ci_str *)s));
 }
 
-/* eq(other) — string equality */
+/* eq(other) — string equality; returns null if either arg is not a string */
 static ci_ptr bb_str_eq(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
-	BB_CHECK_STRING(s);
-	BB_CHECK_STRING(other);
-	return CI_PACKINT(ci_str_eq((const ci_str *)s, (const ci_str *)other));
+	if (!CI_IS_ANY_STR(s) || !CI_IS_ANY_STR(other))
+		return NULL;
+	return CI_BOOL(ci_str_eq((const ci_str *)s, (const ci_str *)other));
 }
 
-/* cmp(other) — lexicographic compare: -1/0/1 */
+/* cmp(other) — lexicographic compare: -1/0/1; returns null if either arg is not a string */
 static ci_ptr bb_str_cmp(bb_coro_arg *c, ci_ptr s, ci_ptr other) {
-	BB_CHECK_STRING(s);
-	BB_CHECK_STRING(other);
+	if (!CI_IS_ANY_STR(s) || !CI_IS_ANY_STR(other))
+		return NULL;
 
 	size_t la = ci_str_len(s);
 	size_t lb = ci_str_len(other);
@@ -456,7 +465,7 @@ static ci_ptr bb_str_replace(bb_coro_arg *c, ci_ptr s, ci_ptr needle, ci_ptr rep
 	size_t rlen = ci_str_len(replacement);
 
 	if (nlen == 0 || nlen > hlen)
-		return (ci_ptr)ci_str_copy(s, 0);
+		BB_RETURN_NOINC(ci_str_copy(s, 0));
 
 	/* first pass: count occurrences */
 	size_t count = 0;
@@ -467,7 +476,7 @@ static ci_ptr bb_str_replace(bb_coro_arg *c, ci_ptr s, ci_ptr needle, ci_ptr rep
 		}
 	}
 	if (count == 0)
-		return (ci_ptr)ci_str_copy(s, 0);
+		BB_RETURN_NOINC(ci_str_copy(s, 0));
 
 	size_t newlen = hlen - count * nlen + count * rlen;
 	ci_str *out = ci_str_new(newlen);
@@ -487,7 +496,7 @@ static ci_ptr bb_str_replace(bb_coro_arg *c, ci_ptr s, ci_ptr needle, ci_ptr rep
 	}
 	memcpy(dst, h + prev, hlen - prev);
 	ci_str_put_tail(out, newlen);
-	return (ci_ptr)out;
+	BB_RETURN_NOINC(out);
 }
 
 /* set(idx, byte) — set byte at index, negative wraps */
@@ -503,7 +512,7 @@ static ci_ptr bb_str_set(bb_coro_arg *c, ci_ptr s, ci_ptr idx, ci_ptr val) {
 		bb_coro_error(c, "set: index out of bounds");
 
 	ci_str_head(s)[i] = (uint8_t)CI_INT(val);
-	return s;
+	BB_RETURN(s);
 }
 
 /* ---- format/printf ---- */
@@ -541,7 +550,7 @@ static bb_var_ret bb_str_format(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_pt
 
 	ci_printf((ci_ptr)dst, fmt, fmtlen, fargs, farg_cnt);
 
-	BB_PUSH_RET(self);
+	BB_VAR_PUSH_RET_INC(self);
 	return nargs;
 }
 

@@ -367,7 +367,6 @@ VM_OP static void __vmop_##label##_rrr(bb_coro *c, vm_dipatch_arg a, vm_dipatch_
 	ci_ptr arg_b = VM_OP_STACK(b); \
 	ci_ptr arg_c = VM_OP_STACK(_c); \
 	ci_ptr r = impl(c, arg_b, arg_c); \
-	ci_inc(r); \
 	VM_OP_SET_STACK(a, r); \
 	BB_DISPATCH_NEXT(c);\
 }
@@ -378,7 +377,6 @@ VM_OP static void __vmop_##label##_rri(bb_coro *c, vm_dipatch_arg a, vm_dipatch_
 	ci_ptr arg_b = VM_OP_STACK(b); \
 	ci_ptr arg_imm = CI_PACKINT((int32_t)_c); \
 	ci_ptr r = impl(c, arg_b, arg_imm); \
-	ci_inc(r); \
 	VM_OP_SET_STACK(a, r); \
 	BB_DISPATCH_NEXT(c);\
 }
@@ -389,7 +387,6 @@ VM_OP static void __vmop_##label##_rrs(bb_coro *c, vm_dipatch_arg a, vm_dipatch_
 	ci_ptr arg_b = VM_OP_STACK(b); \
 	ci_ptr arg_key = (ci_ptr)_c; \
 	ci_ptr r = impl(c, arg_b, arg_key); \
-	ci_inc(r); \
 	VM_OP_SET_STACK(a, r); \
 	BB_DISPATCH_NEXT(c);\
 }
@@ -753,6 +750,7 @@ static void bb_vm_execute(bb_coro *c) {
 #include "blueberry_vm/lib/callapi.c"
 #include "blueberry_vm/lib/math.c"
 #include "blueberry_vm/lib/string.c"
+#include "blueberry_vm/lib/gc.c"
 
 /* ================================================================
  *  Compile .ci to .cbc
@@ -849,6 +847,7 @@ int main(int argc, char **argv) {
 	bb_lib_coro_init(vm);
 	bb_lib_math_init(vm);
 	bb_lib_string_init(vm);
+	bb_lib_gc_init(vm);
 
 	/* expose script arguments as global argv array */
 	{

@@ -10,9 +10,12 @@
 
 tg_allocator_t *ci_alloc;
 
+static void ci_debug_register_names(void);
+
 void ci_init(void) {
 	ci_alloc = tg_allocator_new();
 	assert(ci_alloc && "ci_init: allocator creation failed");
+	ci_debug_register_names();
 }
 
 void ci_shutdown(void) {
@@ -37,6 +40,31 @@ void ci_register_ops(uint16_t tag, uint16_t obj_size, const tg_arena_ops *ops) {
 #include "ci_tree.c"
 #include "ci_number.c"
 #include "ci_printf.c"
+
+/* ---- debug type names ---- */
+
+static void ci_debug_register_names(void) {
+	/* strings */
+	tg_debug_register_name(CI_STR,           "str");
+	tg_debug_register_name(CI_STR_READONLY,  "str_ro");
+	tg_debug_register_name(CI_STR_SLICE,     "str_slice");
+	tg_debug_register_name(CI_STR_SMALL_32,  "str_sm32");
+	tg_debug_register_name(CI_STR_SMALL_64,  "str_sm64");
+	tg_debug_register_name(CI_STR_SMALL_128, "str_sm128");
+	tg_debug_register_name(CI_STR_SMALL_256, "str_sm256");
+
+	/* arrays */
+	tg_debug_register_name(CI_ARR,            "arr");
+	tg_debug_register_name(CI_ARR_SMALL_128,  "arr_sm128");
+	tg_debug_register_name(CI_ARR_SMALL_256,  "arr_sm256");
+	tg_debug_register_name(CI_ARR_SMALL_1024, "arr_sm1024");
+	tg_debug_register_name(CI_ARR_SMALL_2048, "arr_sm2048");
+
+	/* maps */
+	tg_debug_register_name(CI_MAP,          "map");
+	tg_debug_register_name(CI_ORDERED_MAP,  "ordered_map");
+	tg_debug_register_name(CI_TREE_ITER,    "tree_iter");
+}
 
 /* ==== test ==== */
 

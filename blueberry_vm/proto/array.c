@@ -18,12 +18,12 @@ static ci_ptr bb_arr_push(bb_coro_arg *c, ci_ptr arr, ci_ptr val) {
 
 static ci_ptr bb_arr_pop(bb_coro_arg *c, ci_ptr arr) {
 	BB_CHECK_ARRAY(arr);
-	return ci_arr_pop((ci_array *)arr);
+	BB_RETURN_NOINC(ci_arr_pop((ci_array *)arr));
 }
 
 static ci_ptr bb_arr_shift(bb_coro_arg *c, ci_ptr arr) {
 	BB_CHECK_ARRAY(arr);
-	return ci_arr_shift((ci_array *)arr);
+	BB_RETURN_NOINC(ci_arr_shift((ci_array *)arr));
 }
 
 static ci_ptr bb_arr_unshift(bb_coro_arg *c, ci_ptr arr, ci_ptr val) {
@@ -83,12 +83,12 @@ static ci_ptr bb_arr_slice(bb_coro_arg *c, ci_ptr arr, ci_ptr from, ci_ptr to) {
 	BB_CHECK_INT(from);
 	int32_t to_val = CI_IS_INT(to) ? (int32_t)CI_INT(to) : (int32_t)ci_arr_len((ci_array *)arr);
 	ci_array *result = ci_arr_slice((ci_array *)arr, (int32_t)CI_INT(from), to_val);
-	return (ci_ptr)result;
+	BB_RETURN_NOINC(result);
 }
 
 static ci_ptr bb_arr_copy(bb_coro_arg *c, ci_ptr arr) {
 	BB_CHECK_ARRAY(arr);
-	return (ci_ptr)ci_arr_copy((ci_array *)arr);
+	BB_RETURN_NOINC(ci_arr_copy((ci_array *)arr));
 }
 
 static ci_ptr bb_arr_clear(bb_coro_arg *c, ci_ptr arr) {
@@ -110,7 +110,7 @@ static ci_ptr bb_arr_get(bb_coro_arg *c, ci_ptr arr, ci_ptr idx) {
 	uint32_t i = ci_arr_wrapindex(a, CI_INT(idx));
 	if (i >= ci_arr_len(a))
 		return NULL;
-	return ci_arr_index(a, i);
+	BB_RETURN(ci_arr_index(a, i));
 }
 
 static ci_ptr bb_arr_set(bb_coro_arg *c, ci_ptr arr, ci_ptr idx, ci_ptr val) {
@@ -152,7 +152,7 @@ static bb_var_ret bb_arr_merge(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr
 	}
 
 	if (total == 0) {
-		BB_PUSH_RET((ci_ptr)dst);
+		BB_VAR_PUSH_RET_INC((ci_ptr)dst);
 		return nargs;
 	}
 
@@ -189,7 +189,7 @@ static bb_var_ret bb_arr_merge(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr
 	}
 
 	/* TODO: ci_inc each copied element when refcounting */
-	BB_PUSH_RET((ci_ptr)dst);
+	BB_VAR_PUSH_RET_INC((ci_ptr)dst);
 	return nargs;
 }
 
@@ -266,7 +266,7 @@ static bb_var_ret bb_arr_splice(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_pt
 	BB_CHECK_INT(args[1]);
 
 	uint32_t ins_n = (nargs > 2) ? (uint32_t)(nargs - 2) : 0;
-	BB_PUSH_RET(bb_arr__splice(c, (ci_array *)self,
+	BB_VAR_PUSH_RET_INC(bb_arr__splice(c, (ci_array *)self,
 	                      CI_INT(args[0]), CI_INT(args[1]),
 	                      ins_n, args + 2));
 	return nargs;
@@ -292,7 +292,7 @@ static bb_var_ret bb_arr_splice_arr(bb_coro_arg *c, ci_ptr self, size_t nargs, c
 		}
 	}
 
-	BB_PUSH_RET(bb_arr__splice(c, (ci_array *)self,
+	BB_VAR_PUSH_RET_INC(bb_arr__splice(c, (ci_array *)self,
 	                      CI_INT(args[0]), CI_INT(args[1]), n, head));
 	return nargs;
 }

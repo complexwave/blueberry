@@ -40,6 +40,16 @@ static inline void ci_number_set_cmp_precision(double eps) {
 	ci_number_cmp_precision = eps;
 }
 
+static int ci_div_by_zero_throws = 0;  /* default: produce inf/nan */
+
+static inline int ci_div_by_zero_get(void) {
+	return ci_div_by_zero_throws;
+}
+
+static inline void ci_div_by_zero_set(int v) {
+	ci_div_by_zero_throws = v;
+}
+
 /* ============================================================
  * Tag
  * ============================================================ */
@@ -119,7 +129,7 @@ static inline ci_number *ci_number_floating(double v) {
  */
 static inline ci_ptr ci_number_int(__int128 v) {
 #ifndef CI_NUMBER_ALWAYS_BOX
-	if (v == (intptr_t)v)
+	if (v >= (__int128)CI_INT_MIN && v <= (__int128)CI_INT_MAX)
 		return CI_PACKINT((intptr_t)v);
 #endif
 

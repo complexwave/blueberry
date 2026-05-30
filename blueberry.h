@@ -5,8 +5,13 @@
 #ifndef BLUEBERRY_H
 #define BLUEBERRY_H
 
+#ifdef TG_ASAN
+#define BB_MUSTTAIL
+#define BB_PRESERVE_NONE
+#else
 #define BB_MUSTTAIL    __attribute__((musttail))
 #define BB_PRESERVE_NONE __attribute__((preserve_none))
+#endif
 
 typedef struct bb_vm bb_vm;
 typedef struct bb_unit bb_unit;
@@ -19,7 +24,7 @@ typedef struct bb_cached_op bb_cached_op;
 typedef ci_ptr (*bb_op_fn)(bb_coro *c, ci_ptr a, ci_ptr b);
 typedef void  (*bb_op_fn_ext)(bb_coro *c, ci_ptr a, ci_ptr b, ci_ptr d);
 typedef intptr_t vm_dipatch_arg;
-typedef __attribute__((preserve_none)) void (*bb_fast_fn)(bb_coro *co, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg c);
+typedef BB_PRESERVE_NONE void (*bb_fast_fn)(bb_coro *co, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg c);
 
 typedef ci_ptr (*bb_cfn)(bb_coro *c, ci_ptr self, ci_ptr a0, ci_ptr a1, ci_ptr a2);
 
@@ -31,19 +36,6 @@ typedef size_t bb_var_ret;
  * caller computes ret count as returned_nargs - orig_nargs */
 typedef bb_var_ret (*bb_cfn_var)(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets);
 
-/* Write one return value into the ret window.
- * Reuses nargs as write cursor, nrets as remaining count. */
-#define BB_PUSH_RET(val) \
-    if (nrets) { args[nargs++] = (val); nrets--; }
-
-/* Push N values, then return nargs.
- * Usage: BB_RETURN(a, b, c)  or  BB_RETURN(a) */
-#define BB_RETURN(...) do {                          \
-    ci_ptr _bb_rv[] = { __VA_ARGS__ };               \
-    for (size_t _i = 0; _i < sizeof(_bb_rv)/sizeof(_bb_rv[0]) && nrets; _i++) \
-        { args[nargs++] = _bb_rv[_i]; nrets--; }    \
-    return nargs;                                    \
-} while(0)
 
 struct bb_cached_op {
 	bb_fast_fn fn;
