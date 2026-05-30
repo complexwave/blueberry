@@ -3,7 +3,7 @@
 .DEFAULT_GOAL := blueberry
 
 CC = clang-23
-CFLAGS = -Wall -O3 -march=native -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER
+CFLAGS = -Wall -O3 -march=native -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -fomit-frame-pointer -fzero-call-used-regs=skip  -Wno-unused-function -std=c11 -g -DCI_LEXER -DCI_DEBUG_NOFREE
 #-DBB_VM_DEBUG
 
 parser:
@@ -39,11 +39,16 @@ bytecode-dbg:
 tracking:
 	$(CC) $(CFLAGS) -DTGMEMLIB_TRACKING -o blueberry blueberry.c cma/cma.c -lm
 
-ASAN_FLAGS = -O0 -g3 -fno-omit-frame-pointer -fno-inline -fno-pie -no-pie -fsanitize=address -DTGMEMLIB_TRACKING -DCI_LEXER -std=c11 -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -Wno-unused-function
+ASAN_FLAGS = -O0 -g3 -fno-omit-frame-pointer -fno-inline -fno-pie -no-pie -fsanitize=address -DTGMEMLIB_TRACKING -DCI_LEXER -DCI_DEBUG_NOFREE -DCI_ASAN_TRACER -std=c11 -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -Wno-unused-function
+
+LSAN_SUPPRESS = LSAN_OPTIONS=suppressions=asan_suppress.txt
 
 asan:
 	$(CC) $(ASAN_FLAGS) -o blueberry blueberry.c cma/cma.c -lm
 	$(CC) $(ASAN_FLAGS) -o bytecode bytecode.c cma/cma.c
+
+asan-run:
+	$(LSAN_SUPPRESS) ./blueberry $(ARGS)
 
 clean:
 	rm -f parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim

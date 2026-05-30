@@ -5,7 +5,6 @@ test.failed = 0
 test.skipped = 0
 
 fn test.pass(name) {
-	print("in pass")
 	self.passed = self.passed + 1
 	print("<PASS", name, ">")
 }
@@ -31,17 +30,13 @@ fn test.assert(cond, name) {
 }
 
 fn test.equal(a, b, name) {
-	print("start call", a, b)
 	self.total = self.total + 1
-	print("in call")
 	if a == b {
-		print("call pass ", self.pass)
 		self.pass(name)
 	} else {
 		self.fail(name)
 		print("  expected:", b, "got:", a)
 	}
-	print("return call")
 }
 
 fn test.done() {

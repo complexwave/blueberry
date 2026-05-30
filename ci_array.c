@@ -262,19 +262,61 @@ int       ci_arr_eq(const ci_array *a, const ci_array *b);
  * Registration
  * ============================================================ */
 
+/*
+ * ci_dec all live elements in the circular buffer.
+ *
+ *  no wrap:   [____XXXXXXXX____]
+ *                  ^offset  ^offset+length
+ *                  |--seg1--|
+ *
+ *  wrapped:   [XXXX________XXXX]
+ *              ^seg2       ^offset
+ *              |--|        |seg1|
+ */
 static void ci_arr_destructor(void *ptr, tg_arena_t *arena) {
 	(void)arena;
 	ci_array *a = ptr;
-	/* TODO: ci_dec all elements in [offset, offset+length) */
+
+	if (a->offset + a->length <= a->size) {
+		ci_ptr *p = a->data + a->offset;
+		uint32_t count = a->length;
+		while (count--) { ci_dec(*p); p++; }
+	} else {
+		uint32_t seg1 = a->size - a->offset;
+		ci_ptr *p = a->data + a->offset;
+		uint32_t count = seg1;
+		while (count--) { ci_dec(*p); p++; }
+
+		p = a->data;
+		count = a->length - seg1;
+		while (count--) { ci_dec(*p); p++; }
+	}
+
 	free(a->data);
 	a->data = NULL;
 }
 
 /* destructor for small array slots — only frees if upgraded to full */
+/* same circular-buffer dec logic, only frees data if upgraded from small */
 static void ci_arr_small_destructor(void *ptr, tg_arena_t *arena) {
 	(void)arena;
 	ci_array *a = ptr;
-	/* TODO: ci_dec all elements in [offset, offset+length) */
+
+	if (a->offset + a->length <= a->size) {
+		ci_ptr *p = a->data + a->offset;
+		uint32_t count = a->length;
+		while (count--) { ci_dec(*p); p++; }
+	} else {
+		uint32_t seg1 = a->size - a->offset;
+		ci_ptr *p = a->data + a->offset;
+		uint32_t count = seg1;
+		while (count--) { ci_dec(*p); p++; }
+
+		p = a->data;
+		count = a->length - seg1;
+		while (count--) { ci_dec(*p); p++; }
+	}
+
 	if (!(a->gc.flags & CI_OBJ_SMALL)) {
 		free(a->data);
 		a->data = NULL;

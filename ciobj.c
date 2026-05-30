@@ -10,6 +10,10 @@
 
 tg_allocator_t *ci_alloc;
 
+#ifdef CI_DEBUG_NOFREE
+int ci_never_free = 0;
+#endif
+
 static void ci_debug_register_names(void);
 
 void ci_init(void) {

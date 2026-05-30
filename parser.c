@@ -246,7 +246,8 @@ static void ast_node_free(ast_node *n) {
 		for (uint32_t i = 0; i < ci_arr_len(n->nodes); i++) {
 			ast_node_free((ast_node *)ci_arr_index(n->nodes, i));
 		}
-		ci_free(n->nodes);
+		n->nodes->length = 0;
+		ci_dec(n->nodes);
 	} else {
 		uint32_t cnt = A_ARG_CNT(n->type);
 		for (uint32_t i = 0; i < cnt; i++) {

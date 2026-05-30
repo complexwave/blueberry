@@ -38,6 +38,9 @@
 #include "tgmemlib/tgmemlib.h"
 #include <assert.h>
 #include <unistd.h>
+#ifdef CI_ASAN_TRACER
+#include <stdlib.h>
+#endif
 
 /* ---- tag bit definitions ---- */
 
@@ -104,6 +107,9 @@ typedef void* ci_ptr;
  * Stored in gc.flags (not ptrtag) so it applies to any object type.
  * Used for dynamic promote/demote of readonly status. */
 #define CI_OBJ_READONLY (1 << 8)
+
+// object header is not from tgmemlib allocator
+#define CI_OBJ_EXTERNAL (1 << 9) 
 
 #define CI_IS_READONLY(p) (((const ci_gchdr *)(p))->flags & CI_OBJ_READONLY)
 
@@ -175,7 +181,7 @@ typedef void* ci_ptr;
 #endif
 
 	
-#define CI_IS_REFCOUNTABLE(ptr) (CI_IS_PTR(ptr) && CI_AND_TAG(ptr, CI_REFCOUNTABLE) != 0)
+#define CI_IS_REFCOUNTABLE(ptr) (CI_IS_PTR(ptr))
 #define CI_IS_TAG_READONLY(ptr) CI_AND_TAG(ptr, CI_TAG_READONLY)
 
 /* ---- GC header ---- */
@@ -183,6 +189,9 @@ typedef void* ci_ptr;
 typedef struct {
 	uint16_t refcnt;
 	uint16_t flags;
+#ifdef CI_ASAN_TRACER
+	char *asan_tracer;
+#endif
 } ci_gchdr;
 
 // upper 8: gc flags (CI_OBJ_READONLY etc.)
@@ -192,6 +201,10 @@ typedef struct {
 #define CI_GC_HDR  ci_gchdr gc
 
 /* ---- global allocator ---- */
+
+#ifdef CI_DEBUG_NOFREE
+extern int ci_never_free;
+#endif
 
 extern tg_allocator_t *ci_alloc;
 
@@ -210,12 +223,30 @@ static inline void *ci_new(uint16_t tag) {
 		ci_gchdr *hdr = (ci_gchdr *)obj;
 		hdr->refcnt = 1;
 		hdr->flags  = 0;
+#ifdef CI_ASAN_TRACER
+		hdr->asan_tracer = (char *)malloc(1);
+#endif
 	}
 	return obj;
 }
 
 /* manual free — for non-refcounted objects or forced cleanup */
 static inline void ci_free(void *ptr) {
+#ifdef CI_DEBUG_NOFREE
+	if (ci_never_free) {
+		((ci_gchdr *)ptr)->refcnt = 0xFFFF;
+		return;
+	}
+#endif
+#ifdef CI_ASAN_TRACER
+	if (CI_IS_REFCOUNTABLE(ptr)) {
+		free(((ci_gchdr *)ptr)->asan_tracer);
+	}
+#endif
+	if (((ci_gchdr *)ptr)->flags & CI_OBJ_EXTERNAL) {
+		free(ptr);
+		return;
+	}
 	tg_free(ptr);
 }
 
@@ -253,7 +284,10 @@ static inline int ci_dec(void *ptr) {
 
 	hdr->refcnt--;
 	if (hdr->refcnt == 0) {
-		tg_free(ptr);
+#ifdef CI_ASAN_TRACER
+		free(hdr->asan_tracer);
+#endif
+		ci_free(ptr);
 		return 1;
 	}
 	return 0;

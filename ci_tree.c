@@ -80,9 +80,18 @@ static void ci_tree_node_free(ci_tree_node *node) {
 	if (ci_tree_rc_sub(&node->rc, 1) > 0)
 		return;
 #endif
+	ci_map_kv *kv = node->items;
+	uint16_t count = node->nitems;
+	while (count--) {
+		ci_dec(kv->key);
+		ci_dec(kv->val);
+		kv++;
+	}
+
 	if (!node->leaf) {
-		for (int i = 0; i <= node->nitems; i++)
-			ci_tree_node_free(node->children[i]);
+		int i = node->nitems;
+		while (i >= 0)
+			ci_tree_node_free(node->children[i--]);
 	}
 	free(node);
 }

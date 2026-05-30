@@ -456,17 +456,14 @@ VM_OP static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg 
 /* CALL: a=base, b=nargs, c=nrets
  * window layout: [fn][self][arg0..argN-1][ret0..retM-1] */
 VM_OP static void __vmop_call(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm_dipatch_arg _c) {
-	ci_ptr *stack  = c->fast_stack;
 	uint32_t base    = (uint32_t)a;
 	uint32_t nargs   = (uint32_t)b;
 	uint32_t nrets   = (uint32_t)_c;
 
-	ci_ptr *win = &stack[base];
+	ci_ptr *win = &c->fast_stack[base];
 	ci_ptr fn_val   = win[0];
 	ci_ptr self_raw = win[1];
-	ci_ptr *args    = win + 2;
-	ci_ptr *rets    = win + 2 + nargs;
-
+	
 	if (!fn_val)
 		bb_coro_error(c, "CALL: nil callee");
 	
@@ -480,6 +477,9 @@ VM_OP static void __vmop_call(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm
 	ci_ptr self_val = cl->self ? cl->self : self_raw;
 
 	if (cl->fn->flags & BB_FN_NATIVE) {
+		ci_ptr *args    = win + 2;
+		ci_ptr *rets    = win + 2 + nargs;
+		
 		ci_ptr result;
 
 		if (cl->fn->flags & BB_FN_NATIVE_VAR) {
@@ -501,6 +501,7 @@ VM_OP static void __vmop_call(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm
 				nargs > 2 ? args[2] : NULL);
 		}
 
+		
 		if (nrets) {
 			ci_dec(*rets);
 			*rets = result;
@@ -510,15 +511,31 @@ VM_OP static void __vmop_call(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm
 			ci_dec(result);
 		}
 
-		goto zero_rets;
+		zero_rets:
+		while (nrets--) {
+			ci_dec(*rets);
+			*rets = NULL;
+			rets++;
+		}
+		
+		BB_DISPATCH_NEXT(c);
 	}
 
 	/* bytecode call — push frame */
 	bb_coro_pushcall(c, cl);
-
+	// this can realloc stack
+	
+	
 	bb_frame *callee = bb_coro_frame_top(c);
 	ci_ptr *callee_stack = c->stack->data + callee->stack_base;
 
+	bb_frame *caller = bb_coro_frame_caller(c);
+	ci_ptr *caller_stack = c->stack->data + caller->stack_base;
+	
+	ci_ptr *args    = (&caller_stack[base]) + 2;
+	ci_ptr *rets    = args + nargs;
+	
+	ci_inc(self_val);
 	callee_stack[0] = self_val;
 	callee_stack++;
 
@@ -530,7 +547,7 @@ VM_OP static void __vmop_call(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, vm
 		args++;
 	}
 
-	zero_rets:
+	
 	while (nrets--) {
 		ci_dec(*rets);
 		*rets = NULL;

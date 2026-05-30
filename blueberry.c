@@ -71,12 +71,21 @@ static void bb_vm_destructor(void *ptr, tg_arena_t *arena) {
 }
 
 
+static void bb_closure_destructor(void *ptr, tg_arena_t *arena) {
+	(void)arena;
+	bb_closure *cl = ptr;
+	ci_dec(cl->self);
+	if (cl->fn && (cl->fn->flags & BB_FN_NATIVE))
+		free(cl->fn);
+}
+
 static void bb_vm_types_register(void) {
 	static const tg_arena_ops vm_ops   = { .destructor = bb_vm_destructor };
 	static const tg_arena_ops coro_ops = { .destructor = bb_coro_destructor };
+	static const tg_arena_ops cl_ops   = { .destructor = bb_closure_destructor };
 	ci_register_ops(CI_BB_VM,      sizeof(bb_vm),      &vm_ops);
 	ci_register_ops(CI_BB_CORO,    sizeof(bb_coro),    &coro_ops);
-	ci_register    (CI_BB_CLOSURE, sizeof(bb_closure));
+	ci_register_ops(CI_BB_CLOSURE, sizeof(bb_closure),  &cl_ops);
 }
 
 static bb_vm *bb_vm_new(void) {
@@ -88,9 +97,8 @@ static bb_vm *bb_vm_new(void) {
 	vm->units      = ci_arr_new(4);
 	vm->prototypes = ci_map_ident_new(16);
 
-	ci_str *rtmp = ci_new(CI_STR);
+	ci_str *rtmp = ci_str_slice_new(NULL, 0, NULL);
 	rtmp->hash = 0;
-	rtmp->memory = NULL;
 	ci_nocnt(rtmp);
 	vm->istr_rtmp = rtmp;
 
@@ -111,9 +119,48 @@ static inline ci_ptr bb_closure_self(bb_closure *cl) {
 	return cl->self ? cl->self : cl;
 }
 
+/*
+ * Force-free all interned strings.
+ * istrings are ci_nocnt (saturated rc=0xFFFF), so ci_dec is a no-op on them.
+ * Walk all buckets, null each slot (so table destructor won't touch them),
+ * then ci_free each string explicitly.
+ */
+static void bb_vm_istr_freeall(bb_vm *vm) {
+	ci_map *tbl = vm->strings;
+	if (!tbl) return;
+
+	ci_map_kv *kvs = ci_map__kvs(tbl);
+	uint32_t count = ci_map_buckets(tbl);
+	while (count--) {
+		if (kvs->key) {
+			ci_ptr str = kvs->key;
+			kvs->key = NULL;
+			kvs->val = NULL;
+			ci_free(str);
+		}
+		kvs++;
+	}
+
+	if (vm->istr_rtmp) {
+		ci_free(vm->istr_rtmp);
+		vm->istr_rtmp = NULL;
+	}
+
+	ci_dec(tbl);
+	vm->strings = NULL;
+}
+
 static void bb_vm_free(bb_vm *vm) {
-	/* TODO: proper teardown of units/functions/coros */
-	(void)vm;
+	ci_dec(vm->globals);
+	vm->globals = NULL;
+
+	ci_dec(vm->prototypes);
+	vm->prototypes = NULL;
+
+	ci_dec(vm->units);
+	vm->units = NULL;
+
+	bb_vm_istr_freeall(vm);
 }
 
 static ci_ptr bb_vm_istring(bb_vm *vm, const char *s, uint32_t len) {
@@ -132,6 +179,7 @@ static ci_ptr bb_vm_istring(bb_vm *vm, const char *s, uint32_t len) {
 	if (!str)
 		bb_vm_error(vm, "istring: out of memory");
 
+	ci_inc(str); // new refcnt 1, key +1 total 2
 	ci_map_put(vm->strings, str, str);
 	ci_nocnt(str);
 	return str;
@@ -250,7 +298,13 @@ static ci_ptr bb_native_require(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0, ci_p
 
 #ifndef BB_CBC_ONLY
 	uint32_t blen;
+#ifdef CI_DEBUG_NOFREE
+	ci_never_free = 1;
+#endif
 	uint8_t *buf = bb_compile_ci_file(path, &blen);
+#ifdef CI_DEBUG_NOFREE
+	ci_never_free = 0;
+#endif
 	if (!buf)
 		bb_coro_error(c, "require: cannot compile '%s'", path);
 
@@ -796,7 +850,14 @@ int main(int argc, char **argv) {
 #ifndef BB_CBC_ONLY
 	if (ext && strcmp(ext, ".ci") == 0) {
 		/* compile .ci to bytecode */
+
+#ifdef CI_DEBUG_NOFREE
+		ci_never_free = 1;
+#endif
 		buf = bb_compile_ci_file(path, &len);
+#ifdef CI_DEBUG_NOFREE
+		ci_never_free = 0;
+#endif
 		if (!buf)
 			goto shutdown;
 	} else

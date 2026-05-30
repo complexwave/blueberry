@@ -884,6 +884,9 @@ static void b_op_pushret(b_opcode *op, b_reg r) {
 }
 
 static void b_op_pushreg(b_opcode *op, b_reg r) {
+	if(!op->var.regs)
+		b_error("regs are NULL");
+	
 	ci_arr_push(op->var.regs, (ci_ptr)r);
 }
 

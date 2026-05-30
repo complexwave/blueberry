@@ -216,7 +216,15 @@ int      ci_map_remove(ci_map *m, ci_ptr key);
 static void ci_map_destructor(void *ptr, tg_arena_t *arena) {
 	(void)arena;
 	ci_map *m = ptr;
-	/* TODO: ci_dec all keys/values when refcounting elements */
+
+	ci_map_kv *kvs = ci_map__kvs(m);
+	uint32_t count = ci_map_buckets(m);
+	while (count--) {
+		ci_dec(kvs->key);
+		ci_dec(kvs->val);
+		kvs++;
+	}
+
 	free(m->space);
 	m->space = NULL;
 }
@@ -566,9 +574,12 @@ int ci_map_delete(ci_map *m, ci_ptr key) {
 static inline void ci_map_delete_kv(ci_map *m, ci_map_kv *kv) {
 	ci_map_kv *kvs    = ci_map__kvs(m);
 	uint32_t   mask   = m->divmask;
-	
+
+	ci_dec(kv->key);
+	ci_dec(kv->val);
+
 	uint32_t pos = kv - kvs;
-	
+
 	/* backward-shift: pull subsequent entries back */
 	while (1) {
 		uint32_t next = (pos + 1) & mask;
@@ -580,7 +591,7 @@ static inline void ci_map_delete_kv(ci_map *m, ci_map_kv *kv) {
 
 		kvs[pos].key = kvs[next].key;
 		kvs[pos].val = kvs[next].val;
-		
+
 		pos = next;
 	}
 

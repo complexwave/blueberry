@@ -387,13 +387,23 @@ Defined in `blueberry_vm/api.c`.
 - `blueberry_vm/lib/gc.c`
 - `blueberry_vm/opcodes.c`
 
+**Fixed in this pass:**
+- `ci_map_destructor`: decs all key/val pairs in bucket array on free
+- `ci_arr_destructor` / `ci_arr_small_destructor`: decs live elements respecting circular buffer (1 or 2 segment loops)
+- `ci_tree_node_free`: decs all key/val pairs in each B-tree node before recursing into children
+- `ci_map_delete_kv`: decs removed key+val before backward shift
+- `bb_closure_destructor`: frees `b_malloc`'d `bb_function` for native cfuncs, decs `self`
+- `bb_vm_free`: tears down globals, prototypes, units, then istrings last
+- `bb_vm_istr_freeall`: walks istring table buckets directly, nulls slots, ci_free's saturated strings, then decs table
+- `parser.c` `ast_node_free`: zeroes array length before ci_dec to avoid double-free of already-freed ast children
+- Makefile: `asan_suppress.txt` + `make asan-run` to suppress parser/bytecode/encoder leak noise
+
 **Known bugs not yet fixed (see priority list below):**
 - `ci_map_put` on existing key: doesn't dec old value before overwrite
-- `ci_map_delete`: doesn't dec removed key+value
-- Container destructors (map, array, closure): dec of contents on free not verified
 - `bb_arr_merge` fastpath: doesn't ci_inc copied elements (marked TODO in code)
 - `HASHSTORE` opcode: incs val on store but doesn't dec old map value on key collision
 - Scope exit / function return: compiler doesn't emit dec for live locals yet
+- `bb_vm_free` globals teardown: crashes on poisoned arena memory (values freed during execution still referenced in globals map)
 
 ---
 
