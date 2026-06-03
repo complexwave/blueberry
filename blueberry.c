@@ -64,10 +64,22 @@ static void bb_vm_error(bb_vm *vm, const char *msg) {
  *  VM lifecycle
  * ================================================================ */
 
+static void bb_vm_istr_freeall(bb_vm *vm);
+
 static void bb_vm_destructor(void *ptr, tg_arena_t *arena) {
 	(void)arena;
-	(void)ptr;
-	/* TODO: teardown strings/globals/units */
+	bb_vm *vm = (bb_vm*)ptr;
+	
+	ci_free(vm->globals);
+	vm->globals = NULL;
+
+	ci_dec(vm->prototypes);
+	vm->prototypes = NULL;
+
+	ci_dec(vm->units);
+	vm->units = NULL;
+
+	bb_vm_istr_freeall(vm);
 }
 
 
@@ -75,8 +87,7 @@ static void bb_closure_destructor(void *ptr, tg_arena_t *arena) {
 	(void)arena;
 	bb_closure *cl = ptr;
 	ci_dec(cl->self);
-	if (cl->fn && (cl->fn->flags & BB_FN_NATIVE))
-		free(cl->fn);
+	ci_dec(cl->fn);
 }
 
 static void bb_vm_types_register(void) {
@@ -92,11 +103,13 @@ static bb_vm *bb_vm_new(void) {
 	bb_vm *vm = ci_new(CI_BB_VM);
 	if (!vm)
 		bb_error("bb_vm_new: out of memory");
-	vm->strings    = ci_map_ident_new(64);
-	vm->globals    = ci_map_ident_new(16);
-	vm->units      = ci_arr_new(4);
-	vm->prototypes = ci_map_ident_new(16);
+	vm->strings    = ci_map_ident_new(512);
+	vm->globals    = ci_map_ident_new(64);
+	vm->units      = ci_arr_new(32);
+	vm->prototypes = ci_map_ident_new(32);
 
+	ci_nocnt(vm->globals);
+	
 	ci_str *rtmp = ci_str_slice_new(NULL, 0, NULL);
 	rtmp->hash = 0;
 	ci_nocnt(rtmp);
@@ -150,18 +163,6 @@ static void bb_vm_istr_freeall(bb_vm *vm) {
 	vm->strings = NULL;
 }
 
-static void bb_vm_free(bb_vm *vm) {
-	ci_dec(vm->globals);
-	vm->globals = NULL;
-
-	ci_dec(vm->prototypes);
-	vm->prototypes = NULL;
-
-	ci_dec(vm->units);
-	vm->units = NULL;
-
-	bb_vm_istr_freeall(vm);
-}
 
 static ci_ptr bb_vm_istring(bb_vm *vm, const char *s, uint32_t len) {
 	ci_str *rtmp = vm->istr_rtmp;
@@ -189,37 +190,6 @@ static ci_ptr bb_vm_istring(bb_vm *vm, const char *s, uint32_t len) {
 #include "blueberry_vm/intern_str.c"
 #include "blueberry_vm/types.c"
 
-// calude: refactor this to
-// *bb_vm_native_function(vm, name, cfn, flags)
-// annd then those 2 variants are static inline calls to it
-
-static bb_closure *bb_vm_native(bb_vm *vm, const char *name, bb_cfn cfn) {
-	bb_function *fn = b_malloc(sizeof(bb_function));
-	memset(fn, 0, sizeof(bb_function));
-	fn->flags = BB_FN_NATIVE;
-	fn->name  = bb_vm_istring(vm, name, (uint32_t)strlen(name));
-	fn->cfn   = cfn;
-
-	bb_closure *cl = ci_new(CI_BB_CLOSURE);
-	if (!cl)
-		bb_vm_error(vm, "native: out of memory");
-	cl->fn = fn;
-	return cl;
-}
-
-static bb_closure *bb_vm_native_var(bb_vm *vm, const char *name, bb_cfn_var cfn) {
-	bb_function *fn = b_malloc(sizeof(bb_function));
-	memset(fn, 0, sizeof(bb_function));
-	fn->flags   = BB_FN_NATIVE | BB_FN_NATIVE_VAR;
-	fn->name    = bb_vm_istring(vm, name, (uint32_t)strlen(name));
-	fn->cfn_var = cfn;
-
-	bb_closure *cl = ci_new(CI_BB_CLOSURE);
-	if (!cl)
-		bb_vm_error(vm, "native: out of memory");
-	cl->fn = fn;
-	return cl;
-}
 
 /* ================================================================
  *  Prototype-chain lookup
@@ -252,80 +222,6 @@ static inline ci_ptr bb_proto_find(bb_vm *vm, ci_ptr obj, ci_ptr key) {
 	return NULL;
 }
 
-/* ================================================================
- *  Native functions
- * ================================================================ */
-
-static void bb_print_val(ci_ptr v) {
-	if (!v)
-		printf("null");
-	else if (CI_IS_INT(v))
-		printf("%ld", CI_INT(v));
-	else if (CI_IS_BOOL(v))
-		printf("%s", v == CI_BOOL(1) ? "true" : "false");
-	else if (CI_IS_ANY_STR(v))
-		printf("%.*s", (int)ci_str_len(v), (char *)ci_str_head(v));
-	else if (CI_IS_NUMBER(v)) {
-		printf("<number:%p:", (void *)v);
-		ci_number_print(v);
-		printf(">");
-	}
-	else
-		printf("<obj:%p>", (void *)v);
-}
-
-static bb_var_ret bb_native_print(bb_coro *c, ci_ptr self, size_t n, ci_ptr *args, size_t nrets) {
-	(void)nrets;
-	for(size_t i = 0; i < n; i++){
-		bb_print_val(args[i]);
-		printf(" ");
-	}
-	printf("\n");
-	return n;
-}
-
-
-static ci_ptr bb_native_require(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a0, ci_ptr_arg a1, ci_ptr_arg a2) {
-	if (!CI_IS_ANY_STR(a0))
-		bb_coro_error(c, "require: argument must be a string");
-
-	char path[1024];
-	size_t len = ci_str_len(a0);
-	if (len >= sizeof(path))
-		bb_coro_error(c, "require: path too long");
-	memcpy(path, ci_str_head(a0), len);
-	path[len] = '\0';
-
-#ifndef BB_CBC_ONLY
-	uint32_t blen;
-#ifdef CI_DEBUG_NOFREE
-	ci_never_free = 1;
-#endif
-	uint8_t *buf = bb_compile_ci_file(path, &blen);
-#ifdef CI_DEBUG_NOFREE
-	ci_never_free = 0;
-#endif
-	if (!buf)
-		bb_coro_error(c, "require: cannot compile '%s'", path);
-
-	bb_unit *unit = bb_vm_loadbytecode(c->vm, buf, blen);
-	free(buf);
-
-	bb_function *main_fn = (bb_function *)ci_arr_index(unit->functions, 0);
-	bb_closure *cl = bb_vm_closure(c->vm, main_fn);
-	return (ci_ptr)cl;
-#else
-	bb_coro_error(c, "require: not supported in cbc-only mode");
-#endif
-}
-
-static ci_ptr bb_native_stacktrace(bb_coro *c, ci_ptr_arg self, ci_ptr a0, ci_ptr_arg a1, ci_ptr_arg a2) {
-	int dumpregs = 0;
-	if (CI_IS_INT(a0))
-		dumpregs = (int)CI_INT(a0);
-	bb_coro_dump_stack(c, dumpregs);
-	return NULL;
-}
 
 
 /* ================================================================
@@ -546,6 +442,7 @@ VM_OP static void __vmop_loadfn(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, 
 	VM_OP_ACCESS_STACK;
 	bb_function *fn = bb_coro_frame_function(bb_coro_frame_top(c));
 	bb_function *f = ci_arr_index(fn->unit->functions, _c);
+	ci_inc(f);
 	bb_closure *cl = bb_vm_closure(c->vm, f);
 	VM_OP_SET_STACK(a, (ci_ptr)cl);
 
@@ -805,6 +702,7 @@ static void bb_vm_execute(bb_coro *c) {
 #include "blueberry_vm/lib/math.c"
 #include "blueberry_vm/lib/string.c"
 #include "blueberry_vm/lib/gc.c"
+#include "blueberry_vm/lib/global.c"
 
 /* ================================================================
  *  Compile .ci to .cbc
@@ -841,6 +739,8 @@ int main(int argc, char **argv) {
 	bb_vm_types_register();
 	bb_fast_table_init();
 
+	bb_vm *vm = bb_vm_new();
+	
 	const char *path = argv[file_start];
 	uint32_t len;
 	uint8_t *buf = NULL;
@@ -874,22 +774,7 @@ int main(int argc, char **argv) {
 	if (dump)
 		printf("=== %s (%u bytes) ===\n\n", path, len);
 
-	bb_vm *vm = bb_vm_new();
-
-	/* register built-in native functions */
-	{
-		bb_closure *print_cl = bb_vm_native_var(vm, "print", bb_native_print);
-		ci_map_put(vm->globals, print_cl->fn->name, (ci_ptr)print_cl);
-
-		bb_closure *stacktrace_cl = bb_vm_native(vm, "stacktrace", bb_native_stacktrace);
-		ci_map_put(vm->globals, stacktrace_cl->fn->name, (ci_ptr)stacktrace_cl);
-
-		bb_closure *require_cl = bb_vm_native(vm, "require", bb_native_require);
-		ci_map_put(vm->globals, require_cl->fn->name, (ci_ptr)require_cl);
-
-		bb_closure *type_cl = bb_vm_native(vm, "type", bb_native_type);
-		ci_map_put(vm->globals, type_cl->fn->name, (ci_ptr)type_cl);
-	}
+	
 
 	/* init built-in prototypes */
 	bb_proto_array_init(vm);
@@ -909,6 +794,7 @@ int main(int argc, char **argv) {
 	bb_lib_math_init(vm);
 	bb_lib_string_init(vm);
 	bb_lib_gc_init(vm);
+	bb_lib_global_init(vm);
 
 	/* expose script arguments as global argv array */
 	{
@@ -917,11 +803,9 @@ int main(int argc, char **argv) {
 		for (int j = file_start + 1; j < argc; j++) {
 			ci_ptr s = (ci_ptr)ci_str_from_cstr(argv[j]);
 			ci_arr_push(args, s);
-			ci_dec(s);
 		}
 		ci_ptr argv_key = bb_vm_istring(vm, "argv", 4);
 		ci_map_put(vm->globals, argv_key, (ci_ptr)args);
-		ci_dec((ci_ptr)args);
 	}
 
 	bb_unit *unit = bb_vm_loadbytecode(vm, buf, len);
@@ -932,12 +816,13 @@ int main(int argc, char **argv) {
 
 	if (ci_arr_len(unit->functions) == 0) {
 		fprintf(stderr, "error: no functions in unit\n");
-		bb_vm_free(vm);
 		goto shutdown;
 	}
 
 	/* Execute the first function (main/global setup) */
 	bb_function *main_fn = (bb_function *)ci_arr_index(unit->functions, 0);
+	ci_inc(main_fn);
+	
 	bb_closure *main_cl = bb_vm_closure(vm, main_fn);
 	bb_coro *c = bb_coro_new(vm);
 
@@ -948,10 +833,13 @@ int main(int argc, char **argv) {
 	if (dump)
 		bb_coro_dump_stack(c, 1);
 
-	bb_vm_free(vm);
+	//ci_dec(main_cl);
+	ci_dec(c);
 	
 	shutdown:
-
+	exit(0);
+	ci_dec(vm);
+	
 	ci_shutdown();
 	return 0;
 }

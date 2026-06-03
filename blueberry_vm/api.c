@@ -160,18 +160,17 @@ typedef struct {
 	uint32_t    flags;  /* 0 = default (bb_cfn), BB_FN_NATIVE_VAR, etc */
 } bb_cfunc;
 
-/* create a closure from a cfunc descriptor. */
-static bb_closure *bb_vm_cfunc(bb_vm *vm, const bb_cfunc *desc) {
-	bb_function *fn = b_malloc(sizeof(bb_function));
-	memset(fn, 0, sizeof(bb_function));
+/* create a closure from name + fn pointer + flags */
+static bb_closure *bb_vm_cfunc(bb_vm *vm, const char *name, void *cfn, uint32_t flags) {
+	bb_function *fn = CI_MALLOC_OBJ(sizeof(bb_function));
 
-	fn->flags = BB_FN_NATIVE | desc->flags;
-	fn->name  = bb_vm_istring(vm, desc->name, (uint32_t)strlen(desc->name));
+	fn->flags = BB_FN_NATIVE | flags;
+	fn->name  = bb_vm_istring(vm, name, (uint32_t)strlen(name));
 
-	if (desc->flags & BB_FN_NATIVE_VAR)
-		fn->cfn_var = (bb_cfn_var)desc->fn;
+	if (flags & BB_FN_NATIVE_VAR)
+		fn->cfn_var = (bb_cfn_var)cfn;
 	else
-		fn->cfn = (bb_cfn)desc->fn;
+		fn->cfn = (bb_cfn)cfn;
 
 	bb_closure *cl = ci_new(CI_BB_CLOSURE);
 	if (!cl)
@@ -181,10 +180,18 @@ static bb_closure *bb_vm_cfunc(bb_vm *vm, const bb_cfunc *desc) {
 	return cl;
 }
 
+/* register a single native function as a global */
+static void bb_func2global(bb_vm *vm, const char *name, void *cfn, uint32_t flags) {
+	bb_closure *cl = bb_vm_cfunc(vm, name, cfn, flags);
+	ci_map_put(vm->globals, cl->fn->name, (ci_ptr)cl);
+}
+
 /* register an array of cfuncs into a map */
 static void bb_func2map(bb_vm *vm, ci_map *map, const bb_cfunc *lib, uint32_t count) {
-	for (uint32_t i = 0; i < count; i++) {
-		bb_closure *cl = bb_vm_cfunc(vm, &lib[i]);
+	const bb_cfunc *desc = lib;
+	while (count--) {
+		bb_closure *cl = bb_vm_cfunc(vm, desc->name, desc->fn, desc->flags);
 		ci_map_put(map, cl->fn->name, (ci_ptr)cl);
+		desc++;
 	}
 }

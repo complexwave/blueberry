@@ -55,6 +55,7 @@ struct bb_vm {
 };
 
 struct bb_unit {
+	CI_GC_HDR_EXT;
 	ci_array *functions;
 	uint16_t str_count;
 	ci_ptr str2intern[];
@@ -64,6 +65,8 @@ struct bb_unit {
 #define ci_ptr_arg   ci_ptr __attribute__((unused))
 
 struct bb_function {
+	CI_GC_HDR_EXT;
+	
 	bb_unit *unit;
 	ci_ptr name;
 	uint32_t flags;

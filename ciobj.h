@@ -194,11 +194,32 @@ typedef struct {
 #endif
 } ci_gchdr;
 
+typedef struct {
+	uint16_t refcnt;
+	uint16_t flags;
+#ifdef CI_ASAN_TRACER
+	char *asan_tracer;
+#endif
+	tg_type_destructor_fn destructor;
+} ci_gchdr_ext;
+
+#define CI_MALLOC_OBJ(size) ({ \
+	ci_gchdr_ext *_o = malloc(size); \
+	memset(_o, 0, size); \
+	_o->refcnt = 1; \
+	_o->flags = CI_OBJ_EXTERNAL; \
+	(void*)_o; \
+})
+
+
+
 // upper 8: gc flags (CI_OBJ_READONLY etc.)
 // lower 8: user flags (per-type: CI_OBJ_SMALL, CI_OBJ_SLICE, CI_TIMER_*, etc.)
 
 /* embed in structs */
 #define CI_GC_HDR  ci_gchdr gc
+#define CI_GC_HDR_EXT  ci_gchdr_ext gc
+
 
 /* ---- global allocator ---- */
 
@@ -232,18 +253,23 @@ static inline void *ci_new(uint16_t tag) {
 
 /* manual free — for non-refcounted objects or forced cleanup */
 static inline void ci_free(void *ptr) {
+	ci_gchdr *o = (ci_gchdr *)ptr;
+	
 #ifdef CI_DEBUG_NOFREE
 	if (ci_never_free) {
-		((ci_gchdr *)ptr)->refcnt = 0xFFFF;
+		o->refcnt = 0xFFFF;
 		return;
 	}
 #endif
 #ifdef CI_ASAN_TRACER
-	if (CI_IS_REFCOUNTABLE(ptr)) {
-		free(((ci_gchdr *)ptr)->asan_tracer);
+	if (CI_IS_REFCOUNTABLE(o)) {
+		free(o->asan_tracer);
 	}
 #endif
-	if (((ci_gchdr *)ptr)->flags & CI_OBJ_EXTERNAL) {
+	if (o->flags & CI_OBJ_EXTERNAL) {
+		if(((ci_gchdr_ext *)o)->destructor)
+			((ci_gchdr_ext *)o)->destructor(o, NULL);
+		
 		free(ptr);
 		return;
 	}
@@ -266,6 +292,30 @@ static inline void ci_nocnt(void *ptr) {
 
 #else
 
+#ifdef CI_ASM_REFCNT
+
+static inline void ci_inc(void *ptr) {
+	__asm__ __volatile__ (
+		"sub $16, %%rsp\n\t"
+		"movl $0, (%%rsp)\n\t"
+		"lea (%%rsp), %%rcx\n\t"
+		"mov %[ptr], %%rax\n\t"
+		"and $0x20001, %%eax\n\t"
+		"cmp $0x20000, %%eax\n\t"
+		"cmoveq %[ptr], %%rcx\n\t"
+		"movzwl (%%rcx), %%eax\n\t"
+		"addw $1, %%ax\n\t"
+		"sbbw $0, %%ax\n\t"
+		"movw %%ax, (%%rcx)\n\t"
+		"add $16, %%rsp\n\t"
+		:
+		: [ptr] "r" ((uintptr_t)ptr)
+		: "rax", "rcx", "cc", "memory"
+	);
+}
+
+#else
+
 static inline void ci_inc(void *ptr) {
 	if (!CI_IS_REFCOUNTABLE(ptr)) return;
 
@@ -274,6 +324,8 @@ static inline void ci_inc(void *ptr) {
 	rc |= -(uint16_t)(rc == 0);   /* overflow -> 0xFFFF (sticky) */
 	hdr->refcnt = rc;
 }
+
+#endif
 
 /* returns 1 if object was freed, 0 otherwise */
 static inline int ci_dec(void *ptr) {
@@ -284,9 +336,6 @@ static inline int ci_dec(void *ptr) {
 
 	hdr->refcnt--;
 	if (hdr->refcnt == 0) {
-#ifdef CI_ASAN_TRACER
-		free(hdr->asan_tracer);
-#endif
 		ci_free(ptr);
 		return 1;
 	}

@@ -251,23 +251,20 @@ static ci_ptr bb_io_str2int(bb_coro_arg *c, ci_ptr_arg self, ci_ptr s) {
 /* ---- registration ---- */
 
 static void bb_lib_io_init(bb_vm *vm) {
-	static const struct { const char *name; void* fn; } io_lib[] = {
-		{ "file_read",   bb_io_file_read   },
-		{ "file_write",  bb_io_file_write  },
-		{ "file_append", bb_io_file_append },
-		{ "file_exists", bb_io_file_exists },
-		{ "file_size",   bb_io_file_size   },
-		{ "file_remove", bb_io_file_remove },
-		{ "file_rename", bb_io_file_rename },
-		{ "dir_list",    bb_io_dir_list    },
-		{ "dir_exists",  bb_io_dir_exists  },
-		{ "dir_create",  bb_io_dir_create  },
-		{ "exit",        bb_io_exit        },
-		{ "str2int",     bb_io_str2int     },
+	static const bb_cfunc io_lib[] = {
+		{ "file_read",   bb_io_file_read,   0 },
+		{ "file_write",  bb_io_file_write,  0 },
+		{ "file_append", bb_io_file_append, 0 },
+		{ "file_exists", bb_io_file_exists, 0 },
+		{ "file_size",   bb_io_file_size,   0 },
+		{ "file_remove", bb_io_file_remove, 0 },
+		{ "file_rename", bb_io_file_rename, 0 },
+		{ "dir_list",    bb_io_dir_list,    0 },
+		{ "dir_exists",  bb_io_dir_exists,  0 },
+		{ "dir_create",  bb_io_dir_create,  0 },
+		{ "exit",        bb_io_exit,        0 },
+		{ "str2int",     bb_io_str2int,     0 },
 	};
 
-	for (size_t i = 0; i < sizeof(io_lib) / sizeof(io_lib[0]); i++) {
-		bb_closure *cl = bb_vm_native(vm, io_lib[i].name, (bb_cfn)io_lib[i].fn);
-		ci_map_put(vm->globals, cl->fn->name, (ci_ptr)cl);
-	}
+	bb_func2map(vm, vm->globals, io_lib, sizeof(io_lib) / sizeof(io_lib[0]));
 }

@@ -1,8 +1,9 @@
 // nsieve benchmark
 
+var nsieve
 fn nsieve(m) {
     var flags = []
-    flags.resize(m)
+    flags.size(m)
     var i = 2
     while i < m {
         flags[i] = 1
@@ -24,8 +25,10 @@ fn nsieve(m) {
     print("Primes up to", m, count)
 }
 
-var N = str2int(argv[0])
+
+var N = number(argv[0])
 var i = 0
+
 while i < 3 {
     nsieve(10000 * (1 << (N - i)))
     i = i + 1

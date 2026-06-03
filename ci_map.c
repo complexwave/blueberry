@@ -256,12 +256,15 @@ static inline ci_map *ci_map_init(ci_map *m, uint32_t nbuckets) {
 		ci_free(m);
 		return NULL;
 	}
-
+	
+	m->gc.refcnt = 1;
+	m->gc.flags |= CI_MAP;
 	m->divmask    = nbuckets - 1;
 	m->used_limit = (uint32_t)(nbuckets * CI_MAP_LOAD_FACTOR);
 	m->space      = mem;
 	m->prototype  = NULL;
 	m->hashcmp    = ci_default_hashcmp;
+	
 	return m;
 }
 

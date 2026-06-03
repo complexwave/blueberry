@@ -31,6 +31,20 @@ static void bb_read_bytes(bb_reader *r, void *dst, uint32_t n) {
 	r->pos += n;
 }
 
+static void bb_unit_destructor(void *ptr, tg_arena_t *arena) {
+	(void)arena;
+	bb_unit *unit = (bb_unit *)ptr;
+	
+	ci_dec(unit->functions);
+}
+
+static void bb_function_destructor(void *ptr, tg_arena_t *arena) {
+	(void)arena;
+	bb_function *fn = (bb_function *)ptr;
+	
+	free(fn->code);
+}
+
 
 /* ================================================================
  *  Bytecode loader
@@ -78,7 +92,9 @@ static bb_unit *bb_vm_loadbytecode(bb_vm *vm, const uint8_t *buf, uint32_t len) 
 	uint16_t fn_count  = bb_read_u16(r);
 
 	/* allocate unit with flex array for str2intern */
-	bb_unit *unit = b_malloc(sizeof(bb_unit) + str_count * sizeof(ci_ptr));
+	bb_unit *unit = CI_MALLOC_OBJ(sizeof(bb_unit) + str_count * sizeof(ci_ptr));
+	unit->gc.destructor = bb_unit_destructor;
+	
 	unit->str_count = str_count;
 	unit->functions = ci_arr_new(fn_count ? fn_count : 1);
 
@@ -107,8 +123,8 @@ static bb_unit *bb_vm_loadbytecode(bb_vm *vm, const uint8_t *buf, uint32_t len) 
 
 		uint32_t code_bytes = bb_read_u32(r);
 
-		bb_function *fn = b_malloc(sizeof(bb_function));
-		memset(fn, 0, sizeof(*fn));
+		bb_function *fn = CI_MALLOC_OBJ(sizeof(bb_function));
+		fn->gc.destructor = bb_function_destructor;
 		
 		fn->unit        = unit;
 		fn->name        = (name_idx < str_count) ? unit->str2intern[name_idx] : NULL;

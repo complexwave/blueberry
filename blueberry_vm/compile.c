@@ -25,9 +25,9 @@ static uint8_t *bb_compile_ci_file(const char *ci_path, uint32_t *out_len) {
 	b_consume_codelist(cb, block);
 
 	/* IR encode pass */
-	uint32_t fcnt = ci_arr_len(unit->functions);
+	uint32_t fcnt = b_array_len(unit->functions);
 	for (uint32_t fi = 0; fi < fcnt; fi++) {
-		b_function *f = (b_function *)ci_arr_index(unit->functions, fi);
+		b_function *f = (b_function *)b_array_index(unit->functions, fi);
 		b_encode(f->cb);
 	}
 

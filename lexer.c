@@ -351,7 +351,10 @@ static int b_parser_load_buf(b_parser *p, ci_str *buf) {
 static int b_parser_load_file(b_parser *p, const char *filename) {
 	ci_str *buf = read_file_to_cistr(filename);
 	if (!buf) return 0;
-	return b_parser_load_buf(p, buf);
+	int r = b_parser_load_buf(p, buf);
+	ci_dec(buf);
+	
+	return r;
 }
 
 static b_tok b_parser_peek(b_parser *p) {

@@ -166,7 +166,9 @@ static void *tg_arena_alloc_linked(tg_arena_t *ar, int count) {
 	}
 #endif
 
+#ifdef TG_ASAN
 	void *ptr;
+#endif
 	if (ar->bump + total <= ar->end) {
 		ptr = ar->bump;
 		ar->bump += total;

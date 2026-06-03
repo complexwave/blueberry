@@ -215,12 +215,12 @@ static uint32_t bc_label_get(ci_map *m, const char *name) {
 static bc_buf *be_encode_function(b_function *f) {
 	bc_buf  *out    = bc_buf_new();
 	ci_map  *labels = ci_map_new(16);
-	uint32_t total  = ci_arr_len(f->bytecode);
+	uint32_t total  = b_array_len(f->bytecode);
 	uint32_t ic     = 0;   /* instruction (opcode) counter — VM indexes by this */
 
 	/* emit pass: encode all instructions, record labels, mark jumps */
 	for (uint32_t i = 0; i < total; i++) {
-		b_opcode *op = (b_opcode *)ci_arr_index(f->bytecode, i);
+		b_opcode *op = (b_opcode *)b_array_index(f->bytecode, i);
 
 		if (op->op == B_LABEL) {
 			bc_label_set(labels, op->r.dst->value.label, ic);
@@ -316,14 +316,14 @@ static bc_buf *be_encode_function(b_function *f) {
 		/* --- VAR encodings --- */
 
 		else if (op->enc == B_ENC_VAR || op->enc == B_ENC_VAR_STRID) {
-			uint32_t vcnt = ci_arr_len(op->var.regs);
+			uint32_t vcnt = b_array_len(op->var.regs);
 
 			if (op->op == B_RETURN || op->op == B_LOADNULL) {
 				uint32_t nwords = (vcnt + 3) / 4;
 				if (nwords > 255) b_error("%s: too many registers", b_op_names[op->op]);
 				bc_emit_var_header(out, op->op, (uint8_t)vcnt, 0, (uint8_t)nwords, 0);
 				for (uint32_t v = 0; v < vcnt; v++)
-					bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.regs, v))->number);
+					bc_buf_u8(out, ((b_reg)b_array_index(op->var.regs, v))->number);
 				bc_buf_pad4(out, nwords, vcnt);
 			}
 			else if (op->op == B_MOVETO || op->op == B_MOVEFROM) {
@@ -332,32 +332,32 @@ static bc_buf *be_encode_function(b_function *f) {
 				if (nwords > 255) b_error("%s: too many registers", b_op_names[op->op]);
 				bc_emit_var_header(out, op->op, base, (uint8_t)vcnt, (uint8_t)nwords, 0);
 				for (uint32_t v = 0; v < vcnt; v++)
-					bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.regs, v))->number);
+					bc_buf_u8(out, ((b_reg)b_array_index(op->var.regs, v))->number);
 				bc_buf_pad4(out, nwords, vcnt);
 			}
 			else if (op->op == B_NEWARRAY) {
 				if (vcnt < 1) b_error("NEWARRAY: missing dst");
-				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
+				b_reg dst = (b_reg)b_array_index(op->var.regs, 0);
 				uint32_t nelem = vcnt - 1;
 				uint32_t nwords = (nelem + 3) / 4;
 				if (nwords > 255) b_error("NEWARRAY: too many elements");
 				bc_emit_var_header(out, op->op,
 					dst->number, (uint8_t)nelem, (uint8_t)nwords, 0);
 				for (uint32_t v = 1; v < vcnt; v++)
-					bc_buf_u8(out, ((b_reg)ci_arr_index(op->var.regs, v))->number);
+					bc_buf_u8(out, ((b_reg)b_array_index(op->var.regs, v))->number);
 				bc_buf_pad4(out, nwords, nelem);
 			}
 			else if (op->op == B_NEWMAP) {
 				if (vcnt < 1) b_error("NEWMAP: missing dst");
-				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
+				b_reg dst = (b_reg)b_array_index(op->var.regs, 0);
 				if ((vcnt - 1) % 2 != 0) b_error("NEWMAP: need pairs of [val, key]");
 				uint32_t npairs = (vcnt - 1) / 2;
 				if (npairs > 255) b_error("NEWMAP: too many pairs");
 				bc_emit_var_header(out, op->op,
 					dst->number, (uint8_t)npairs, (uint8_t)npairs, 0);
 				for (uint32_t p = 0; p < npairs; p++) {
-					b_reg val = (b_reg)ci_arr_index(op->var.regs, 1 + p * 2);
-					b_reg key = (b_reg)ci_arr_index(op->var.regs, 1 + p * 2 + 1);
+					b_reg val = (b_reg)b_array_index(op->var.regs, 1 + p * 2);
+					b_reg key = (b_reg)b_array_index(op->var.regs, 1 + p * 2 + 1);
 					if (key->type == B_REG_STRING) {
 						bc_buf_u8(out, 0);
 						bc_buf_u8(out, val->number);
@@ -372,15 +372,15 @@ static bc_buf *be_encode_function(b_function *f) {
 			}
 			else if (op->op == B_HASHACCESS) {
 				if (vcnt < 2) b_error("HASHACCESS: need dst + src");
-				b_reg dst = (b_reg)ci_arr_index(op->var.regs, 0);
-				b_reg src = (b_reg)ci_arr_index(op->var.regs, 1);
+				b_reg dst = (b_reg)b_array_index(op->var.regs, 0);
+				b_reg src = (b_reg)b_array_index(op->var.regs, 1);
 				uint32_t nkeys = vcnt - 2;
 				uint32_t nwords = (nkeys + 1) / 2 + 1;
 				if (nwords > 255) b_error("HASHACCESS: too many keys");
 				bc_emit_var_header(out, op->op,
 					dst->number, src->number, (uint8_t)nwords, 0);
 				for (uint32_t k = 0; k < nkeys; k++) {
-					b_reg key = (b_reg)ci_arr_index(op->var.regs, 2 + k);
+					b_reg key = (b_reg)b_array_index(op->var.regs, 2 + k);
 					if (key->type != B_REG_STRING)
 						b_error("HASHACCESS: key must be a string id");
 					bc_buf_u16(out, (uint16_t)key->interned_string_id);
@@ -403,7 +403,7 @@ static bc_buf *be_encode_function(b_function *f) {
 
 	/* backpatch pass: resolve jump targets from actual label positions */
 	for (uint32_t i = 0; i < total; i++) {
-		b_opcode *op = (b_opcode *)ci_arr_index(f->bytecode, i);
+		b_opcode *op = (b_opcode *)b_array_index(f->bytecode, i);
 		b_reg label_reg = NULL;
 
 		if (op->op == B_JMP && op->enc == B_ENC_R0)
@@ -429,26 +429,26 @@ static bc_buf *be_encode_function(b_function *f) {
  * ================================================================ */
 
 static bc_buf *be_encode_unit(b_unit *unit) {
-	uint32_t fcnt = ci_arr_len(unit->functions);
+	uint32_t fcnt = b_array_len(unit->functions);
 
 	/* string table: code strings first, then function names */
 	bc_strtab *strtab = bc_strtab_new();
-	uint32_t str_cnt = ci_arr_len(unit->str_pool);
+	uint32_t str_cnt = b_array_len(unit->str_pool);
 	for (uint32_t i = 0; i < str_cnt; i++) {
-		ci_str *s = (ci_str *)ci_arr_index(unit->str_pool, i);
+		ci_str *s = (ci_str *)b_array_index(unit->str_pool, i);
 		uint32_t len = ci_str_len(s);
 		uint8_t *data = ci_str_head(s);
 		bc_strtab_intern(strtab, (const char *)data, len);
 	}
 	for (uint32_t i = 0; i < fcnt; i++) {
-		b_function *f = (b_function *)ci_arr_index(unit->functions, i);
+		b_function *f = (b_function *)b_array_index(unit->functions, i);
 		bc_strtab_intern(strtab, f->name, (uint32_t)strlen(f->name));
 	}
 
 	/* encode all function bodies */
 	bc_buf **fn_codes = b_malloc(fcnt * sizeof(bc_buf *));
 	for (uint32_t i = 0; i < fcnt; i++) {
-		b_function *f = (b_function *)ci_arr_index(unit->functions, i);
+		b_function *f = (b_function *)b_array_index(unit->functions, i);
 		fn_codes[i] = be_encode_function(f);
 	}
 
@@ -468,7 +468,7 @@ static bc_buf *be_encode_unit(b_unit *unit) {
 
 	/* functions */
 	for (uint32_t i = 0; i < fcnt; i++) {
-		b_function  *f  = (b_function *)ci_arr_index(unit->functions, i);
+		b_function  *f  = (b_function *)b_array_index(unit->functions, i);
 		bc_buf      *fc = fn_codes[i];
 		uint16_t name_idx  = bc_strtab_intern(strtab, f->name, (uint32_t)strlen(f->name));
 		uint8_t  reg_count = f->cb ? f->cb->reg_next : 0;
@@ -742,9 +742,9 @@ int main(int argc, char **argv) {
 		b_consume_codelist(cb, block);
 
 		/* IR encode pass */
-		uint32_t fcnt = ci_arr_len(unit->functions);
+		uint32_t fcnt = b_array_len(unit->functions);
 		for (uint32_t fi = 0; fi < fcnt; fi++) {
-			b_function *f = (b_function *)ci_arr_index(unit->functions, fi);
+			b_function *f = (b_function *)b_array_index(unit->functions, fi);
 			b_encode(f->cb);
 		}
 

@@ -228,6 +228,7 @@ VM_OP static void __vmop_iterstep(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b
 VM_OP_INLINE void bb_op_hashstore(bb_coro *c, ci_ptr map, ci_ptr key, ci_ptr val) {
 	if (!CI_IS_MAP(map))
 		bb_coro_error(c, "HASHSTORE: operand is not a map");
+	ci_inc(key);
 	ci_inc(val);
 	ci_map_put((ci_map *)map, key, val);
 }
@@ -419,6 +420,10 @@ VM_OP static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg 
 		}
 		
 		c->flags = BB_CORO_DONE;
+		
+		bb_frame *this_function = bb_coro_frame_top(c);
+		ci_dec_multi(stack, this_function->closure->fn->regs);
+		
 		bb_coro_popcall(c);
 		
 		return;
@@ -446,7 +451,6 @@ VM_OP static void bb_op_return_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg 
 
 	bb_frame *this_function = bb_coro_frame_top(c);
 	ci_dec_multi(stack, this_function->closure->fn->regs);
-	
 	
 	bb_coro_popcall(c);
 	

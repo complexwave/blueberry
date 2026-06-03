@@ -157,5 +157,8 @@ static void bb_lib_proto_init(bb_vm *vm) {
 
 	bb_func2map(vm, ns, proto_lib, sizeof(proto_lib) / sizeof(proto_lib[0]));
 
-	ci_map_put(vm->globals, bb_vm_istring(vm, "proto", 5), (ci_ptr)ns);
+	ci_map_put(vm->globals, BB_CSTR(vm, "proto"), (ci_ptr)ns);
+
+	/* global type() */
+	bb_func2global(vm, "type", bb_native_type, 0);
 }

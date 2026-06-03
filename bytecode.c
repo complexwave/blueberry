@@ -35,6 +35,39 @@ static void *b_malloc(size_t size) {
 }
 
 /* ================================================================
+ *  b_array — fixed-capacity 256-element dynamic array (no GC/refcount)
+ * ================================================================ */
+
+typedef struct {
+	uint32_t length;
+	void    *data[2560];
+} b_array;
+
+static b_array *b_array_new(void) {
+	b_array *a = b_malloc(sizeof(b_array));
+	a->length = 0;
+	return a;
+}
+
+static inline uint32_t b_array_len(const b_array *a) {
+	return a->length;
+}
+
+static inline void *b_array_index(const b_array *a, uint32_t i) {
+	return a->data[i];
+}
+
+static inline void b_array_push(b_array *a, void *val) {
+	a->data[a->length] = val;
+	
+	a->length++;
+}
+
+static inline void *b_array_pop(b_array *a) {
+	return a->data[--a->length];
+}
+
+/* ================================================================
  *  Opcodes
  * ================================================================ */
 
@@ -244,7 +277,7 @@ typedef struct b_opcode b_opcode;
 struct b_opcode {
 	uint8_t  op;
 	uint8_t  enc;
-	union {
+	struct {
 		struct {
 			b_reg dst;
 			b_reg src1;
@@ -276,8 +309,8 @@ struct b_opcode {
 			b_reg src;
 		} r;
 		struct {
-			ci_array *regs;
-			ci_array *rets;
+			b_array *regs;
+			b_array *rets;
 		} var;
 		struct {
 			b_reg dst;
@@ -305,7 +338,7 @@ struct b_function {
 	b_unit      *unit;
 	uint32_t     id;
 	char        *name;
-	ci_array    *bytecode;    /* b_opcode* */
+	b_array     *bytecode;    /* b_opcode* */
 	b_codeblock *cb;          /* root codeblock */
 	uint32_t     label_next;
 	uint8_t      arg_count;
@@ -313,8 +346,8 @@ struct b_function {
 
 struct b_unit {
 	ci_map   *str_map;    /* string → (idx+1) as ci_ptr — O(1) intern lookup */
-	ci_array *str_pool;   /* ordered strings for file writing, index = LOADSTR imm */
-	ci_array *functions;  /* b_function* */
+	b_array  *str_pool;   /* ordered strings for file writing, index = LOADSTR imm */
+	b_array  *functions;  /* b_function* */
 	uint32_t  anon_next;  /* counter for anonymous function names */
 };
 
@@ -338,15 +371,15 @@ static b_codeblock *b_codeblock_root(b_codeblock *cb);
 static b_unit *b_unit_new(void) {
 	b_unit *u = b_malloc(sizeof(b_unit));
 	u->str_map  = ci_map_new(16);
-	u->str_pool = ci_arr_new(8);
-	u->functions = ci_arr_new(8);
+	u->str_pool = b_array_new();
+	u->functions = b_array_new();
 	u->anon_next = 0;
 
 	/* reserve string ID 0 as unused by storing empty string */
 	ci_str *empty = ci_str_new(0);
 	if (!empty)
 		b_error("b_unit_new: out of memory");
-	ci_arr_push(u->str_pool, (ci_ptr)empty);
+	b_array_push(u->str_pool, (ci_ptr)empty);
 	ci_map_put(u->str_map, empty, (ci_ptr)(uintptr_t)0);
 	ci_nocnt(empty);
 
@@ -355,9 +388,9 @@ static b_unit *b_unit_new(void) {
 
 static uint16_t b_unit_intern_str(b_unit *u, const char *s, uint32_t len) {
 	/* check if already in pool by comparing content */
-	uint32_t pool_len = ci_arr_len(u->str_pool);
+	uint32_t pool_len = b_array_len(u->str_pool);
 	for (uint32_t i = 0; i < pool_len; i++) {
-		ci_str *existing = (ci_str *)ci_arr_index(u->str_pool, i);
+		ci_str *existing = (ci_str *)b_array_index(u->str_pool, i);
 		if (ci_str_len(existing) == len &&
 		    memcmp(ci_str_head(existing), s, len) == 0)
 			return (uint16_t)i;
@@ -369,8 +402,8 @@ static uint16_t b_unit_intern_str(b_unit *u, const char *s, uint32_t len) {
 		b_error("intern_str: out of memory");
 	ci_str_append(tmp, s, len);
 
-	uint16_t idx = (uint16_t)ci_arr_len(u->str_pool);
-	ci_arr_push(u->str_pool, (ci_ptr)tmp);
+	uint16_t idx = (uint16_t)b_array_len(u->str_pool);
+	b_array_push(u->str_pool, (ci_ptr)tmp);
 	ci_map_put(u->str_map, tmp, (ci_ptr)(uintptr_t)idx);
 	ci_nocnt(tmp);
 	return idx;
@@ -379,12 +412,12 @@ static uint16_t b_unit_intern_str(b_unit *u, const char *s, uint32_t len) {
 static b_function *b_function_new(b_unit *u, char *name) {
 	b_function *f = b_malloc(sizeof(b_function));
 	f->unit       = u;
-	f->id         = ci_arr_len(u->functions);
+	f->id         = b_array_len(u->functions);
 	f->name       = name;
-	f->bytecode   = ci_arr_new(64);
+	f->bytecode   = b_array_new();
 	f->cb         = NULL;
 	f->label_next = 0;
-	ci_arr_push(u->functions, (ci_ptr)f);
+	b_array_push(u->functions, (ci_ptr)f);
 	return f;
 }
 
@@ -722,7 +755,7 @@ static b_reg b_codeblock_declare(b_codeblock *cb, const char *name, uint32_t len
  * ================================================================ */
 
 static void b_emit(b_codeblock *cb, b_opcode *op) {
-	ci_arr_push(cb->func->bytecode, (ci_ptr)op);
+	b_array_push(cb->func->bytecode, (ci_ptr)op);
 }
 
 static b_opcode *b_opcode_new(void) {
@@ -845,7 +878,7 @@ static b_opcode *b_new_var(uint8_t opnum) {
 	b_opcode *op = b_opcode_new();
 	op->op  = opnum;
 	op->enc = B_ENC_VAR;
-	op->var.regs = ci_arr_new(8);
+	op->var.regs = b_array_new();
 	op->var.rets = NULL;
 	
 	return op;
@@ -854,10 +887,10 @@ static b_opcode *b_new_var(uint8_t opnum) {
 static void b_op_release_regs(b_codeblock *cb, b_opcode *op) {
 	if (op->enc != B_ENC_VAR)
 		return;
-	uint32_t cnt = ci_arr_len(op->var.regs);
+	uint32_t cnt = b_array_len(op->var.regs);
 	/* skip slot 0 — it's the dst */
 	for (uint32_t i = 1; i < cnt; i++) {
-		b_reg r = (b_reg)ci_arr_index(op->var.regs, i);
+		b_reg r = (b_reg)b_array_index(op->var.regs, i);
 		b_reg_release(cb, r);
 	}
 }
@@ -865,9 +898,9 @@ static void b_op_release_regs(b_codeblock *cb, b_opcode *op) {
 static void b_op_release_rets(b_codeblock *cb, b_opcode *op) {
 	if (op->enc != B_ENC_VAR || !op->var.rets)
 		return;
-	uint32_t cnt = ci_arr_len(op->var.rets);
+	uint32_t cnt = b_array_len(op->var.rets);
 	for (uint32_t i = 0; i < cnt; i++) {
-		b_reg r = (b_reg)ci_arr_index(op->var.rets, i);
+		b_reg r = (b_reg)b_array_index(op->var.rets, i);
 		b_reg_release(cb, r);
 	}
 }
@@ -879,15 +912,16 @@ static void b_emit_var(b_codeblock *cb, b_opcode *op) {
 
 static void b_op_pushret(b_opcode *op, b_reg r) {
 	if (!op->var.rets)
-		op->var.rets = ci_arr_new(8);
-	ci_arr_push(op->var.rets, (ci_ptr)r);
+		op->var.rets = b_array_new();
+	
+	b_array_push(op->var.rets, (ci_ptr)r);
 }
 
 static void b_op_pushreg(b_opcode *op, b_reg r) {
 	if(!op->var.regs)
 		b_error("regs are NULL");
 	
-	ci_arr_push(op->var.regs, (ci_ptr)r);
+	b_array_push(op->var.regs, r);
 }
 
 
@@ -1045,21 +1079,21 @@ static b_reg b_reg_reg(b_codeblock *cb, b_reg r) {
  * ================================================================ */
 
 static void b_encode(b_codeblock *cb) {
-	ci_array *old = cb->func->bytecode;
-	ci_array *out = ci_arr_new(ci_arr_len(old) * 2);
-	uint32_t count = ci_arr_len(old);
+	b_array *old = cb->func->bytecode;
+	b_array *out = b_array_new();
+	uint32_t count = b_array_len(old);
 
 	/* temporarily swap so b_reg_reg emits into the new array */
 	cb->func->bytecode = out;
 
 	for (uint32_t i = 0; i < count; i++) {
-		b_opcode *op = (b_opcode *)ci_arr_index(old, i);
+		b_opcode *op = (b_opcode *)b_array_index(old, i);
 
 		if (op->enc == B_ENC_VAR || op->enc == B_ENC_VAR_STRID ) {
 			/* resolve any deferred values in the reg list */
-			uint32_t vcnt = ci_arr_len(op->var.regs);
+			uint32_t vcnt = b_array_len(op->var.regs);
 			for (uint32_t v = 0; v < vcnt; v++) {
-				b_reg r = (b_reg)ci_arr_index(op->var.regs, v);
+				b_reg r = (b_reg)b_array_index(op->var.regs, v);
 
 				/* skip B_REG_STRING values for VAR_STRID encoding */
 				if (op->enc == B_ENC_VAR_STRID && r->type == B_REG_STRING)
@@ -1067,12 +1101,12 @@ static void b_encode(b_codeblock *cb) {
 
 				b_reg_reg(cb, r);
 			}
-			ci_arr_push(out, (ci_ptr)op);
+			b_array_push(out, (ci_ptr)op);
 			continue;
 		}
 
 		if (op->enc != B_ENC_DECIDE) {
-			ci_arr_push(out, (ci_ptr)op);
+			b_array_push(out, (ci_ptr)op);
 			continue;
 		}
 		
@@ -1420,8 +1454,8 @@ static void b_emit_movefrom(b_codeblock *cb, b_reg* base, b_reg *regs, uint32_t 
 static b_reg b_emit_call(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 
 	/* evaluate fn and self before allocating the window */
-	b_reg fn;
-	b_reg self_reg;
+	b_reg fn = NULL;
+	b_reg self_reg = NULL;
 
 	/* evaluate args into tmps before window allocation */
 	b_reg arg_regs[256];
@@ -1624,10 +1658,10 @@ static b_reg b_emit_assign(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 		b_reg default_ret = b_emit_call(cb, call_node, lcnt);
 		
 		/* find the CALL opcode we just emitted */
-		ci_array *bc = cb->func->bytecode;
+		b_array *bc = cb->func->bytecode;
 		b_opcode *call_op = NULL;
-		for (uint32_t i = ci_arr_len(bc); i > 0; i--) {
-			b_opcode *op = (b_opcode *)ci_arr_index(bc, i - 1);
+		for (uint32_t i = b_array_len(bc); i > 0; i--) {
+			b_opcode *op = (b_opcode *)b_array_index(bc, i - 1);
 			if (op->op == B_CALL) { call_op = op; break; }
 		}
 
@@ -2275,10 +2309,10 @@ static void b_dump_reg(b_reg r) {
 }
 
 static void b_dump_bytecode(b_function *f) {
-	uint32_t count = ci_arr_len(f->bytecode);
+	uint32_t count = b_array_len(f->bytecode);
 
 	for (uint32_t i = 0; i < count; i++) {
-		b_opcode *op = (b_opcode *)ci_arr_index(f->bytecode, i);
+		b_opcode *op = (b_opcode *)b_array_index(f->bytecode, i);
 		const char *name = (op->op < B_OP_COUNT) ? b_op_names[op->op] : "???";
 
 		printf("  [%3u] %-10s ", i, name);
@@ -2333,7 +2367,7 @@ static void b_dump_bytecode(b_function *f) {
 			break;
 		case B_ENC_VAR_STRID:
 		case B_ENC_VAR: {
-			uint32_t vcnt = ci_arr_len(op->var.regs);
+			uint32_t vcnt = b_array_len(op->var.regs);
 
 			if (op->op == B_MOVETO || op->op == B_MOVEFROM) {
 				uint8_t base = op->r.dst->number;
@@ -2342,14 +2376,14 @@ static void b_dump_bytecode(b_function *f) {
 					printf("[");
 					for (uint32_t v = 0; v < vcnt; v++) {
 						printf("%s", v ? ", " : " ");
-						b_dump_reg((b_reg)ci_arr_index(op->var.regs, v));
+						b_dump_reg((b_reg)b_array_index(op->var.regs, v));
 					}
 					printf(" ] -> R(%u)-R(%u)", base, end);
 				} else {
 					printf("R(%u)-R(%u) -> [", base, end);
 					for (uint32_t v = 0; v < vcnt; v++) {
 						printf("%s", v ? ", " : " ");
-						b_dump_reg((b_reg)ci_arr_index(op->var.regs, v));
+						b_dump_reg((b_reg)b_array_index(op->var.regs, v));
 					}
 					printf(" ]");
 				}
@@ -2359,15 +2393,15 @@ static void b_dump_bytecode(b_function *f) {
 			printf("[");
 			for (uint32_t v = 0; v < vcnt; v++) {
 				printf("%s", v ? ", " : " ");
-				b_dump_reg((b_reg)ci_arr_index(op->var.regs, v));
+				b_dump_reg((b_reg)b_array_index(op->var.regs, v));
 			}
 			printf(" ]");
 			if (op->var.rets) {
-				uint32_t rcnt = ci_arr_len(op->var.rets);
+				uint32_t rcnt = b_array_len(op->var.rets);
 				printf(" -> [");
 				for (uint32_t v = 0; v < rcnt; v++) {
 					printf("%s", v ? ", " : " ");
-					b_dump_reg((b_reg)ci_arr_index(op->var.rets, v));
+					b_dump_reg((b_reg)b_array_index(op->var.rets, v));
 				}
 				printf(" ]");
 			}
@@ -2448,12 +2482,12 @@ static void b_dump_locals(b_codeblock *cb) {
 }
 
 static void b_dump_unit(b_unit *u, const char *title) {
-	uint32_t fcnt = ci_arr_len(u->functions);
+	uint32_t fcnt = b_array_len(u->functions);
 	printf("\n=== %s (%u functions) ===\n", title, fcnt);
 
 	for (uint32_t i = 0; i < fcnt; i++) {
-		b_function *f = (b_function *)ci_arr_index(u->functions, i);
-		uint32_t opcnt = ci_arr_len(f->bytecode);
+		b_function *f = (b_function *)b_array_index(u->functions, i);
+		uint32_t opcnt = b_array_len(f->bytecode);
 		printf("\n--- [%u] %s (%u opcodes) ---\n", f->id, f->name, opcnt);
 		b_dump_locals(f->cb);
 		b_dump_bytecode(f);
@@ -2522,9 +2556,9 @@ int main(int argc, char **argv) {
 		b_dump_unit(unit, "Pre-encode");
 
 		/* encoder pass — resolve deferred encodings for all functions */
-		uint32_t fcnt = ci_arr_len(unit->functions);
+		uint32_t fcnt = b_array_len(unit->functions);
 		for (uint32_t fi = 0; fi < fcnt; fi++) {
-			b_function *f = (b_function *)ci_arr_index(unit->functions, fi);
+			b_function *f = (b_function *)b_array_index(unit->functions, fi);
 			b_encode(f->cb);
 		}
 

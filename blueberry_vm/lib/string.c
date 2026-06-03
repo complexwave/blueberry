@@ -81,6 +81,5 @@ static void bb_lib_string_init(bb_vm *vm) {
 	ci_map_put(vm->globals, bb_vm_istring(vm, "string", 6), (ci_ptr)ns);
 
 	/* global str() */
-	bb_closure *cl = bb_vm_native(vm, "str", (bb_cfn)(void *)bb_str_from);
-	ci_map_put(vm->globals, cl->fn->name, (ci_ptr)cl);
+	bb_func2global(vm, "str", bb_str_from, 0);
 }

@@ -197,9 +197,6 @@ static void bb_proto_number_init(bb_vm *vm) {
 
 	bb_set_arena_prototype(CI_NUMBER, &mp->map);
 
-	bb_closure *cl = bb_vm_native(vm, "number", bb_native_number);
-	ci_map_put(vm->globals, cl->fn->name, (ci_ptr)cl);
-
-	bb_closure *fl = bb_vm_native(vm, "float", bb_native_float);
-	ci_map_put(vm->globals, fl->fn->name, (ci_ptr)fl);
+	bb_func2global(vm, "number", bb_native_number, 0);
+	bb_func2global(vm, "float",  bb_native_float,  0);
 }

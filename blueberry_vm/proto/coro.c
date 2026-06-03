@@ -170,8 +170,6 @@ static void bb_lib_coro_init(bb_vm *vm) {
 		{ "new", bb_coro_new_fn, 0 },
 	};
 	bb_func2map(vm, coro_ns, coro_ns_lib, sizeof(coro_ns_lib) / sizeof(coro_ns_lib[0]));
-
-	ci_ptr coro_key = bb_vm_istring(vm, "coro", 4);
-	ci_map_put(vm->globals, coro_key, (ci_ptr)coro_ns);
-	ci_dec((ci_ptr)coro_ns);
+	
+	ci_map_put(vm->globals, BB_CSTR(vm, "coro"), (ci_ptr)coro_ns);
 }

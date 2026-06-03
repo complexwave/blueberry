@@ -47,7 +47,7 @@ static ci_map *bb_proto_register(bb_vm *vm, const char *name) {
 	ci_ptr n = bb_vm_istring(vm, name, (uint32_t)strlen(name));
 	
 	ci_map *m = ci_map_ident_new(16);
-	ci_nocnt(m);
+	//ci_nocnt(m);
 	
 	bb_proto_register_cistr(vm, m, n);
 	return m;
@@ -79,7 +79,7 @@ static bb_metaproto *bb_proto_register_meta(bb_vm *vm, const char *name) {
 	if (!ci_map_init(m, 16)) return NULL;
 	m->hashcmp = ci_hashcmp_identity;
 	m->gc.flags |= CI_TAG_METAPROTO;
-	ci_nocnt(m);
+	//ci_nocnt(m);
 
 	mp->op_add = NULL;
 	mp->op_sub = NULL;

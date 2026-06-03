@@ -54,17 +54,8 @@ static bb_var_ret bb_native_varrets_return(bb_coro *c, ci_ptr self, size_t nargs
 }
 
 static void bb_lib_callapi_init(bb_vm *vm) {
-	bb_closure *cl;
-
-	cl = bb_vm_native(vm, "callproxy", bb_native_callproxy);
-	ci_map_put(vm->globals, cl->fn->name, (ci_ptr)cl);
-
-	cl = bb_vm_native_var(vm, "callproxy_var", bb_native_callproxy_var);
-	ci_map_put(vm->globals, cl->fn->name, (ci_ptr)cl);
-
-	cl = bb_vm_native_var(vm, "varrets_example", bb_native_varrets_example);
-	ci_map_put(vm->globals, cl->fn->name, (ci_ptr)cl);
-
-	cl = bb_vm_native_var(vm, "varrets_return", bb_native_varrets_return);
-	ci_map_put(vm->globals, cl->fn->name, (ci_ptr)cl);
+	bb_func2global(vm, "callproxy",      bb_native_callproxy,      0);
+	bb_func2global(vm, "callproxy_var",  bb_native_callproxy_var,  BB_FN_NATIVE_VAR);
+	bb_func2global(vm, "varrets_example", bb_native_varrets_example, BB_FN_NATIVE_VAR);
+	bb_func2global(vm, "varrets_return", bb_native_varrets_return, BB_FN_NATIVE_VAR);
 }
