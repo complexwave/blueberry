@@ -10,7 +10,7 @@ static ci_ptr bb_array_new(bb_coro_arg *c, ci_ptr_arg self, ci_ptr size_arg) {
 		sz = (uint32_t)CI_INT(size_arg);
 
 	ci_array *a = ci_arr_new(sz);
-	return (ci_ptr)a;
+	BB_RETURN_NOINC(a);
 }
 
 /* ---- registration ---- */

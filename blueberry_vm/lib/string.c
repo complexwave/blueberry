@@ -11,7 +11,7 @@ static ci_ptr bb_string_new(bb_coro_arg *c, ci_ptr_arg self, ci_ptr size_arg) {
 
 	ci_str *s = ci_str_new(sz);
 	if (!s) bb_coro_error(c, "string.new: out of memory");
-	return (ci_ptr)s;
+	BB_RETURN_NOINC(s);
 }
 
 /* string.eq(a, b) — global wrapper; null if either is not a string */
@@ -39,15 +39,15 @@ static ci_ptr bb_str_from(bb_coro_arg *c, ci_ptr_arg self, ci_ptr x, ci_ptr_arg 
 	if (!x)                return BB_CSTR(vm, "null");
 	if (x == CI_BOOL(1))   return BB_CSTR(vm, "true");
 	if (x == CI_BOOL(0))   return BB_CSTR(vm, "false");
-	if (CI_IS_ANY_STR(x))  return (ci_ptr)ci_str_copy((ci_str *)x, 0);
+	if (CI_IS_ANY_STR(x))  BB_RETURN_NOINC(ci_str_copy((ci_str *)x, 0));
 
 	if (CI_IS_ANY_NUMBER(x)) {
 		ci_str *dst = ci_str_new(32);
 		if (!dst) bb_coro_error(c, "str: out of memory");
 		
 		ci_printf((ci_ptr)dst, (const uint8_t *)"%g", strlen("%g"), &x, 1);
-		
-		return (ci_ptr)dst;
+
+		BB_RETURN_NOINC(dst);
 	}
 
 	/* everything else: [typename 0xADDR] */
@@ -58,8 +58,8 @@ static ci_ptr bb_str_from(bb_coro_arg *c, ci_ptr_arg self, ci_ptr x, ci_ptr_arg 
 	ci_str *dst = ci_str_new(64);
 	if (!dst) bb_coro_error(c, "str: out of memory");
 	ci_printf((ci_ptr)dst, (const uint8_t *)"[%s 0x%p]", strlen("[%s 0x%p]"), fargs_obj, 2);
-	
-	return (ci_ptr)dst;
+
+	BB_RETURN_NOINC(dst);
 }
 
 /* ---- registration ---- */

@@ -35,7 +35,7 @@ test.equal(null, null, "null_eq_null")
 test.assert(!null, "null_is_falsy")
 
 // --- type() checks ---
-test.equal(type(42), "int", "type_int")
+test.equal(type(42), "number", "type_int")
 test.equal(type("hi"), "string", "type_string")
 test.equal(type(true), "bool", "type_bool_true")
 test.equal(type(false), "bool", "type_bool_false")

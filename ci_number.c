@@ -898,9 +898,11 @@ finalize:
 #define CI_ATOD_MAX_DIGITS CI_NUMBER_BUF_INT128
 
 
-#define CI_IS_DIGIT(c)  ((unsigned)((c) - '0') <= 9)
-#define CI_IS_WS(c)     ((c) == ' ' || (c) == '\t' || (c) == '\r' || (c) == '\n')
-#define CI_IS_EXP(c)    ((c) == 'e' || (c) == 'E')
+#define CI_IS_DIGIT(c)      ((unsigned)((c) - '0') <= 9)
+#define CI_IS_HEX_DIGIT(c) (CI_IS_DIGIT(c) || ((unsigned)((c)|32) - 'a') <= 5)
+#define CI_IS_BIN_DIGIT(c) ((c) == '0' || (c) == '1')
+#define CI_IS_WS(c)        ((c) == ' ' || (c) == '\t' || (c) == '\r' || (c) == '\n')
+#define CI_IS_EXP(c)       ((c) == 'e' || (c) == 'E')
 
 static ci_ptr ci_number_fromstring(const uint8_t *src, size_t len) {
 	const uint8_t *end = src + len;
@@ -927,6 +929,25 @@ static ci_ptr ci_number_fromstring(const uint8_t *src, size_t len) {
 	int64_t v64 = 0;
 	int digits = 0;
 
+	// 0x 0b
+	if( PEEK == '0' && ((src+2) < end)){
+		char next = src[1];
+		
+		if(HAS_DATA && (next == 'x' || next == 'X')){
+			src += 2;
+			
+			goto read_hex_i128;
+		}
+
+		if(HAS_DATA && (next == 'b' || next == 'B')){
+			src += 2;
+			
+			goto read_bin_i128;
+		}
+
+		// ignore leading zero and decode as dec, no octal support
+	}
+	
 	while (HAS_DATA && CI_IS_DIGIT(PEEK)) {
 		v64 = v64 * 10 + (NEXT - '0');
 		digits++;
@@ -963,6 +984,36 @@ static ci_ptr ci_number_fromstring(const uint8_t *src, size_t len) {
 		
 		goto expected_none;
 	}
+	
+	read_hex_i128:;
+	{
+		if (!HAS_DATA || !CI_IS_HEX_DIGIT(PEEK)) return NULL;
+
+		__int128 v128 = 0;
+
+		while (HAS_DATA && CI_IS_HEX_DIGIT(PEEK)) {
+			uint8_t c = NEXT;
+			int d = (c <= '9') ? c - '0' : (c | 32) - 'a' + 10;
+			v128 = (v128 << 4) | d;
+		}
+
+		ret = ci_number_int(neg ? -v128 : v128);
+		goto expected_none;
+	}
+
+	read_bin_i128:;
+	{
+		if (!HAS_DATA || !CI_IS_BIN_DIGIT(PEEK)) return NULL;
+
+		__int128 v128 = 0;
+
+		while (HAS_DATA && CI_IS_BIN_DIGIT(PEEK))
+			v128 = (v128 << 1) | (NEXT - '0');
+
+		ret = ci_number_int(neg ? -v128 : v128);
+		goto expected_none;
+	}
+	
 
 	read_float:;
 	{

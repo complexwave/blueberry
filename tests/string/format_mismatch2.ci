@@ -5,85 +5,85 @@ h()
 // === %x with non-number → <!NUM> ===
 print("running fmt_x_string")
 var s = string.format("%x", "ff")
-test.equal(s.eq("<!NUM>"), 1, "fmt_x_string")
+test.equal(s.eq("<!NUM>"), true, "fmt_x_string")
 
 print("running fmt_x_null")
 s = string.format("%x", null)
-test.equal(s.eq("<!NUM>"), 1, "fmt_x_null")
+test.equal(s.eq("<!NUM>"), true, "fmt_x_null")
 
 print("running fmt_x_array")
 s = string.format("%x", [255])
-test.equal(s.eq("<!NUM>"), 1, "fmt_x_array")
+test.equal(s.eq("<!NUM>"), true, "fmt_x_array")
 
 print("running fmt_X_map")
 s = string.format("%X", {})
-test.equal(s.eq("<!NUM>"), 1, "fmt_X_map")
+test.equal(s.eq("<!NUM>"), true, "fmt_X_map")
 
 print("running fmt_x_bool")
 s = string.format("%x", false)
-test.equal(s.eq("<!NUM>"), 1, "fmt_x_bool")
+test.equal(s.eq("<!NUM>"), true, "fmt_x_bool")
 
 // === %o %b with non-number → <!NUM> ===
 print("running fmt_o_string")
 s = string.format("%o", "77")
-test.equal(s.eq("<!NUM>"), 1, "fmt_o_string")
+test.equal(s.eq("<!NUM>"), true, "fmt_o_string")
 
 print("running fmt_o_null")
 s = string.format("%o", null)
-test.equal(s.eq("<!NUM>"), 1, "fmt_o_null")
+test.equal(s.eq("<!NUM>"), true, "fmt_o_null")
 
 print("running fmt_b_string")
 s = string.format("%b", "101")
-test.equal(s.eq("<!NUM>"), 1, "fmt_b_string")
+test.equal(s.eq("<!NUM>"), true, "fmt_b_string")
 
 print("running fmt_b_null")
 s = string.format("%b", null)
-test.equal(s.eq("<!NUM>"), 1, "fmt_b_null")
+test.equal(s.eq("<!NUM>"), true, "fmt_b_null")
 
 print("running fmt_b_map")
 s = string.format("%b", {})
-test.equal(s.eq("<!NUM>"), 1, "fmt_b_map")
+test.equal(s.eq("<!NUM>"), true, "fmt_b_map")
 
 // === %c with non-number → <!CHR> ===
 print("running fmt_c_string")
 s = string.format("%c", "A")
-test.equal(s.eq("<!CHR>"), 1, "fmt_c_string")
+test.equal(s.eq("<!CHR>"), true, "fmt_c_string")
 
 print("running fmt_c_null")
 s = string.format("%c", null)
-test.equal(s.eq("<!CHR>"), 1, "fmt_c_null")
+test.equal(s.eq("<!CHR>"), true, "fmt_c_null")
 
 print("running fmt_c_bool")
 s = string.format("%c", true)
-test.equal(s.eq("<!CHR>"), 1, "fmt_c_bool")
+test.equal(s.eq("<!CHR>"), true, "fmt_c_bool")
 
 print("running fmt_c_array")
 s = string.format("%c", [65])
-test.equal(s.eq("<!CHR>"), 1, "fmt_c_array")
+test.equal(s.eq("<!CHR>"), true, "fmt_c_array")
 
 print("running fmt_c_map")
 s = string.format("%c", {})
-test.equal(s.eq("<!CHR>"), 1, "fmt_c_map")
+test.equal(s.eq("<!CHR>"), true, "fmt_c_map")
 
 // === missing arguments ===
 print("running fmt_noarg_single")
 s = string.format("%d")
-test.equal(s.eq("<!ARG>"), 1, "fmt_noarg_single")
+test.equal(s.eq("<!ARG>"), true, "fmt_noarg_single")
 
 print("running fmt_noarg_second")
 s = string.format("%d %d", 1)
-test.equal(s.eq("1 <!ARG>"), 1, "fmt_noarg_second")
+test.equal(s.eq("1 <!ARG>"), true, "fmt_noarg_second")
 
 print("running fmt_noarg_all_three")
 s = string.format("%d %s %x")
-test.equal(s.eq("<!ARG> <!ARG> <!ARG>"), 1, "fmt_noarg_all_three")
+test.equal(s.eq("<!ARG> <!ARG> <!ARG>"), true, "fmt_noarg_all_three")
 
 print("running fmt_noarg_mixed")
 s = string.format("a=%d b=%s", 42)
-test.equal(s.eq("a=42 b=<!ARG>"), 1, "fmt_noarg_mixed")
+test.equal(s.eq("a=42 b=<!ARG>"), true, "fmt_noarg_mixed")
 
 print("running fmt_noarg_s")
 s = string.format("hello %s")
-test.equal(s.eq("hello <!ARG>"), 1, "fmt_noarg_s")
+test.equal(s.eq("hello <!ARG>"), true, "fmt_noarg_s")
 
 test.done()

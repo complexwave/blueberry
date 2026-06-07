@@ -63,7 +63,7 @@ static ci_ptr bb_io_file_read(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path) {
 	}
 
 	ci_str_put_tail(s, sz);
-	return (ci_ptr)s;
+	BB_RETURN_NOINC(s);
 }
 
 /* ---- file_write(path, data) ---- */
@@ -191,7 +191,7 @@ static ci_ptr bb_io_dir_list(bb_coro_arg *c, ci_ptr_arg self, ci_ptr path) {
 	}
 
 	closedir(d);
-	return (ci_ptr)arr;
+	BB_RETURN_NOINC(arr);
 }
 
 /* ---- dir_exists(path) ---- */

@@ -6,30 +6,30 @@ h()
 print("running str_append")
 var s = "hello".copy()
 s.append(" world")
-test.equal(s.eq("hello world"), 1, "str_append")
+test.equal(s.eq("hello world"), true, "str_append")
 
 print("running str_append_empty")
 var s2 = "abc".copy()
 s2.append("")
-test.equal(s2.eq("abc"), 1, "str_append_empty")
+test.equal(s2.eq("abc"), true, "str_append_empty")
 
 print("running str_append_chain")
 var s3 = "a".copy()
 s3.append("b")
 s3.append("c")
 test.equal(s3.len(), 3, "str_append_chain")
-test.equal(s3.eq("abc"), 1, "str_append_chain")
+test.equal(s3.eq("abc"), true, "str_append_chain")
 
 // === prepend ===
 print("running str_prepend")
 var p = "world".copy()
 p.prepend("hello ")
-test.equal(p.eq("hello world"), 1, "str_prepend")
+test.equal(p.eq("hello world"), true, "str_prepend")
 
 print("running str_prepend_empty")
 var p2 = "abc".copy()
 p2.prepend("")
-test.equal(p2.eq("abc"), 1, "str_prepend_empty")
+test.equal(p2.eq("abc"), true, "str_prepend_empty")
 
 // === clear ===
 print("running str_clear")
@@ -39,45 +39,45 @@ test.equal(cl.len(), 0, "str_clear")
 
 print("running str_clear_reuse")
 cl.append("new")
-test.equal(cl.eq("new"), 1, "str_clear_reuse")
+test.equal(cl.eq("new"), true, "str_clear_reuse")
 
 // === upper ===
 print("running str_upper")
 var u = "hello".copy()
 u.upper()
-test.equal(u.eq("HELLO"), 1, "str_upper")
+test.equal(u.eq("HELLO"), true, "str_upper")
 
 print("running str_upper_mixed")
 var u2 = "Hello World 123".copy()
 u2.upper()
-test.equal(u2.eq("HELLO WORLD 123"), 1, "str_upper_mixed")
+test.equal(u2.eq("HELLO WORLD 123"), true, "str_upper_mixed")
 
 // === lower ===
 print("running str_lower")
 var lo = "HELLO".copy()
 lo.lower()
-test.equal(lo.eq("hello"), 1, "str_lower")
+test.equal(lo.eq("hello"), true, "str_lower")
 
 print("running str_lower_mixed")
 var lo2 = "Hello World 123".copy()
 lo2.lower()
-test.equal(lo2.eq("hello world 123"), 1, "str_lower_mixed")
+test.equal(lo2.eq("hello world 123"), true, "str_lower_mixed")
 
 // === trim ===
 print("running str_trim_spaces")
 var t = "  hello  ".copy()
 t.trim()
-test.equal(t.eq("hello"), 1, "str_trim_spaces")
+test.equal(t.eq("hello"), true, "str_trim_spaces")
 
 print("running str_trim_tabs")
 var t2 = "\thello\t".copy()
 t2.trim()
-test.equal(t2.eq("hello"), 1, "str_trim_tabs")
+test.equal(t2.eq("hello"), true, "str_trim_tabs")
 
 print("running str_trim_none")
 var t3 = "hello".copy()
 t3.trim()
-test.equal(t3.eq("hello"), 1, "str_trim_none")
+test.equal(t3.eq("hello"), true, "str_trim_none")
 
 print("running str_trim_all")
 var t4 = "   ".copy()
@@ -88,12 +88,12 @@ test.equal(t4.len(), 0, "str_trim_all")
 print("running str_rev")
 var r = "abcde".copy()
 r.rev()
-test.equal(r.eq("edcba"), 1, "str_rev")
+test.equal(r.eq("edcba"), true, "str_rev")
 
 print("running str_rev_single")
 var r2 = "x".copy()
 r2.rev()
-test.equal(r2.eq("x"), 1, "str_rev_single")
+test.equal(r2.eq("x"), true, "str_rev_single")
 
 print("running str_rev_empty")
 var r3 = "".copy()
@@ -103,6 +103,6 @@ test.equal(r3.len(), 0, "str_rev_empty")
 print("running str_rev_palindrome")
 var r4 = "abcba".copy()
 r4.rev()
-test.equal(r4.eq("abcba"), 1, "str_rev_palindrome")
+test.equal(r4.eq("abcba"), true, "str_rev_palindrome")
 
 test.done()

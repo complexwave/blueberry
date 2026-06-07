@@ -5,76 +5,76 @@ h()
 // === multiple specifiers in one string ===
 print("running fmt_multi_3s")
 var s = string.format("%s-%s-%s", "a", "bb", "ccc")
-test.equal(s.eq("a-bb-ccc"), 1, "fmt_multi_3s")
+test.equal(s.eq("a-bb-ccc"), true, "fmt_multi_3s")
 
 print("running fmt_multi_sd")
 s = string.format("name=%s age=%d", "bob", 30)
-test.equal(s.eq("name=bob age=30"), 1, "fmt_multi_sd")
+test.equal(s.eq("name=bob age=30"), true, "fmt_multi_sd")
 
 print("running fmt_multi_dx")
 s = string.format("dec=%d hex=%x", 255, 255)
-test.equal(s.eq("dec=255 hex=ff"), 1, "fmt_multi_dx")
+test.equal(s.eq("dec=255 hex=ff"), true, "fmt_multi_dx")
 
 print("running fmt_multi_ddd")
 s = string.format("%d,%d,%d", 1, 2, 3)
-test.equal(s.eq("1,2,3"), 1, "fmt_multi_ddd")
+test.equal(s.eq("1,2,3"), true, "fmt_multi_ddd")
 
 print("running fmt_multi_sds")
 s = string.format("[%s|%d|%s]", "x", 99, "y")
-test.equal(s.eq("[x|99|y]"), 1, "fmt_multi_sds")
+test.equal(s.eq("[x|99|y]"), true, "fmt_multi_sds")
 
 // === percent escape edge cases ===
 print("running fmt_pct_start")
 s = string.format("%%start")
-test.equal(s.eq("%start"), 1, "fmt_pct_start")
+test.equal(s.eq("%start"), true, "fmt_pct_start")
 
 print("running fmt_pct_end")
 s = string.format("end%%")
-test.equal(s.eq("end%"), 1, "fmt_pct_end")
+test.equal(s.eq("end%"), true, "fmt_pct_end")
 
 print("running fmt_pct_double")
 s = string.format("%%%%")
-test.equal(s.eq("%%"), 1, "fmt_pct_double")
+test.equal(s.eq("%%"), true, "fmt_pct_double")
 
 print("running fmt_pct_between")
 s = string.format("a%%b%%c")
-test.equal(s.eq("a%b%c"), 1, "fmt_pct_between")
+test.equal(s.eq("a%b%c"), true, "fmt_pct_between")
 
 print("running fmt_pct_with_spec")
 s = string.format("100%% of %d", 42)
-test.equal(s.eq("100% of 42"), 1, "fmt_pct_with_spec")
+test.equal(s.eq("100% of 42"), true, "fmt_pct_with_spec")
 
 // === method chaining ===
 print("running fmt_chain_two")
 s = string.new(64)
 s.format("hello")
 s.format(" world")
-test.equal(s.eq("hello world"), 1, "fmt_chain_two")
+test.equal(s.eq("hello world"), true, "fmt_chain_two")
 
 print("running fmt_chain_three")
 s = string.new(64)
 s.format("a=%d ", 1)
 s.format("b=%d ", 2)
 s.format("c=%d", 3)
-test.equal(s.eq("a=1 b=2 c=3"), 1, "fmt_chain_three")
+test.equal(s.eq("a=1 b=2 c=3"), true, "fmt_chain_three")
 
 print("running fmt_chain_mixed")
 s = string.new(64)
 s.format("[%s", "start")
 s.format("|%d", 42)
 s.format("|%x]", 0xFF)
-test.equal(s.eq("[start|42|ff]"), 1, "fmt_chain_mixed")
+test.equal(s.eq("[start|42|ff]"), true, "fmt_chain_mixed")
 
 print("running fmt_chain_empty")
 s = string.new(64)
 s.format("")
 s.format("ok")
-test.equal(s.eq("ok"), 1, "fmt_chain_empty")
+test.equal(s.eq("ok"), true, "fmt_chain_empty")
 
 print("running fmt_chain_pct")
 s = string.new(64)
 s.format("100%%")
 s.format(" done")
-test.equal(s.eq("100% done"), 1, "fmt_chain_pct")
+test.equal(s.eq("100% done"), true, "fmt_chain_pct")
 
 test.done()

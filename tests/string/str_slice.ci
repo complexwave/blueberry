@@ -7,26 +7,26 @@ var s = "hello world"
 // === slice (safe copy) ===
 print("running str_slice_basic")
 var sl = s.slice(0, 5)
-test.equal(sl.eq("hello"), 1, "str_slice_basic")
+test.equal(sl.eq("hello"), true, "str_slice_basic")
 test.equal(sl.len(), 5, "str_slice_basic")
 
 print("running str_slice_mid")
-test.equal(s.slice(6, 11).eq("world"), 1, "str_slice_mid")
+test.equal(s.slice(6, 11).eq("world"), true, "str_slice_mid")
 
 print("running str_slice_single")
-test.equal(s.slice(0, 1).eq("h"), 1, "str_slice_single")
+test.equal(s.slice(0, 1).eq("h"), true, "str_slice_single")
 
 print("running str_slice_no_end")
-test.equal(s.slice(6).eq("world"), 1, "str_slice_no_end")
+test.equal(s.slice(6).eq("world"), true, "str_slice_no_end")
 
 print("running str_slice_neg_start")
-test.equal(s.slice(-5).eq("world"), 1, "str_slice_neg_start")
+test.equal(s.slice(-5).eq("world"), true, "str_slice_neg_start")
 
 print("running str_slice_neg_end")
-test.equal(s.slice(0, -6).eq("hello"), 1, "str_slice_neg_end")
+test.equal(s.slice(0, -6).eq("hello"), true, "str_slice_neg_end")
 
 print("running str_slice_clamp_end")
-test.equal(s.slice(0, 999).eq("hello world"), 1, "str_slice_clamp_end")
+test.equal(s.slice(0, 999).eq("hello world"), true, "str_slice_clamp_end")
 
 print("running str_slice_empty")
 test.equal(s.slice(5, 5).len(), 0, "str_slice_empty")
@@ -42,7 +42,7 @@ test.equal(sl.is_readonly(), false, "str_slice_is_copy")
 // === __slice (unsafe zero-copy view) ===
 print("running str___slice_basic")
 var zs = s.__slice(0, 5)
-test.equal(zs.eq("hello"), 1, "str___slice_basic")
+test.equal(zs.eq("hello"), true, "str___slice_basic")
 test.equal(zs.len(), 5, "str___slice_basic")
 
 print("running str___slice_is_slice")

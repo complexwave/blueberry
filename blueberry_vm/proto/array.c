@@ -106,18 +106,23 @@ static ci_ptr bb_arr_reverse(bb_coro_arg *c, ci_ptr arr) {
 static ci_ptr bb_arr_get(bb_coro_arg *c, ci_ptr arr, ci_ptr idx) {
 	BB_CHECK_ARRAY(arr);
 	BB_CHECK_INT(idx);
+	
 	const ci_array *a = (const ci_array *)arr;
 	uint32_t i = ci_arr_wrapindex(a, CI_INT(idx));
+	
 	if (i >= ci_arr_len(a))
 		return NULL;
+	
 	BB_RETURN(ci_arr_index(a, i));
 }
 
 static ci_ptr bb_arr_set(bb_coro_arg *c, ci_ptr arr, ci_ptr idx, ci_ptr val) {
 	BB_CHECK_ARRAY(arr);
 	BB_CHECK_INT(idx);
+	
 	ci_array *a = (ci_array *)arr;
 	uint32_t i = ci_arr_wrapindex(a, CI_INT(idx));
+	
 	if (i >= ci_arr_len(a)){
 		if(i >= INT32_MAX) return NULL;
 
@@ -128,6 +133,7 @@ static ci_ptr bb_arr_set(bb_coro_arg *c, ci_ptr arr, ci_ptr idx, ci_ptr val) {
 	ci_ptr old = ci_arr_index(a, i);
 	ci_dec(old);
 	ci_arr_set(a, i, val);
+	
 	return NULL;
 }
 

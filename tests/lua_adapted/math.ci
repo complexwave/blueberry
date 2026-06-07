@@ -12,8 +12,8 @@ fn eq(a, b, limit) {
 
 // === Basic type tests ===
 print("running type_checks")
-test.equal(type(0), "int", "type_checks_zero")
-test.equal(type(42), "int", "type_checks_int")
+test.equal(type(0), "number", "type_checks_zero")
+test.equal(type(42), "number", "type_checks_int")
 test.equal(type(true), "bool", "type_checks_bool")
 test.equal(type(null), "null", "type_checks_null")
 test.equal(type("hello"), "string", "type_checks_string")

@@ -83,7 +83,7 @@ static ci_ptr bb_typeof(bb_vm *vm, ci_ptr obj) {
 
 /* global type(obj) */
 static ci_ptr bb_native_type(bb_coro *c, ci_ptr_arg self, ci_ptr a0, ci_ptr_arg a1, ci_ptr_arg a2) {
-	return bb_typeof(c->vm, a0);
+	BB_RETURN(bb_typeof(c->vm, a0));
 }
 
 /* proto.set(obj, proto_or_name) */
@@ -96,7 +96,7 @@ static ci_ptr bb_proto_set(bb_coro_arg *c, ci_ptr_arg self, ci_ptr obj, ci_ptr p
 
 	ci_inc(map_obj->prototype);
 
-	return obj;
+	BB_RETURN(obj);
 }
 
 /* proto.get(obj) — only returns user-set prototypes on maps */
@@ -104,7 +104,7 @@ static ci_ptr bb_proto_getproto(bb_coro_arg *c, ci_ptr_arg self, ci_ptr obj) {
 	if (!obj || !CI_IS_MAP(obj))
 		return NULL;
 
-	return ((ci_map *)obj)->prototype;
+	BB_RETURN(((ci_map *)obj)->prototype);
 }
 
 /* proto.register(name, proto_map) */
@@ -123,22 +123,22 @@ static ci_ptr bb_proto_reg(bb_coro_arg *c, ci_ptr_arg self, ci_ptr name_arg, ci_
 	ci_map_put(proto, BB_CSTR(((bb_coro *)c)->vm, "typename"), name_arg);
 	ci_map_put(((bb_coro *)c)->vm->prototypes, name_arg, proto_arg);
 
-	return proto_arg;
+	BB_RETURN(proto_arg);
 }
 
 /* proto.all() — return the vm prototype registry map */
 static ci_ptr bb_proto_all(bb_coro_arg *c, ci_ptr_arg self) {
-	return (ci_ptr)((bb_coro *)c)->vm->prototypes;
+	BB_RETURN(((bb_coro *)c)->vm->prototypes);
 }
 
 /* proto.typeof(obj) — return typename string */
 static ci_ptr bb_proto_typeof(bb_coro_arg *c, ci_ptr_arg self, ci_ptr obj) {
-	return bb_typeof(((bb_coro *)c)->vm, obj);
+	BB_RETURN(bb_typeof(((bb_coro *)c)->vm, obj));
 }
 
 /* proto.of(obj) — get prototype of any value (maps + builtins) */
 static ci_ptr bb_proto_of(bb_coro_arg *c, ci_ptr_arg self, ci_ptr obj) {
-	return (ci_ptr)bb_get_proto(((bb_coro *)c)->vm, obj);
+	BB_RETURN(bb_get_proto(((bb_coro *)c)->vm, obj));
 }
 
 /* ---- registration ---- */

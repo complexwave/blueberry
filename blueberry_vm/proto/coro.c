@@ -143,7 +143,7 @@ static ci_ptr bb_coro_new_fn(bb_coro_arg *c, ci_ptr_arg self, ci_ptr fn_arg) {
 
 	bb_coro_pushcall(coro, cl);
 
-	return (ci_ptr)coro;
+	BB_RETURN_NOINC(coro);
 }
 
 /* ================================================================

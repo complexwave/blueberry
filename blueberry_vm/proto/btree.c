@@ -19,7 +19,7 @@ static ci_ptr bb_tree_set(bb_coro_arg *c, ci_ptr self, ci_ptr key, ci_ptr val) {
 static ci_ptr bb_tree_get(bb_coro_arg *c, ci_ptr self, ci_ptr key) {
 	BB_CHECK_ORDERED_MAP(self);
 	ci_tree *t = (ci_tree *)self;
-	return ci_tree_get(t, key);
+	BB_RETURN(ci_tree_get(t, key));
 }
 
 static ci_ptr bb_tree_delete(bb_coro_arg *c, ci_ptr self, ci_ptr key) {
@@ -56,7 +56,7 @@ static ci_ptr bb_tree_keys(bb_coro_arg *c, ci_ptr self) {
 		arr->data[i++] = kv->key;
 
 	arr->length = len;
-	return (ci_ptr)arr;
+	BB_RETURN_NOINC(arr);
 }
 
 static ci_ptr bb_tree_values(bb_coro_arg *c, ci_ptr self) {
@@ -74,7 +74,7 @@ static ci_ptr bb_tree_values(bb_coro_arg *c, ci_ptr self) {
 		arr->data[i++] = kv->val;
 
 	arr->length = len;
-	return (ci_ptr)arr;
+	BB_RETURN_NOINC(arr);
 }
 
 static ci_ptr bb_tree_exists(bb_coro_arg *c, ci_ptr self, ci_ptr key) {
@@ -88,7 +88,7 @@ static ci_ptr bb_tree_exists(bb_coro_arg *c, ci_ptr self, ci_ptr key) {
 
 static ci_ptr bb_tree_meta_index_get(bb_coro *c, ci_ptr self, ci_ptr key) {
 	ci_tree *t = (ci_tree *)self;
-	return ci_tree_get(t, key);
+	BB_RETURN(ci_tree_get(t, key));
 }
 
 static void bb_tree_meta_index_set(bb_coro *c, ci_ptr self, ci_ptr key, ci_ptr val) {

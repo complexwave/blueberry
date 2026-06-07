@@ -5,97 +5,97 @@ h()
 // === %e with number() — large exponents ===
 print("running fmt_e_num_1e1")
 var s = string.format("%e", number("1e1"))
-test.equal(s.eq("1e1"), 1, "fmt_e_num_1e1")
+test.equal(s.eq("1e1"), true, "fmt_e_num_1e1")
 
 print("running fmt_e_num_5e2")
 s = string.format("%e", number("5e2"))
-test.equal(s.eq("5e2"), 1, "fmt_e_num_5e2")
+test.equal(s.eq("5e2"), true, "fmt_e_num_5e2")
 
 print("running fmt_e_num_1_5e10")
 s = string.format("%e", number("1.5e10"))
-test.equal(s.eq("1.5e10"), 1, "fmt_e_num_1_5e10")
+test.equal(s.eq("1.5e10"), true, "fmt_e_num_1_5e10")
 
 print("running fmt_e_num_9_99e5")
 s = string.format("%e", number("9.99e5"))
-test.equal(s.eq("9.99e5"), 1, "fmt_e_num_9_99e5")
+test.equal(s.eq("9.99e5"), true, "fmt_e_num_9_99e5")
 
 print("running fmt_e_num_6_022e23")
 s = string.format("%e", number("6.022e23"))
-test.equal(s.eq("6.022e23"), 1, "fmt_e_num_6_022e23")
+test.equal(s.eq("6.022e23"), true, "fmt_e_num_6_022e23")
 
 print("running fmt_e_num_neg_6_022e23")
 s = string.format("%e", number("-6.022e23"))
-test.equal(s.eq("-6.022e23"), 1, "fmt_e_num_neg_6_022e23")
+test.equal(s.eq("-6.022e23"), true, "fmt_e_num_neg_6_022e23")
 
 print("running fmt_e_num_1e100")
 s = string.format("%e", number("1e100"))
-test.equal(s.eq("1e100"), 1, "fmt_e_num_1e100")
+test.equal(s.eq("1e100"), true, "fmt_e_num_1e100")
 
 // === %e with number() — small exponents ===
 print("running fmt_e_num_2_5e_3")
 s = string.format("%e", number("2.5e-3"))
-test.equal(s.eq("2.5e-3"), 1, "fmt_e_num_2_5e_3")
+test.equal(s.eq("2.5e-3"), true, "fmt_e_num_2_5e_3")
 
 print("running fmt_e_num_1_5e_10")
 s = string.format("%e", number("1.5e-10"))
-test.equal(s.eq("1.5e-10"), 1, "fmt_e_num_1_5e_10")
+test.equal(s.eq("1.5e-10"), true, "fmt_e_num_1_5e_10")
 
 print("running fmt_e_num_1e_100")
 s = string.format("%e", number("1e-100"))
-test.equal(s.eq("1e-100"), 1, "fmt_e_num_1e_100")
+test.equal(s.eq("1e-100"), true, "fmt_e_num_1e_100")
 
 print("running fmt_e_num_1e0")
 s = string.format("%e", number("1e0"))
-test.equal(s.eq("1"), 1, "fmt_e_num_1e0")
+test.equal(s.eq("1"), true, "fmt_e_num_1e0")
 
 print("running fmt_e_num_3_14159")
 s = string.format("%e", number("3.14159e0"))
-test.equal(s.eq("3.14159"), 1, "fmt_e_num_3_14159")
+test.equal(s.eq("3.14159"), true, "fmt_e_num_3_14159")
 
 // === %e with float details ===
 print("running fmt_e_1_23456789")
 s = string.format("%e", 1.23456789)
-test.equal(s.eq("1.23456789"), 1, "fmt_e_1_23456789")
+test.equal(s.eq("1.23456789"), true, "fmt_e_1_23456789")
 
 // === %e with width/padding ===
 print("running fmt_e_width_right")
 s = string.format("[%20e]", 3.14)
-test.equal(s.eq("[                3.14]"), 1, "fmt_e_width_right")
+test.equal(s.eq("[                3.14]"), true, "fmt_e_width_right")
 
 print("running fmt_e_width_left")
 s = string.format("[%-20e]", 3.14)
-test.equal(s.eq("[3.14                ]"), 1, "fmt_e_width_left")
+test.equal(s.eq("[3.14                ]"), true, "fmt_e_width_left")
 
 print("running fmt_e_width_zeropad")
 s = string.format("[%020e]", 3.14)
-test.equal(s.eq("[00000000000000003.14]"), 1, "fmt_e_width_zeropad")
+test.equal(s.eq("[00000000000000003.14]"), true, "fmt_e_width_zeropad")
 
 print("running fmt_e_width_sci")
 s = string.format("[%20e]", number("1.5e10"))
-test.equal(s.eq("[              1.5e10]"), 1, "fmt_e_width_sci")
+test.equal(s.eq("[              1.5e10]"), true, "fmt_e_width_sci")
 
 print("running fmt_e_width_neg")
 s = string.format("[%20e]", -3.14)
-test.equal(s.eq("[               -3.14]"), 1, "fmt_e_width_neg")
+test.equal(s.eq("[               -3.14]"), true, "fmt_e_width_neg")
 
 print("running fmt_e_width_neg_left")
 s = string.format("[%-20e]", -3.14)
-test.equal(s.eq("[-3.14               ]"), 1, "fmt_e_width_neg_left")
+test.equal(s.eq("[-3.14               ]"), true, "fmt_e_width_neg_left")
 
 print("running fmt_e_width_zeropad_neg")
 s = string.format("[%020e]", -3.14)
-test.equal(s.eq("[-0000000000000003.14]"), 1, "fmt_e_width_zeropad_neg")
+test.equal(s.eq("[-0000000000000003.14]"), true, "fmt_e_width_zeropad_neg")
 
 print("running fmt_e_width_small")
 s = string.format("[%10e]", 0.001)
-test.equal(s.eq("[      1e-3]"), 1, "fmt_e_width_small")
+test.equal(s.eq("[      1e-3]"), true, "fmt_e_width_small")
 
 print("running fmt_e_width_small_left")
 s = string.format("[%-10e]", 0.001)
-test.equal(s.eq("[1e-3      ]"), 1, "fmt_e_width_small_left")
+test.equal(s.eq("[1e-3      ]"), true, "fmt_e_width_small_left")
 
 print("running fmt_e_width_int")
 s = string.format("[%10e]", 42)
-test.equal(s.eq("[        42]"), 1, "fmt_e_width_int")
+test.equal(s.eq("[        42]"), true, "fmt_e_width_int")
 
 test.done()

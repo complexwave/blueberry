@@ -4,21 +4,21 @@ h()
 
 // === eq ===
 print("running str_eq_same")
-test.equal("hello".eq("hello"), 1, "str_eq_same")
+test.equal("hello".eq("hello"), true, "str_eq_same")
 
 print("running str_eq_diff")
-test.equal("hello".eq("world"), 0, "str_eq_diff")
+test.equal("hello".eq("world"), false, "str_eq_diff")
 
 print("running str_eq_diff_len")
-test.equal("hello".eq("hell"), 0, "str_eq_diff_len")
+test.equal("hello".eq("hell"), false, "str_eq_diff_len")
 
 print("running str_eq_empty")
-test.equal("".eq(""), 1, "str_eq_empty")
+test.equal("".eq(""), true, "str_eq_empty")
 
 print("running str_eq_copy")
 var s = "hello"
 var c = s.copy()
-test.equal(s.eq(c), 1, "str_eq_copy")
+test.equal(s.eq(c), true, "str_eq_copy")
 
 // === cmp ===
 print("running str_cmp_equal")

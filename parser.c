@@ -128,7 +128,6 @@ static const char *ast_kind_names[A_COUNT] = {
 
 /* list: variable-length children via ci_array (separate from arg count) */
 #define A_LIST        (1U << 19)
-
 /* aliases */
 #define A_PREFIX      A_ARG_1
 #define A_POSTFIX     A_ARG_1
@@ -142,6 +141,10 @@ static const char *ast_kind_names[A_COUNT] = {
 
 /* loop subtypes */
 #define A_DO_LOOP       (1U << 20)
+
+// expression was (parens) and should be not converted to string
+#define A_DONT_STRINGIFY        (1U << 24)
+
 
 struct ast_node {
 	uint32_t   type;    /* A_TYPE | arg count | A_LIST | subtype */
@@ -272,6 +275,7 @@ static ast_node *ast_A_EXPRESSION(ast *a);
 static ast_node *ast_consume_expression(ast *a);
 static ast_node *ast_consume_expression_list(ast *a);
 static ast_node *ast_consume_function_name(ast *a);
+static ast_node *ast_consume_single_expression(ast *a, uint32_t prio);
 
 /* ---- primitives ---- */
 
@@ -313,7 +317,7 @@ static ast_node *ast_A_IDENTIFIER(ast *a) {
 }
 
 static ast_node *ast_ident2str(ast_node *node) {
-	if(node->type == A_IDENTIFIER){
+	if(A_TYPE(node->type) == A_IDENTIFIER && !(node->type & A_DONT_STRINGIFY) ){
 		node->type = A_STRING;
 	}
 	
@@ -468,6 +472,9 @@ static ast_node *ast_wrapping_expression(ast *a, const ast_op_entry *entry) {
 	/* paren grouping: return inner as-is */
 	if (!inner)
 		return ast_newnode(a, A_EXPRLIST | A_LIST, opening);
+	
+	inner->type |= A_DONT_STRINGIFY;
+	
 	return inner;
 }
 
@@ -551,7 +558,7 @@ static ast_node *ast_strkey_infix(ast *a, ast_node *left, const ast_op_entry *en
 	b_tok op = b_parser_try_next(a->p, entry->token_type);
 	if (!op.data) return NULL;
 
-	ast_node *right = ast_expr_bp(a, entry->prio);
+	ast_node *right = ast_consume_single_expression(a, entry->prio);
 	if (!right) {
 		/* TODO: error recovery? for now just fail */
 		return NULL;
@@ -579,7 +586,9 @@ static ast_node *ast_hash_access(ast *a, ast_node *left, const ast_op_entry *ent
 	ast_node_push(n, left);
 
 	for (;;) {
-		ast_node *right = ast_expr_bp(a, entry->prio);
+		ast_node *right = NULL;
+		
+		right = ast_consume_single_expression(a, entry->prio);
 		if (!right) break;
 
 		// change type of identifier to string
@@ -867,18 +876,17 @@ static const ast_op_entry as_ops_prio[] = {
 	{  10,    L_LABEL,         ast_prefix_keyword,       A_LABEL,       NULL,                    0,             0              },
 	
 #define A_VALUE_PRIO 100
-
-	{ 105,    L_HASH_ACCESS,   NULL,                     0,            ast_hash_access,          A_HASHACCESS,  0              },
+	{ 101,    L_HASH_ACCESS,   NULL,                     0,            ast_hash_access,          A_HASHACCESS,  0              },
+	{ 101,    L_MAP_ACCESS,       NULL,                  0,            ast_strkey_infix,         A_MAPACCESS,   0              },
+	{ 101,    L_METHOD_REFERENCE, NULL,                  0,            ast_strkey_infix,         A_METHOD_REF,  0              },
 #define A_VALUE_FN_NAME 106
 	
 	/* method access */
-	{ 105,    L_MAP_ACCESS,       NULL,                  0,            ast_strkey_infix,         A_MAPACCESS,   0              },
-	{ 105,    L_METHOD_REFERENCE, NULL,                  0,            ast_strkey_infix,         A_METHOD_REF,  0              },
 	
 	{ 110,    L_CURLY_OPEN,    ast_wrapping_expression,  A_MAP_INIT,   NULL,                     0,             L_CURLY_CLOSE  },
 	{ 110,    L_PAREN_OPEN,    ast_wrapping_expression,  0,            ast_wrapping_empty_infix, A_CALL,        L_PAREN_CLOSE  },
 	{ 110,    L_BRACKET_OPEN,  ast_wrapping_expression,  A_ARRAY_INIT, ast_wrapping_infix,       A_ARRACCESS,   L_BRACKET_CLOSE},
-
+	
 	/* prefix unary */
 	{ 112,    L_SUB,           ast_simple_prefix,        A_MINUS,      NULL,                     0,             0              },
 	{ 112,    L_NOT,           ast_simple_prefix,        A_NOT,        NULL,                     0,             0              },
@@ -1032,6 +1040,22 @@ static ast_node *ast_consume_expression_list(ast *a) {
 
 static ast_node *ast_consume_function_name(ast *a) {
 	return ast_expr_bp(a, A_VALUE_FN_NAME);
+}
+
+static ast_node *ast_consume_single_expression(ast *a, uint32_t prio) {
+	b_tok tok = b_parser_peek(a->p);
+	if (!tok.data) return NULL;
+
+	if (tok.t == L_PAREN_OPEN) {
+		for (uint32_t i = 0; i < AS_OPS_PRIO_COUNT; i++) {
+			if (as_ops_prio[i].token_type == L_PAREN_OPEN && as_ops_prio[i].prefix) {
+				return as_ops_prio[i].prefix(a, &as_ops_prio[i]);
+			}
+		}
+		return NULL;
+	}
+
+	return ast_expr_bp(a, prio);
 }
 
 

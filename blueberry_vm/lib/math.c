@@ -204,7 +204,7 @@ static ci_ptr bb_math_precision(bb_coro_arg *c, ci_ptr_arg self, ci_ptr x) {
 	double old = ci_number_get_cmp_precision();
 	if (x && bb_is_number(x))
 		ci_number_set_cmp_precision(ci_number_to_double(x));
-	return (ci_ptr)ci_number_floating(old);
+	BB_RETURN_NOINC(ci_number_floating(old));
 }
 
 /* math.dividebyzero(val?) — get or set div-by-zero throw behaviour.

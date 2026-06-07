@@ -5,99 +5,99 @@ h()
 // === %g with integers ===
 print("running fmt_g_zero")
 var s = string.format("%g", 0)
-test.equal(s.eq("0"), 1, "fmt_g_zero")
+test.equal(s.eq("0"), true, "fmt_g_zero")
 
 print("running fmt_g_one")
 s = string.format("%g", 1)
-test.equal(s.eq("1"), 1, "fmt_g_one")
+test.equal(s.eq("1"), true, "fmt_g_one")
 
 print("running fmt_g_neg_one")
 s = string.format("%g", -1)
-test.equal(s.eq("-1"), 1, "fmt_g_neg_one")
+test.equal(s.eq("-1"), true, "fmt_g_neg_one")
 
 print("running fmt_g_small_int")
 s = string.format("%g", 7)
-test.equal(s.eq("7"), 1, "fmt_g_small_int")
+test.equal(s.eq("7"), true, "fmt_g_small_int")
 
 print("running fmt_g_neg_small_int")
 s = string.format("%g", -7)
-test.equal(s.eq("-7"), 1, "fmt_g_neg_small_int")
+test.equal(s.eq("-7"), true, "fmt_g_neg_small_int")
 
 print("running fmt_g_42")
 s = string.format("%g", 42)
-test.equal(s.eq("42"), 1, "fmt_g_42")
+test.equal(s.eq("42"), true, "fmt_g_42")
 
 print("running fmt_g_100")
 s = string.format("%g", 100)
-test.equal(s.eq("100"), 1, "fmt_g_100")
+test.equal(s.eq("100"), true, "fmt_g_100")
 
 print("running fmt_g_1000")
 s = string.format("%g", 1000)
-test.equal(s.eq("1000"), 1, "fmt_g_1000")
+test.equal(s.eq("1000"), true, "fmt_g_1000")
 
 print("running fmt_g_999999")
 s = string.format("%g", 999999)
-test.equal(s.eq("999999"), 1, "fmt_g_999999")
+test.equal(s.eq("999999"), true, "fmt_g_999999")
 
 print("running fmt_g_million")
 s = string.format("%g", 1000000)
-test.equal(s.eq("1000000"), 1, "fmt_g_million")
+test.equal(s.eq("1000000"), true, "fmt_g_million")
 
 print("running fmt_g_ten_million")
 s = string.format("%g", 10000000)
-test.equal(s.eq("10000000"), 1, "fmt_g_ten_million")
+test.equal(s.eq("10000000"), true, "fmt_g_ten_million")
 
 print("running fmt_g_large_int")
 s = string.format("%g", 123456789)
-test.equal(s.eq("123456789"), 1, "fmt_g_large_int")
+test.equal(s.eq("123456789"), true, "fmt_g_large_int")
 
 print("running fmt_g_neg_large_int")
 s = string.format("%g", -123456789)
-test.equal(s.eq("-123456789"), 1, "fmt_g_neg_large_int")
+test.equal(s.eq("-123456789"), true, "fmt_g_neg_large_int")
 
 // === %g with floats ===
 print("running fmt_g_half")
 s = string.format("%g", 0.5)
-test.equal(s.eq("0.5"), 1, "fmt_g_half")
+test.equal(s.eq("0.5"), true, "fmt_g_half")
 
 print("running fmt_g_neg_half")
 s = string.format("%g", -0.5)
-test.equal(s.eq("-0.5"), 1, "fmt_g_neg_half")
+test.equal(s.eq("-0.5"), true, "fmt_g_neg_half")
 
 print("running fmt_g_pi")
 s = string.format("%g", 3.14)
-test.equal(s.eq("3.14"), 1, "fmt_g_pi")
+test.equal(s.eq("3.14"), true, "fmt_g_pi")
 
 print("running fmt_g_neg_pi")
 s = string.format("%g", -3.14)
-test.equal(s.eq("-3.14"), 1, "fmt_g_neg_pi")
+test.equal(s.eq("-3.14"), true, "fmt_g_neg_pi")
 
 print("running fmt_g_tenth")
 s = string.format("%g", 0.1)
-test.equal(s.eq("0.1"), 1, "fmt_g_tenth")
+test.equal(s.eq("0.1"), true, "fmt_g_tenth")
 
 print("running fmt_g_hundredth")
 s = string.format("%g", 0.01)
-test.equal(s.eq("0.01"), 1, "fmt_g_hundredth")
+test.equal(s.eq("0.01"), true, "fmt_g_hundredth")
 
 print("running fmt_g_thousandth")
 s = string.format("%g", 0.001)
-test.equal(s.eq("0.001"), 1, "fmt_g_thousandth")
+test.equal(s.eq("0.001"), true, "fmt_g_thousandth")
 
 print("running fmt_g_ten_thousandth")
 s = string.format("%g", 0.0001)
-test.equal(s.eq("0.0001"), 1, "fmt_g_ten_thousandth")
+test.equal(s.eq("0.0001"), true, "fmt_g_ten_thousandth")
 
 print("running fmt_g_hundred_thousandth")
 s = string.format("%g", 0.00001)
-test.equal(s.eq("0.00001"), 1, "fmt_g_hundred_thousandth")
+test.equal(s.eq("0.00001"), true, "fmt_g_hundred_thousandth")
 
 print("running fmt_g_0_123")
 s = string.format("%g", 0.123)
-test.equal(s.eq("0.123"), 1, "fmt_g_0_123")
+test.equal(s.eq("0.123"), true, "fmt_g_0_123")
 
 print("running fmt_g_99_99")
 s = string.format("%g", 99.99)
-test.equal(s.eq("99.99"), 1, "fmt_g_99_99")
+test.equal(s.eq("99.99"), true, "fmt_g_99_99")
 
 test.done()

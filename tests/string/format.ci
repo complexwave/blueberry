@@ -5,64 +5,64 @@ h()
 // === %s variations ===
 print("running fmt_s_empty")
 var s = string.format("<%s>", "")
-test.equal(s.eq("<>"), 1, "fmt_s_empty")
+test.equal(s.eq("<>"), true, "fmt_s_empty")
 
 print("running fmt_s_special_chars")
 s = string.format("%s", "tab\there")
-test.equal(s.eq("tab\there"), 1, "fmt_s_special_chars")
+test.equal(s.eq("tab\there"), true, "fmt_s_special_chars")
 
 print("running fmt_s_right_pad_short")
 s = string.format("[%5s]", "abc")
-test.equal(s.eq("[  abc]"), 1, "fmt_s_right_pad_short")
+test.equal(s.eq("[  abc]"), true, "fmt_s_right_pad_short")
 
 print("running fmt_s_right_pad_exact")
 s = string.format("[%3s]", "abc")
-test.equal(s.eq("[abc]"), 1, "fmt_s_right_pad_exact")
+test.equal(s.eq("[abc]"), true, "fmt_s_right_pad_exact")
 
 print("running fmt_s_right_pad_over")
 s = string.format("[%2s]", "abcde")
-test.equal(s.eq("[abcde]"), 1, "fmt_s_right_pad_over")
+test.equal(s.eq("[abcde]"), true, "fmt_s_right_pad_over")
 
 // === %d variations ===
 print("running fmt_d_zero")
 s = string.format("%d", 0)
-test.equal(s.eq("0"), 1, "fmt_d_zero")
+test.equal(s.eq("0"), true, "fmt_d_zero")
 
 print("running fmt_d_one")
 s = string.format("%d", 1)
-test.equal(s.eq("1"), 1, "fmt_d_one")
+test.equal(s.eq("1"), true, "fmt_d_one")
 
 print("running fmt_d_large")
 s = string.format("%d", 999999)
-test.equal(s.eq("999999"), 1, "fmt_d_large")
+test.equal(s.eq("999999"), true, "fmt_d_large")
 
 print("running fmt_d_neg_large")
 s = string.format("%d", -123456)
-test.equal(s.eq("-123456"), 1, "fmt_d_neg_large")
+test.equal(s.eq("-123456"), true, "fmt_d_neg_large")
 
 print("running fmt_d_pad_wider")
 s = string.format("[%12d]", 42)
-test.equal(s.eq("[          42]"), 1, "fmt_d_pad_wider")
+test.equal(s.eq("[          42]"), true, "fmt_d_pad_wider")
 
 // === %x variations ===
 print("running fmt_x_zero")
 s = string.format("%x", 0)
-test.equal(s.eq("0"), 1, "fmt_x_zero")
+test.equal(s.eq("0"), true, "fmt_x_zero")
 
 print("running fmt_x_one")
 s = string.format("%x", 1)
-test.equal(s.eq("1"), 1, "fmt_x_one")
+test.equal(s.eq("1"), true, "fmt_x_one")
 
 print("running fmt_x_small")
 s = string.format("%x", 0xAB)
-test.equal(s.eq("ab"), 1, "fmt_x_small")
+test.equal(s.eq("ab"), true, "fmt_x_small")
 
 print("running fmt_X_mixed")
 s = string.format("%X", 0xAbCd)
-test.equal(s.eq("ABCD"), 1, "fmt_X_mixed")
+test.equal(s.eq("ABCD"), true, "fmt_X_mixed")
 
 print("running fmt_x_pad4")
 s = string.format("%04x", 0xF)
-test.equal(s.eq("000f"), 1, "fmt_x_pad4")
+test.equal(s.eq("000f"), true, "fmt_x_pad4")
 
 test.done()

@@ -83,21 +83,21 @@ static ci_ptr bb_number_meta_tostring(bb_coro *c, ci_ptr a, ci_ptr b) {
 	);
 	
 	ci_str_put_tail(s, (size_t)n);
-	
-	return (ci_ptr)s;
+
+	BB_RETURN_NOINC(s);
 }
 
 /* number(x) — parse a string into a number, or return existing numbers as-is */
 static ci_ptr bb_native_number(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a, ci_ptr_arg b, ci_ptr_arg _) {
 	if (CI_IS_NUMBER(a))
-		return a;
+		BB_RETURN(a);
 
 	if (CI_IS_INT(a))
 		return a;
 
 	if (CI_IS_ANY_STR(a)) {
 		ci_ptr r = ci_number_fromstring(ci_str_head(a), ci_str_len(a));
-		return r;  /* NULL if parse fails */
+		BB_RETURN_NOINC(r);  /* NULL if parse fails */
 	}
 
 	return NULL;
@@ -120,12 +120,12 @@ static const uint8_t *bb_float_match(const uint8_t *s, const uint8_t *end, const
 /* float(x) — like number(x) but also accepts inf, +inf, -inf, NaN */
 static ci_ptr bb_native_float(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a, ci_ptr_arg b, ci_ptr_arg _) {
 	if (CI_IS_NUMBER(a))
-		return a;
+		BB_RETURN(a);
 
 	if (CI_IS_INT(a)) {
 		ci_number *n = ci_number_new(CI_NUM_I128);
 		n->i128 = (__int128)CI_INT(a);
-		return (ci_ptr)n;
+		BB_RETURN_NOINC(n);
 	}
 
 	if (CI_IS_ANY_STR(a)) {
@@ -163,7 +163,7 @@ static ci_ptr bb_native_float(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a, ci_ptr_
 					tail++;
 
 				if (tail == end)
-					return (ci_ptr)ci_number_floating(val);
+					BB_RETURN_NOINC(ci_number_floating(val));
 
 				return NULL;
 			}
@@ -171,7 +171,7 @@ static ci_ptr bb_native_float(bb_coro_arg *c, ci_ptr_arg self, ci_ptr a, ci_ptr_
 
 		/* fall through to normal number parsing */
 		ci_ptr r = ci_number_fromstring(ci_str_head(a), ci_str_len(a));
-		return r;
+		BB_RETURN_NOINC(r);
 	}
 
 	return NULL;

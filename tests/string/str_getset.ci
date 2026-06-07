@@ -42,7 +42,7 @@ test.equal(s.get(1), 69, "str_index_set")
 print("running str_set_chain")
 var t = "abc".copy()
 t.set(0, 65).set(1, 66).set(2, 67)
-test.equal(t.eq("ABC"), 1, "str_set_chain")
+test.equal(t.eq("ABC"), true, "str_set_chain")
 
 // === verify round-trip ===
 print("running str_getset_roundtrip")

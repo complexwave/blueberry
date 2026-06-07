@@ -35,7 +35,7 @@ test.equal(s.at(-6), null, "str_at_neg_oob")
 print("running str_copy")
 var c = s.copy()
 test.equal(c.len(), 5, "str_copy")
-test.equal(c.eq(s), 1, "str_copy")
+test.equal(c.eq(s), true, "str_copy")
 
 print("running str_copy_independent")
 c.append("!")

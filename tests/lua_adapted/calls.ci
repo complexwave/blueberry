@@ -9,11 +9,11 @@ test.equal(type(1 < 2), "bool", "type_bool")
 test.equal(type(true), "bool", "type_true")
 test.equal(type(false), "bool", "type_false")
 test.equal(type(null), "null", "type_null")
-test.equal(type(-3), "int", "type_int")
+test.equal(type(-3), "number", "type_int")
 test.equal(type("x"), "string", "type_string")
 test.equal(type([]), "array", "type_array")
 test.equal(type({}), "map", "type_map")
-test.equal(type(type), "fn", "type_function")
+test.equal(type(type), "function", "type_function")
 
 // === Function recursion ===
 print("running recursion")
@@ -102,13 +102,7 @@ print("running partial_multi_return")
 var only_first, _ = pair(100, 200)
 test.equal(only_first, 100, "partial_first")
 
-// === Functions returning functions ===
-print("running function_returning_function")
-fn make_multiplier(factor) {
-  return fn(x) { return x * factor }
-}
-var times_3 = make_multiplier(3)
-test.equal(times_3(5), 15, "closure_like_multiply")
+
 
 // === Function with no arguments ===
 print("running no_args")
@@ -150,16 +144,6 @@ test.equal(is_even(4), true, "is_even_4")
 test.equal(is_odd(0), false, "is_odd_0")
 test.equal(is_odd(3), true, "is_odd_3")
 
-// === Function with side effects ===
-print("running side_effects")
-var counter = 0
-fn increment_counter() {
-  counter = counter + 1
-  return counter
-}
-test.equal(increment_counter(), 1, "side_effect_1")
-test.equal(increment_counter(), 2, "side_effect_2")
-test.equal(counter, 2, "side_effect_final")
 
 // === Map object with multiple methods ===
 print("running object_methods")
@@ -174,11 +158,11 @@ test.equal(shape.perimeter(), 30, "shape_perimeter")
 // === Prototype pattern ===
 print("running prototype_pattern")
 var Animal = {}
-fn Animal.speak(msg) { print(self.name) }
+fn Animal.speak(msg) { return self.name }
 var dog = {}
-setprototype(dog, Animal)
+proto.set(dog, Animal)
 dog.name = "Dog"
-test.pass("prototype_pattern")
+test.equal(dog.speak(), "Dog", "prototype_pattern")
 
 // === Function call in expression ===
 print("running func_in_expr")

@@ -5,103 +5,103 @@ h()
 // === %e with integers ===
 print("running fmt_e_zero")
 var s = string.format("%e", 0)
-test.equal(s.eq("0"), 1, "fmt_e_zero")
+test.equal(s.eq("0"), true, "fmt_e_zero")
 
 print("running fmt_e_one")
 s = string.format("%e", 1)
-test.equal(s.eq("1"), 1, "fmt_e_one")
+test.equal(s.eq("1"), true, "fmt_e_one")
 
 print("running fmt_e_neg_one")
 s = string.format("%e", -1)
-test.equal(s.eq("-1"), 1, "fmt_e_neg_one")
+test.equal(s.eq("-1"), true, "fmt_e_neg_one")
 
 print("running fmt_e_small_int")
 s = string.format("%e", 7)
-test.equal(s.eq("7"), 1, "fmt_e_small_int")
+test.equal(s.eq("7"), true, "fmt_e_small_int")
 
 print("running fmt_e_neg_small_int")
 s = string.format("%e", -7)
-test.equal(s.eq("-7"), 1, "fmt_e_neg_small_int")
+test.equal(s.eq("-7"), true, "fmt_e_neg_small_int")
 
 print("running fmt_e_ten")
 s = string.format("%e", 10)
-test.equal(s.eq("10"), 1, "fmt_e_ten")
+test.equal(s.eq("10"), true, "fmt_e_ten")
 
 print("running fmt_e_42")
 s = string.format("%e", 42)
-test.equal(s.eq("42"), 1, "fmt_e_42")
+test.equal(s.eq("42"), true, "fmt_e_42")
 
 print("running fmt_e_100")
 s = string.format("%e", 100)
-test.equal(s.eq("100"), 1, "fmt_e_100")
+test.equal(s.eq("100"), true, "fmt_e_100")
 
 print("running fmt_e_1000")
 s = string.format("%e", 1000)
-test.equal(s.eq("1000"), 1, "fmt_e_1000")
+test.equal(s.eq("1000"), true, "fmt_e_1000")
 
 print("running fmt_e_999999")
 s = string.format("%e", 999999)
-test.equal(s.eq("999999"), 1, "fmt_e_999999")
+test.equal(s.eq("999999"), true, "fmt_e_999999")
 
 print("running fmt_e_million")
 s = string.format("%e", 1000000)
-test.equal(s.eq("1000000"), 1, "fmt_e_million")
+test.equal(s.eq("1000000"), true, "fmt_e_million")
 
 print("running fmt_e_large_int")
 s = string.format("%e", 123456789)
-test.equal(s.eq("123456789"), 1, "fmt_e_large_int")
+test.equal(s.eq("123456789"), true, "fmt_e_large_int")
 
 print("running fmt_e_neg_large_int")
 s = string.format("%e", -123456789)
-test.equal(s.eq("-123456789"), 1, "fmt_e_neg_large_int")
+test.equal(s.eq("-123456789"), true, "fmt_e_neg_large_int")
 
 // === %e with simple floats ===
 print("running fmt_e_half")
 s = string.format("%e", 0.5)
-test.equal(s.eq("5e-1"), 1, "fmt_e_half")
+test.equal(s.eq("5e-1"), true, "fmt_e_half")
 
 print("running fmt_e_neg_half")
 s = string.format("%e", -0.5)
-test.equal(s.eq("-5e-1"), 1, "fmt_e_neg_half")
+test.equal(s.eq("-5e-1"), true, "fmt_e_neg_half")
 
 print("running fmt_e_pi")
 s = string.format("%e", 3.14)
-test.equal(s.eq("3.14"), 1, "fmt_e_pi")
+test.equal(s.eq("3.14"), true, "fmt_e_pi")
 
 print("running fmt_e_neg_pi")
 s = string.format("%e", -3.14)
-test.equal(s.eq("-3.14"), 1, "fmt_e_neg_pi")
+test.equal(s.eq("-3.14"), true, "fmt_e_neg_pi")
 
 print("running fmt_e_tenth")
 s = string.format("%e", 0.1)
-test.equal(s.eq("1e-1"), 1, "fmt_e_tenth")
+test.equal(s.eq("1e-1"), true, "fmt_e_tenth")
 
 print("running fmt_e_hundredth")
 s = string.format("%e", 0.01)
-test.equal(s.eq("1e-2"), 1, "fmt_e_hundredth")
+test.equal(s.eq("1e-2"), true, "fmt_e_hundredth")
 
 print("running fmt_e_thousandth")
 s = string.format("%e", 0.001)
-test.equal(s.eq("1e-3"), 1, "fmt_e_thousandth")
+test.equal(s.eq("1e-3"), true, "fmt_e_thousandth")
 
 print("running fmt_e_ten_thousandth")
 s = string.format("%e", 0.0001)
-test.equal(s.eq("1e-4"), 1, "fmt_e_ten_thousandth")
+test.equal(s.eq("1e-4"), true, "fmt_e_ten_thousandth")
 
 print("running fmt_e_hundred_thousandth")
 s = string.format("%e", 0.00001)
-test.equal(s.eq("1e-5"), 1, "fmt_e_hundred_thousandth")
+test.equal(s.eq("1e-5"), true, "fmt_e_hundred_thousandth")
 
 print("running fmt_e_0_123")
 s = string.format("%e", 0.123)
-test.equal(s.eq("1.23e-1"), 1, "fmt_e_0_123")
+test.equal(s.eq("1.23e-1"), true, "fmt_e_0_123")
 
 print("running fmt_e_9_999")
 s = string.format("%e", 9.999)
-test.equal(s.eq("9.999"), 1, "fmt_e_9_999")
+test.equal(s.eq("9.999"), true, "fmt_e_9_999")
 
 print("running fmt_e_99_99")
 s = string.format("%e", 99.99)
-test.equal(s.eq("9.999e1"), 1, "fmt_e_99_99")
+test.equal(s.eq("9.999e1"), true, "fmt_e_99_99")
 
 test.done()
