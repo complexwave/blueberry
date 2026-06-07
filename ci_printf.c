@@ -20,19 +20,68 @@
 #include <string.h>
 
 /* ============================================================
- * Style stubs — will call into scripting lang later
+ * Style — ANSI color/attribute lookup
+ * Syntax: %[red,bold: text ]  or  %:cyan:10d
  * ============================================================ */
 
-/* green text: \033[32m ... \033[0m */
-#define CI_STYLE_OPEN  "\033[32m"
-#define CI_STYLE_CLOSE "\033[0m"
-#define CI_STYLE_OPEN_LEN  (sizeof(CI_STYLE_OPEN) - 1)
+#define CI_STYLE_CLOSE     "\033[0m"
 #define CI_STYLE_CLOSE_LEN (sizeof(CI_STYLE_CLOSE) - 1)
+/* worst case: ~6 modifiers × 7 bytes (\033[97m) */
+#define CI_STYLE_MAX_OPEN_LEN 48
 
+typedef struct { const char *name; uint8_t nlen; uint8_t code; } ci_style_entry;
+
+static const ci_style_entry ci_style_table[] = {
+	/* single-char shortcuts — bright by default */
+	{ "r", 1, 91 }, { "g", 1, 92 }, { "b", 1, 94 },
+	{ "y", 1, 93 }, { "c", 1, 96 }, { "m", 1, 95 },
+	{ "w", 1, 97 }, { "k", 1, 90 },
+	/* uppercase = dark variants */
+	{ "R", 1, 31 }, { "G", 1, 32 }, { "B", 1, 34 },
+	{ "Y", 1, 33 }, { "C", 1, 36 }, { "M", 1, 35 },
+	{ "W", 1, 37 }, { "K", 1, 30 },
+	/* full color names — bright */
+	{ "red",     3, 91 }, { "green",   5, 92 }, { "blue",    4, 94 },
+	{ "yellow",  6, 93 }, { "cyan",    4, 96 }, { "magenta", 7, 95 },
+	{ "white",   5, 97 }, { "black",   5, 90 },
+	/* attributes */
+	{ "bold",   4,  1 }, { "dim",    3,  2 }, { "italic", 6,  3 },
+	{ "ul",     2,  4 }, { "strike", 6,  9 },
+};
+#define CI_STYLE_TABLE_LEN (sizeof(ci_style_table) / sizeof(ci_style_table[0]))
+
+/* Emit \033[Nm sequences for each comma-separated token in name[0..len).
+ * Returns bytes written. Silently skips unknown names. */
 static int ci_fmt_style_open(uint8_t *out, const uint8_t *name, size_t len) {
-	(void)name; (void)len;
-	memcpy(out, CI_STYLE_OPEN, CI_STYLE_OPEN_LEN);
-	return (int)CI_STYLE_OPEN_LEN;
+	uint8_t *p = out;
+	const uint8_t *cur = name;
+	const uint8_t *end = name + len;
+
+	while (cur < end) {
+		while (cur < end && *cur == ' ') cur++;
+
+		const uint8_t *tok = cur;
+		while (cur < end && *cur != ',') cur++;
+		size_t tlen = (size_t)(cur - tok);
+		if (cur < end) cur++; /* skip , */
+
+		while (tlen > 0 && tok[tlen - 1] == ' ') tlen--;
+		if (!tlen) continue;
+
+		for (size_t i = 0; i < CI_STYLE_TABLE_LEN; i++) {
+			if (ci_style_table[i].nlen == tlen &&
+			    memcmp(ci_style_table[i].name, tok, tlen) == 0) {
+				uint8_t code = ci_style_table[i].code;
+				*p++ = '\033'; *p++ = '[';
+				if (code >= 10) { *p++ = '0' + code / 10; }
+				*p++ = '0' + code % 10;
+				*p++ = 'm';
+				break;
+			}
+		}
+	}
+
+	return (int)(p - out);
 }
 
 static int ci_fmt_style_close(uint8_t *out, ci_ptr ctx) {
@@ -185,7 +234,7 @@ static int ci_printf(ci_ptr dst,
 
 			if (HAS_DATA) cur++; /* consume : */
 
-			ENSURE_SPACE(CI_STYLE_OPEN_LEN);
+			ENSURE_SPACE(CI_STYLE_MAX_OPEN_LEN);
 			out += ci_fmt_style_open(out, sty, sty_len);
 			in_style = (ci_ptr)1; /* TODO: real style context */
 
