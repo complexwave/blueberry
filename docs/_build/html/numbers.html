@@ -1,0 +1,721 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Numbers &mdash; Blueberry  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=8bde7d8b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Arrays" href="arrays.html" />
+    <link rel="prev" title="Strings" href="strings.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Blueberry
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#building">Building</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#hello-world">Hello World</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="syntax.html">Syntax</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#variables">Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#types">Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#strings">Strings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#arrays">Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#maps">Maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#operators">Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#arithmetic">Arithmetic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#comparison">Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#logical">Logical</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#control-flow">Control Flow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#if-else">if / else</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#for-in">for-in</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#while">while</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#break">break</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#functions">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#prototype-oop">Prototype OOP</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="control-flow.html">Control Flow</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="control-flow.html#if-else">if / else</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="control-flow.html#truthy-falsy">Truthy / falsy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="control-flow.html#while">while</a></li>
+<li class="toctree-l2"><a class="reference internal" href="control-flow.html#do-while">do-while</a></li>
+<li class="toctree-l2"><a class="reference internal" href="control-flow.html#for-in">for-in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="control-flow.html#goto">goto</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="strings.html">Strings</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#introduction">Introduction</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#immutable-literals">Immutable literals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#mutable-strings-and-the-copy-pattern">Mutable strings and the copy pattern</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#creating-strings-from-scratch">Creating strings from scratch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#slices">Slices</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#string-namespace"><code class="docutils literal notranslate"><span class="pre">string</span></code> namespace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-new-size"><code class="docutils literal notranslate"><span class="pre">string.new(size?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-format-fmt-args-string-printf"><code class="docutils literal notranslate"><span class="pre">string.format(fmt,</span> <span class="pre">args...)</span></code> / <code class="docutils literal notranslate"><span class="pre">string.printf</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-eq-a-b"><code class="docutils literal notranslate"><span class="pre">string.eq(a,</span> <span class="pre">b)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-cmp-a-b"><code class="docutils literal notranslate"><span class="pre">string.cmp(a,</span> <span class="pre">b)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#object-methods">Object Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#len"><code class="docutils literal notranslate"><span class="pre">.len()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#size-n"><code class="docutils literal notranslate"><span class="pre">.size(n?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#is-readonly"><code class="docutils literal notranslate"><span class="pre">.is_readonly()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#is-slice"><code class="docutils literal notranslate"><span class="pre">.is_slice()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#at-idx-get-idx"><code class="docutils literal notranslate"><span class="pre">.at(idx)</span></code> / <code class="docutils literal notranslate"><span class="pre">.get(idx)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#set-idx-byte"><code class="docutils literal notranslate"><span class="pre">.set(idx,</span> <span class="pre">byte)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#slice-start-end"><code class="docutils literal notranslate"><span class="pre">.slice(start,</span> <span class="pre">end?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#id1"><code class="docutils literal notranslate"><span class="pre">.__slice(start,</span> <span class="pre">end?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#slice-offset"><code class="docutils literal notranslate"><span class="pre">.slice_offset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#parent"><code class="docutils literal notranslate"><span class="pre">.parent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#ctx"><code class="docutils literal notranslate"><span class="pre">.ctx()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#find-needle-start"><code class="docutils literal notranslate"><span class="pre">.find(needle,</span> <span class="pre">start?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#contains-needle"><code class="docutils literal notranslate"><span class="pre">.contains(needle)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#starts-prefix"><code class="docutils literal notranslate"><span class="pre">.starts(prefix)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#ends-suffix"><code class="docutils literal notranslate"><span class="pre">.ends(suffix)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#append-other"><code class="docutils literal notranslate"><span class="pre">.append(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#prepend-other"><code class="docutils literal notranslate"><span class="pre">.prepend(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#clear"><code class="docutils literal notranslate"><span class="pre">.clear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#upper"><code class="docutils literal notranslate"><span class="pre">.upper()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#lower"><code class="docutils literal notranslate"><span class="pre">.lower()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#trim"><code class="docutils literal notranslate"><span class="pre">.trim()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#rev"><code class="docutils literal notranslate"><span class="pre">.rev()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#copy"><code class="docutils literal notranslate"><span class="pre">.copy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#repeat-n"><code class="docutils literal notranslate"><span class="pre">.repeat(n)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#replace-needle-replacement"><code class="docutils literal notranslate"><span class="pre">.replace(needle,</span> <span class="pre">replacement)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#split-delim"><code class="docutils literal notranslate"><span class="pre">.split(delim)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#bytes"><code class="docutils literal notranslate"><span class="pre">.bytes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#eq-other"><code class="docutils literal notranslate"><span class="pre">.eq(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#cmp-other"><code class="docutils literal notranslate"><span class="pre">.cmp(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#hash"><code class="docutils literal notranslate"><span class="pre">.hash()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#format-strings">Format Strings</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#specifiers">Specifiers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#type-mismatches">Type mismatches</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Numbers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#global-constructors">Global constructors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#number-x"><code class="docutils literal notranslate"><span class="pre">number(x)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#float-x"><code class="docutils literal notranslate"><span class="pre">float(x)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#math-namespace"><code class="docutils literal notranslate"><span class="pre">math</span></code> namespace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#constants">Constants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#functions">Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#math-atan-y-x"><code class="docutils literal notranslate"><span class="pre">math.atan(y,</span> <span class="pre">x?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#math-clamp-x-lo-hi"><code class="docutils literal notranslate"><span class="pre">math.clamp(x,</span> <span class="pre">lo,</span> <span class="pre">hi)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#math-min-a-b-math-max-a-b"><code class="docutils literal notranslate"><span class="pre">math.min(a,</span> <span class="pre">b,</span> <span class="pre">...)</span></code> / <code class="docutils literal notranslate"><span class="pre">math.max(a,</span> <span class="pre">b,</span> <span class="pre">...)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#math-sign-x"><code class="docutils literal notranslate"><span class="pre">math.sign(x)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#math-deg-x-math-rad-x"><code class="docutils literal notranslate"><span class="pre">math.deg(x)</span></code> / <code class="docutils literal notranslate"><span class="pre">math.rad(x)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#floating-point-comparison">Floating-point comparison</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#math-eq-a-b-eps"><code class="docutils literal notranslate"><span class="pre">math.eq(a,</span> <span class="pre">b,</span> <span class="pre">eps?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#math-cmp-a-b-eps"><code class="docutils literal notranslate"><span class="pre">math.cmp(a,</span> <span class="pre">b,</span> <span class="pre">eps?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#math-precision-eps"><code class="docutils literal notranslate"><span class="pre">math.precision(eps?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#math-dividebyzero-val"><code class="docutils literal notranslate"><span class="pre">math.dividebyzero(val?)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#type-inspection">Type inspection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#math-type-x"><code class="docutils literal notranslate"><span class="pre">math.type(x)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#math-boxed-x"><code class="docutils literal notranslate"><span class="pre">math.boxed(x)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#operators">Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#arithmetic">Arithmetic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bitwise">Bitwise</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comparison">Comparison</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="arrays.html">Arrays</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#array-namespace"><code class="docutils literal notranslate"><span class="pre">array</span></code> namespace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#array-new-size"><code class="docutils literal notranslate"><span class="pre">array.new(size?)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#object-methods">Object methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#len"><code class="docutils literal notranslate"><span class="pre">.len()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#size-n"><code class="docutils literal notranslate"><span class="pre">.size(n?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#push-val-pop"><code class="docutils literal notranslate"><span class="pre">.push(val)</span></code> / <code class="docutils literal notranslate"><span class="pre">.pop()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#unshift-val-shift"><code class="docutils literal notranslate"><span class="pre">.unshift(val)</span></code> / <code class="docutils literal notranslate"><span class="pre">.shift()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#get-idx-set-idx-val"><code class="docutils literal notranslate"><span class="pre">.get(idx)</span></code> / <code class="docutils literal notranslate"><span class="pre">.set(idx,</span> <span class="pre">val)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#find-val-start"><code class="docutils literal notranslate"><span class="pre">.find(val,</span> <span class="pre">start?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#contains-val"><code class="docutils literal notranslate"><span class="pre">.contains(val)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#slice-from-to"><code class="docutils literal notranslate"><span class="pre">.slice(from,</span> <span class="pre">to?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#copy"><code class="docutils literal notranslate"><span class="pre">.copy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#clear"><code class="docutils literal notranslate"><span class="pre">.clear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#reverse"><code class="docutils literal notranslate"><span class="pre">.reverse()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#merge-arr"><code class="docutils literal notranslate"><span class="pre">.merge(arr,</span> <span class="pre">...)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#splice-start-count-inserts"><code class="docutils literal notranslate"><span class="pre">.splice(start,</span> <span class="pre">count,</span> <span class="pre">...inserts)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#splice-arr-start-count-insertarray"><code class="docutils literal notranslate"><span class="pre">.splice_arr(start,</span> <span class="pre">count,</span> <span class="pre">insertArray)</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="maps.html">Maps</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="maps.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="maps.html#map-namespace"><code class="docutils literal notranslate"><span class="pre">map</span></code> namespace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="maps.html#map-new-size"><code class="docutils literal notranslate"><span class="pre">map.new(size?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="maps.html#map-len-m"><code class="docutils literal notranslate"><span class="pre">map.len(m)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="maps.html#map-keys-m"><code class="docutils literal notranslate"><span class="pre">map.keys(m)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="maps.html#map-values-m"><code class="docutils literal notranslate"><span class="pre">map.values(m)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="maps.html#map-delete-m-key"><code class="docutils literal notranslate"><span class="pre">map.delete(m,</span> <span class="pre">key)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="maps.html#map-exists-m-key"><code class="docutils literal notranslate"><span class="pre">map.exists(m,</span> <span class="pre">key)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="maps.html#map-size-m-newsize"><code class="docutils literal notranslate"><span class="pre">map.size(m,</span> <span class="pre">newsize?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="maps.html#map-merge-dst-src"><code class="docutils literal notranslate"><span class="pre">map._merge(dst,</span> <span class="pre">src)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="maps.html#ordered-maps-trees">Ordered maps (trees)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="maps.html#tree-new"><code class="docutils literal notranslate"><span class="pre">tree.new()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="maps.html#ordered-map-methods">Ordered map methods</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="proto.html">Prototypes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="proto.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="proto.html#proto-namespace"><code class="docutils literal notranslate"><span class="pre">proto</span></code> namespace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-set-obj-proto"><code class="docutils literal notranslate"><span class="pre">proto.set(obj,</span> <span class="pre">proto)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-register-name-map"><code class="docutils literal notranslate"><span class="pre">proto.register(name,</span> <span class="pre">map)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-get-obj"><code class="docutils literal notranslate"><span class="pre">proto.get(obj)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-of-obj"><code class="docutils literal notranslate"><span class="pre">proto.of(obj)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-typeof-obj-type-obj"><code class="docutils literal notranslate"><span class="pre">proto.typeof(obj)</span></code> / <code class="docutils literal notranslate"><span class="pre">type(obj)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-all"><code class="docutils literal notranslate"><span class="pre">proto.all()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="proto.html#patterns">Patterns</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#defining-a-type">Defining a type</a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#prototype-inheritance">Prototype inheritance</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="proto.html#limitations">Limitations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="stdlib.html">Standard Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#builtins">Builtins</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="stdlib.html#print">print(…)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#string-methods">String Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#array-methods">Array Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#map-operations">Map Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#proto">Proto</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="design.html#philosophy">Philosophy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#implementation">Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#performance">Performance</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Blueberry</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Numbers</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/numbers.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="numbers">
+<h1>Numbers<a class="headerlink" href="#numbers" title="Link to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>Blueberry has two number representations:</p>
+<ul class="simple">
+<li><p><strong>Tagged pointer integers</strong> — small integers stored directly in the pointer, no heap allocation. Arithmetic on tagged ints is fast.
+Default number type is integer. Fast tagged integers are 31 bit or 63 bit sized depending on system pointer width - 1 bit</p></li>
+<li><p><strong>Boxed numbers (<code class="docutils literal notranslate"><span class="pre">ci_number</span></code>)</strong> — heap-allocated objects, supports i128 integers and 64-bit floats.
+Created when a value doesn’t fit in a tagged int, or explicitly via <code class="docutils literal notranslate"><span class="pre">number()</span></code> / <code class="docutils literal notranslate"><span class="pre">float()</span></code>.</p></li>
+</ul>
+<p>When integer doesnt fit into tagged representation, its is promoted to int128 type automatically.
+This includes overflow of math operations! When i128 overflows, it is automatically promoted to double, with loss of precision but not magnitude
+This ensures, that code similar to this
+Bitops promote doubles to ints
+Bitops operate on 128bit integers, mask with &amp; for 32/64 bit overflow behaviour.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">cnt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">number</span><span class="p">(</span><span class="nx">webserver</span><span class="p">.</span><span class="nx">req</span><span class="p">.</span><span class="nx">param</span><span class="p">.</span><span class="nx">count</span><span class="p">)</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">price</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nx">get</span><span class="p">().</span><span class="nx">price</span>
+
+<span class="kd">var</span><span class="w"> </span><span class="nx">total_price</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">cnt</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">price</span><span class="p">;</span>
+
+<span class="k">if</span><span class="p">(</span><span class="w"> </span><span class="nx">total_price</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">1000</span><span class="w"> </span><span class="p">){</span>
+<span class="w">	</span><span class="c1">// reject</span>
+<span class="p">}</span>
+
+<span class="c1">// total price will never overflow, if cnt is huge number result of multiplication will be promoted to double floats</span>
+<span class="c1">// double floats can store huge values, although with precision loss</span>
+<span class="c1">// never allowing check to fail with malicious data</span>
+</pre></div>
+</div>
+<p>Math operations with floats produce floats. Most of math namespace functions that are mathematical functions return floats.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">boxed_double</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">10</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1.2</span><span class="p">;</span><span class="w"> </span><span class="c1">// 12.0</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">math.type(x)</span></code> tells you which kind you have. In normal use the distinction is invisible — operators and <code class="docutils literal notranslate"><span class="pre">math</span></code> functions handle both transparently.</p>
+<p>Despite being objects, integers are transparently comparent by value with <code class="docutils literal notranslate"><span class="pre">==</span></code> and similar operators.
+<code class="docutils literal notranslate"><span class="pre">==</span></code> comparison of floating numbers is not exact by default, but uses global precision. If you want different behaviour use <code class="docutils literal notranslate"><span class="pre">math.eq</span></code> with specified precision, 0.0 is valid precision for exact comparison</p>
+<p><strong>Storing boxed numbers as hash keys doesnt currently work</strong> - will be findable only by exact same object. This is planned to be fixed</p>
+</section>
+<section id="global-constructors">
+<h2>Global constructors<a class="headerlink" href="#global-constructors" title="Link to this heading"></a></h2>
+<section id="number-x">
+<h3><code class="docutils literal notranslate"><span class="pre">number(x)</span></code><a class="headerlink" href="#number-x" title="Link to this heading"></a></h3>
+<p>Tries to parse string as integer.</p>
+<ul class="simple">
+<li><p>A string → parsed as integer or float (scientific notation supported); returns <code class="docutils literal notranslate"><span class="pre">null</span></code> on parse failure
+If supplied with integer returns integer itself</p></li>
+</ul>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">number</span><span class="p">(</span><span class="s2">&quot;1.5e10&quot;</span><span class="p">)</span>
+<span class="nx">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">number</span><span class="p">(</span><span class="mf">42</span><span class="p">)</span><span class="w"> </span>
+<span class="nx">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">number</span><span class="p">(</span><span class="s2">&quot;   1.5e10   &quot;</span><span class="p">)</span><span class="w"> </span><span class="c1">// whitespaces fine</span>
+<span class="nx">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">number</span><span class="p">(</span><span class="s2">&quot;1000random&quot;</span><span class="p">)</span><span class="w"> </span><span class="c1">// null, no trailing garbage</span>
+</pre></div>
+</div>
+</section>
+<section id="float-x">
+<h3><code class="docutils literal notranslate"><span class="pre">float(x)</span></code><a class="headerlink" href="#float-x" title="Link to this heading"></a></h3>
+<p>Like <code class="docutils literal notranslate"><span class="pre">number(x)</span></code> but additionally accepts <code class="docutils literal notranslate"><span class="pre">&quot;inf&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;+inf&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;-inf&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;nan&quot;</span></code> (case-insensitive). Returns <code class="docutils literal notranslate"><span class="pre">null</span></code> on failure.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">inf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kr">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">nan</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kr">float</span><span class="p">(</span><span class="s2">&quot;NaN&quot;</span><span class="p">)</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">neg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kr">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="math-namespace">
+<h2><code class="docutils literal notranslate"><span class="pre">math</span></code> namespace<a class="headerlink" href="#math-namespace" title="Link to this heading"></a></h2>
+<p>All <code class="docutils literal notranslate"><span class="pre">math</span></code> functions accept both integers and floats. Most mathematical functions promote to float and return float. Functions that select among their inputs (<code class="docutils literal notranslate"><span class="pre">min</span></code>, <code class="docutils literal notranslate"><span class="pre">max</span></code>, <code class="docutils literal notranslate"><span class="pre">clamp</span></code>) return the winning value unchanged — type is preserved.</p>
+</section>
+<section id="constants">
+<h2>Constants<a class="headerlink" href="#constants" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.pi</span></code></p></td>
+<td><p>π ≈ 3.14159265358979</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.e</span></code></p></td>
+<td><p>e ≈ 2.71828182845904</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.inf</span></code></p></td>
+<td><p>Positive infinity</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.nan</span></code></p></td>
+<td><p>Not-a-number</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.huge</span></code></p></td>
+<td><p>Largest representable float (<code class="docutils literal notranslate"><span class="pre">HUGE_VAL</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.u32</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0xFFFFFFFF</span></code> (tagged int)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.u64</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0xFFFFFFFFFFFFFFFF</span></code> (boxed i128)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">area</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">math</span><span class="p">.</span><span class="nx">pi</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">r</span>
+</pre></div>
+</div>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Function</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.sin(x)</span></code></p></td>
+<td><p>Sine (radians)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.cos(x)</span></code></p></td>
+<td><p>Cosine (radians)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.tan(x)</span></code></p></td>
+<td><p>Tangent (radians)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.asin(x)</span></code></p></td>
+<td><p>Arc sine → radians</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.acos(x)</span></code></p></td>
+<td><p>Arc cosine → radians</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.atan(y,</span> <span class="pre">x?)</span></code></p></td>
+<td><p>Arc tangent of <code class="docutils literal notranslate"><span class="pre">y/x</span></code> → radians; <code class="docutils literal notranslate"><span class="pre">x</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.sqrt(x)</span></code></p></td>
+<td><p>Square root</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.cbrt(x)</span></code></p></td>
+<td><p>Cube root</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.pow(b,</span> <span class="pre">e)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">b</span></code> raised to <code class="docutils literal notranslate"><span class="pre">e</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.hypot(a,</span> <span class="pre">b)</span></code></p></td>
+<td><p>Hypotenuse: <code class="docutils literal notranslate"><span class="pre">sqrt(a²+b²)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.exp(x)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">e^x</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.exp2(x)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2^x</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.log(x)</span></code></p></td>
+<td><p>Natural logarithm</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.log2(x)</span></code></p></td>
+<td><p>Base-2 logarithm</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.log10(x)</span></code></p></td>
+<td><p>Base-10 logarithm</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.floor(x)</span></code></p></td>
+<td><p>Round down</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.ceil(x)</span></code></p></td>
+<td><p>Round up</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.round(x)</span></code></p></td>
+<td><p>Round to nearest</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.trunc(x)</span></code></p></td>
+<td><p>Round toward zero</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.abs(x)</span></code></p></td>
+<td><p>Absolute value</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.sign(x)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-1</span></code>, <code class="docutils literal notranslate"><span class="pre">0</span></code>, or <code class="docutils literal notranslate"><span class="pre">1</span></code> (returns int)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.fmod(x,</span> <span class="pre">y)</span></code></p></td>
+<td><p>Floating-point remainder</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.deg(x)</span></code></p></td>
+<td><p>Radians → degrees</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.rad(x)</span></code></p></td>
+<td><p>Degrees → radians</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.clamp(x,</span> <span class="pre">lo,</span> <span class="pre">hi)</span></code></p></td>
+<td><p>Clamp <code class="docutils literal notranslate"><span class="pre">x</span></code> to <code class="docutils literal notranslate"><span class="pre">[lo,</span> <span class="pre">hi]</span></code>; returns <code class="docutils literal notranslate"><span class="pre">lo</span></code>, <code class="docutils literal notranslate"><span class="pre">x</span></code>, or <code class="docutils literal notranslate"><span class="pre">hi</span></code> unchanged</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.min(a,</span> <span class="pre">b,</span> <span class="pre">...)</span></code></p></td>
+<td><p>Minimum of one or more values; returns the winning argument unchanged</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.max(a,</span> <span class="pre">b,</span> <span class="pre">...)</span></code></p></td>
+<td><p>Maximum of one or more values; returns the winning argument unchanged</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.isnan(x)</span></code></p></td>
+<td><p>True if <code class="docutils literal notranslate"><span class="pre">x</span></code> is NaN</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.isinf(x)</span></code></p></td>
+<td><p>True if <code class="docutils literal notranslate"><span class="pre">x</span></code> is ±infinity</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.isfinite(x)</span></code></p></td>
+<td><p>True if <code class="docutils literal notranslate"><span class="pre">x</span></code> is finite</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.eq(a,</span> <span class="pre">b,</span> <span class="pre">eps?)</span></code></p></td>
+<td><p>True if <code class="docutils literal notranslate"><span class="pre">|a−b|</span> <span class="pre">≤</span> <span class="pre">eps</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.cmp(a,</span> <span class="pre">b,</span> <span class="pre">eps?)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-1</span></code>/<code class="docutils literal notranslate"><span class="pre">0</span></code>/<code class="docutils literal notranslate"><span class="pre">1</span></code> with epsilon tolerance</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.precision(eps?)</span></code></p></td>
+<td><p>Get or set default epsilon for <code class="docutils literal notranslate"><span class="pre">eq</span></code>/<code class="docutils literal notranslate"><span class="pre">cmp</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.type(x)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;int&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;float&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">null</span></code> if not a number</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">math.boxed(x)</span></code></p></td>
+<td><p>True if <code class="docutils literal notranslate"><span class="pre">x</span></code> is a boxed number, false if tagged int</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">math.dividebyzero(val?)</span></code></p></td>
+<td><p>Get or set divide-by-zero behaviour (throw vs. inf/nan)</p></td>
+</tr>
+</tbody>
+</table>
+<hr class="docutils" />
+<section id="math-atan-y-x">
+<h3><code class="docutils literal notranslate"><span class="pre">math.atan(y,</span> <span class="pre">x?)</span></code><a class="headerlink" href="#math-atan-y-x" title="Link to this heading"></a></h3>
+<p>One-argument form returns <code class="docutils literal notranslate"><span class="pre">atan(y)</span></code>. Two-argument form returns <code class="docutils literal notranslate"><span class="pre">atan2(y,</span> <span class="pre">x)</span></code> — the angle of the vector <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y)</span></code> in radians, handling all quadrants correctly.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">math</span><span class="p">.</span><span class="nx">atan</span><span class="p">(</span><span class="mf">1</span><span class="p">)</span><span class="w">           </span><span class="c1">// π/4</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">atan</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w">        </span><span class="c1">// π/2  (pointing straight up)</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">atan</span><span class="p">(</span><span class="o">-</span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="mf">1</span><span class="p">)</span><span class="w">      </span><span class="c1">// -3π/4</span>
+</pre></div>
+</div>
+</section>
+<section id="math-clamp-x-lo-hi">
+<h3><code class="docutils literal notranslate"><span class="pre">math.clamp(x,</span> <span class="pre">lo,</span> <span class="pre">hi)</span></code><a class="headerlink" href="#math-clamp-x-lo-hi" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">x</span></code> clamped to <code class="docutils literal notranslate"><span class="pre">[lo,</span> <span class="pre">hi]</span></code>. Returns one of the three arguments as-is — no type conversion.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">math</span><span class="p">.</span><span class="nx">clamp</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="mf">1</span><span class="p">)</span><span class="w">    </span><span class="c1">// 1.5 → 1   (returns hi, which is int 1)</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">clamp</span><span class="p">(</span><span class="o">-</span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="mf">10</span><span class="p">)</span><span class="w">    </span><span class="c1">// -3  → 0   (returns lo, which is int 0)</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">clamp</span><span class="p">(</span><span class="mf">5</span><span class="p">,</span><span class="w"> </span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="mf">10</span><span class="p">)</span><span class="w">     </span><span class="c1">// 5          (returns x unchanged)</span>
+</pre></div>
+</div>
+</section>
+<section id="math-min-a-b-math-max-a-b">
+<h3><code class="docutils literal notranslate"><span class="pre">math.min(a,</span> <span class="pre">b,</span> <span class="pre">...)</span></code> / <code class="docutils literal notranslate"><span class="pre">math.max(a,</span> <span class="pre">b,</span> <span class="pre">...)</span></code><a class="headerlink" href="#math-min-a-b-math-max-a-b" title="Link to this heading"></a></h3>
+<p>Accept any number of arguments. Return the winning argument unchanged — no type conversion.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">math</span><span class="p">.</span><span class="nx">min</span><span class="p">(</span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">4</span><span class="p">,</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">5</span><span class="p">)</span><span class="w">   </span><span class="c1">// 1   (int)</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">max</span><span class="p">(</span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">4</span><span class="p">,</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">5</span><span class="p">)</span><span class="w">   </span><span class="c1">// 5   (int)</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">max</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">2.5</span><span class="p">)</span><span class="w">           </span><span class="c1">// 2.5 (float)</span>
+</pre></div>
+</div>
+</section>
+<section id="math-sign-x">
+<h3><code class="docutils literal notranslate"><span class="pre">math.sign(x)</span></code><a class="headerlink" href="#math-sign-x" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">-1</span></code>, <code class="docutils literal notranslate"><span class="pre">0</span></code>, or <code class="docutils literal notranslate"><span class="pre">1</span></code> as an integer.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">math</span><span class="p">.</span><span class="nx">sign</span><span class="p">(</span><span class="o">-</span><span class="mf">5.0</span><span class="p">)</span><span class="w">   </span><span class="c1">// -1</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">sign</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span><span class="w">    </span><span class="c1">// 0</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">sign</span><span class="p">(</span><span class="mf">3.0</span><span class="p">)</span><span class="w">    </span><span class="c1">// 1</span>
+</pre></div>
+</div>
+</section>
+<section id="math-deg-x-math-rad-x">
+<h3><code class="docutils literal notranslate"><span class="pre">math.deg(x)</span></code> / <code class="docutils literal notranslate"><span class="pre">math.rad(x)</span></code><a class="headerlink" href="#math-deg-x-math-rad-x" title="Link to this heading"></a></h3>
+<p>Convert between degrees and radians.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">math</span><span class="p">.</span><span class="nx">deg</span><span class="p">(</span><span class="nx">math</span><span class="p">.</span><span class="nx">pi</span><span class="p">)</span><span class="w">    </span><span class="c1">// 180.0</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">rad</span><span class="p">(</span><span class="mf">180</span><span class="p">)</span><span class="w">        </span><span class="c1">// π</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="floating-point-comparison">
+<h2>Floating-point comparison<a class="headerlink" href="#floating-point-comparison" title="Link to this heading"></a></h2>
+<p>Integer <code class="docutils literal notranslate"><span class="pre">==</span></code> is exact. Float comparison is tricky — two floats that should be equal may differ by a small rounding error. <code class="docutils literal notranslate"><span class="pre">math.eq</span></code> and <code class="docutils literal notranslate"><span class="pre">math.cmp</span></code> use an epsilon tolerance for this.</p>
+<section id="math-eq-a-b-eps">
+<h3><code class="docutils literal notranslate"><span class="pre">math.eq(a,</span> <span class="pre">b,</span> <span class="pre">eps?)</span></code><a class="headerlink" href="#math-eq-a-b-eps" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if <code class="docutils literal notranslate"><span class="pre">|a</span> <span class="pre">−</span> <span class="pre">b|</span> <span class="pre">≤</span> <span class="pre">eps</span></code>. Default <code class="docutils literal notranslate"><span class="pre">eps</span></code> is <code class="docutils literal notranslate"><span class="pre">1e-9</span></code> (configurable via <code class="docutils literal notranslate"><span class="pre">math.precision</span></code>).</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">math</span><span class="p">.</span><span class="nx">eq</span><span class="p">(</span><span class="mf">0.1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span><span class="w"> </span><span class="mf">0.3</span><span class="p">)</span><span class="w">         </span><span class="c1">// true</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">eq</span><span class="p">(</span><span class="mf">0.1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span><span class="w"> </span><span class="mf">1e-15</span><span class="p">)</span><span class="w">  </span><span class="c1">// may be false — tight tolerance</span>
+</pre></div>
+</div>
+</section>
+<section id="math-cmp-a-b-eps">
+<h3><code class="docutils literal notranslate"><span class="pre">math.cmp(a,</span> <span class="pre">b,</span> <span class="pre">eps?)</span></code><a class="headerlink" href="#math-cmp-a-b-eps" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">-1</span></code>, <code class="docutils literal notranslate"><span class="pre">0</span></code>, or <code class="docutils literal notranslate"><span class="pre">1</span></code>. Values within <code class="docutils literal notranslate"><span class="pre">eps</span></code> of each other compare as equal (<code class="docutils literal notranslate"><span class="pre">0</span></code>).</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">math</span><span class="p">.</span><span class="nx">cmp</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">)</span><span class="w">   </span><span class="c1">// -1</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">cmp</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">)</span><span class="w">   </span><span class="c1">// 0</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">cmp</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">)</span><span class="w">   </span><span class="c1">// 1</span>
+</pre></div>
+</div>
+</section>
+<section id="math-precision-eps">
+<h3><code class="docutils literal notranslate"><span class="pre">math.precision(eps?)</span></code><a class="headerlink" href="#math-precision-eps" title="Link to this heading"></a></h3>
+<p>With no argument, returns the current default epsilon. With an argument, sets it and returns the previous value.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">old</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">math</span><span class="p">.</span><span class="nx">precision</span><span class="p">(</span><span class="mf">1e-6</span><span class="p">)</span><span class="w">   </span><span class="c1">// set new, get old</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">precision</span><span class="p">()</span><span class="w">                  </span><span class="c1">// 1e-6</span>
+</pre></div>
+</div>
+</section>
+<section id="math-dividebyzero-val">
+<h3><code class="docutils literal notranslate"><span class="pre">math.dividebyzero(val?)</span></code><a class="headerlink" href="#math-dividebyzero-val" title="Link to this heading"></a></h3>
+<p>Controls what happens when an integer is divided by zero.</p>
+<ul class="simple">
+<li><p>No argument / <code class="docutils literal notranslate"><span class="pre">null</span></code> — returns current setting: <code class="docutils literal notranslate"><span class="pre">true</span></code> = throws, <code class="docutils literal notranslate"><span class="pre">false</span></code> = produces <code class="docutils literal notranslate"><span class="pre">inf</span></code>/<code class="docutils literal notranslate"><span class="pre">nan</span></code>.</p></li>
+<li><p>Any value — sets the behaviour (truthy = throw, falsy = inf/nan) and returns the previous setting.</p></li>
+</ul>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">math</span><span class="p">.</span><span class="nx">dividebyzero</span><span class="p">()</span><span class="w">        </span><span class="c1">// false by default — produces inf/nan</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">dividebyzero</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span><span class="w">    </span><span class="c1">// now throws on integer ÷ 0</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">dividebyzero</span><span class="p">(</span><span class="kc">false</span><span class="p">)</span><span class="w">   </span><span class="c1">// back to inf/nan</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="type-inspection">
+<h2>Type inspection<a class="headerlink" href="#type-inspection" title="Link to this heading"></a></h2>
+<section id="math-type-x">
+<h3><code class="docutils literal notranslate"><span class="pre">math.type(x)</span></code><a class="headerlink" href="#math-type-x" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">&quot;int&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;float&quot;</span></code> for numbers, <code class="docutils literal notranslate"><span class="pre">null</span></code> for anything else.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">math</span><span class="p">.</span><span class="nx">type</span><span class="p">(</span><span class="mf">42</span><span class="p">)</span><span class="w">     </span><span class="c1">// &quot;int&quot;</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">type</span><span class="p">(</span><span class="mf">3.14</span><span class="p">)</span><span class="w">   </span><span class="c1">// &quot;float&quot;</span>
+<span class="nx">math</span><span class="p">.</span><span class="nx">type</span><span class="p">(</span><span class="s2">&quot;hi&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// null</span>
+</pre></div>
+</div>
+</section>
+<section id="math-boxed-x">
+<h3><code class="docutils literal notranslate"><span class="pre">math.boxed(x)</span></code><a class="headerlink" href="#math-boxed-x" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if <code class="docutils literal notranslate"><span class="pre">x</span></code> is a boxed <code class="docutils literal notranslate"><span class="pre">ci_number</span></code> (heap-allocated float or large int), <code class="docutils literal notranslate"><span class="pre">false</span></code> if it is a tagged integer, <code class="docutils literal notranslate"><span class="pre">null</span></code> if not a number at all. Mostly useful for debugging and low-level optimisation.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="operators">
+<h2>Operators<a class="headerlink" href="#operators" title="Link to this heading"></a></h2>
+<p>Numbers support all standard arithmetic and bitwise operators. Both tagged ints and boxed numbers work with all of these.</p>
+<section id="arithmetic">
+<h3>Arithmetic<a class="headerlink" href="#arithmetic" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Operator</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">+</span> <span class="pre">b</span></code></p></td>
+<td><p>Addition</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">-</span> <span class="pre">b</span></code></p></td>
+<td><p>Subtraction</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">*</span> <span class="pre">b</span></code></p></td>
+<td><p>Multiplication</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">/</span> <span class="pre">b</span></code></p></td>
+<td><p>Division</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">%</span> <span class="pre">b</span></code></p></td>
+<td><p>Modulo / remainder</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-a</span></code></p></td>
+<td><p>Negation</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="bitwise">
+<h3>Bitwise<a class="headerlink" href="#bitwise" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Operator</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">&amp;</span> <span class="pre">b</span></code></p></td>
+<td><p>Bitwise AND</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">|</span> <span class="pre">b</span></code></p></td>
+<td><p>Bitwise OR</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">^</span> <span class="pre">b</span></code></p></td>
+<td><p>Bitwise XOR</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">&lt;&lt;</span> <span class="pre">n</span></code></p></td>
+<td><p>Left shift by <code class="docutils literal notranslate"><span class="pre">n</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">&gt;&gt;</span> <span class="pre">n</span></code></p></td>
+<td><p>Right shift by <code class="docutils literal notranslate"><span class="pre">n</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">~a</span></code></p></td>
+<td><p>Bitwise NOT (complement)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="comparison">
+<h3>Comparison<a class="headerlink" href="#comparison" title="Link to this heading"></a></h3>
+<p>Numbers compare with <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;=</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code>, <code class="docutils literal notranslate"><span class="pre">==</span></code>, <code class="docutils literal notranslate"><span class="pre">!=</span></code>. Integer <code class="docutils literal notranslate"><span class="pre">==</span></code> is exact. For float equality with tolerance use <code class="docutils literal notranslate"><span class="pre">math.eq</span></code>.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="strings.html" class="btn btn-neutral float-left" title="Strings" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="arrays.html" class="btn btn-neutral float-right" title="Arrays" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Blueberry Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

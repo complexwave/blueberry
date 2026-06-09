@@ -1,0 +1,739 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Strings &mdash; Blueberry  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=8bde7d8b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Standard Library" href="stdlib.html" />
+    <link rel="prev" title="Syntax" href="syntax.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Blueberry
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#building">Building</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#hello-world">Hello World</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="syntax.html">Syntax</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#variables">Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#types">Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#strings">Strings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#arrays">Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#maps">Maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#operators">Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#arithmetic">Arithmetic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#comparison">Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#logical">Logical</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#control-flow">Control Flow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#if-else">if / else</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#for-in">for-in</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#while">while</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#break">break</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#functions">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#prototype-oop">Prototype OOP</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Strings</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#immutable-literals">Immutable literals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mutable-strings-and-the-copy-pattern">Mutable strings and the copy pattern</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#creating-strings-from-scratch">Creating strings from scratch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#slices">Slices</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#string-namespace"><code class="docutils literal notranslate"><span class="pre">string</span></code> namespace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#string-new-size"><code class="docutils literal notranslate"><span class="pre">string.new(size?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#string-format-fmt-args-string-printf"><code class="docutils literal notranslate"><span class="pre">string.format(fmt,</span> <span class="pre">args...)</span></code> / <code class="docutils literal notranslate"><span class="pre">string.printf</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#string-eq-a-b"><code class="docutils literal notranslate"><span class="pre">string.eq(a,</span> <span class="pre">b)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#string-cmp-a-b"><code class="docutils literal notranslate"><span class="pre">string.cmp(a,</span> <span class="pre">b)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#object-methods">Object Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#len"><code class="docutils literal notranslate"><span class="pre">.len()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#size-n"><code class="docutils literal notranslate"><span class="pre">.size(n?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#is-readonly"><code class="docutils literal notranslate"><span class="pre">.is_readonly()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#is-slice"><code class="docutils literal notranslate"><span class="pre">.is_slice()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#at-idx-get-idx"><code class="docutils literal notranslate"><span class="pre">.at(idx)</span></code> / <code class="docutils literal notranslate"><span class="pre">.get(idx)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#set-idx-byte"><code class="docutils literal notranslate"><span class="pre">.set(idx,</span> <span class="pre">byte)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#slice-start-end"><code class="docutils literal notranslate"><span class="pre">.slice(start,</span> <span class="pre">end?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">.__slice(start,</span> <span class="pre">end?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#slice-offset"><code class="docutils literal notranslate"><span class="pre">.slice_offset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#parent"><code class="docutils literal notranslate"><span class="pre">.parent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ctx"><code class="docutils literal notranslate"><span class="pre">.ctx()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#find-needle-start"><code class="docutils literal notranslate"><span class="pre">.find(needle,</span> <span class="pre">start?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#contains-needle"><code class="docutils literal notranslate"><span class="pre">.contains(needle)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#starts-prefix"><code class="docutils literal notranslate"><span class="pre">.starts(prefix)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ends-suffix"><code class="docutils literal notranslate"><span class="pre">.ends(suffix)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#append-other"><code class="docutils literal notranslate"><span class="pre">.append(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#prepend-other"><code class="docutils literal notranslate"><span class="pre">.prepend(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#clear"><code class="docutils literal notranslate"><span class="pre">.clear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#upper"><code class="docutils literal notranslate"><span class="pre">.upper()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#lower"><code class="docutils literal notranslate"><span class="pre">.lower()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#trim"><code class="docutils literal notranslate"><span class="pre">.trim()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rev"><code class="docutils literal notranslate"><span class="pre">.rev()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#copy"><code class="docutils literal notranslate"><span class="pre">.copy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#repeat-n"><code class="docutils literal notranslate"><span class="pre">.repeat(n)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#replace-needle-replacement"><code class="docutils literal notranslate"><span class="pre">.replace(needle,</span> <span class="pre">replacement)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#split-delim"><code class="docutils literal notranslate"><span class="pre">.split(delim)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bytes"><code class="docutils literal notranslate"><span class="pre">.bytes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#eq-other"><code class="docutils literal notranslate"><span class="pre">.eq(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cmp-other"><code class="docutils literal notranslate"><span class="pre">.cmp(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hash"><code class="docutils literal notranslate"><span class="pre">.hash()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#format-strings">Format Strings</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#specifiers">Specifiers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#type-mismatches">Type mismatches</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="stdlib.html">Standard Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#builtins">Builtins</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="stdlib.html#print">print(…)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#string-methods">String Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#array-methods">Array Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#map-operations">Map Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#proto">Proto</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="design.html#philosophy">Philosophy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#implementation">Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#performance">Performance</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Blueberry</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Strings</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/strings.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="strings">
+<h1>Strings<a class="headerlink" href="#strings" title="Link to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>Strings in Blueberry are mutable byte arrays. Not UTF-8 codepoints — individual bytes are plain integers.
+General philosophy is, unlike in many scripting languages, strings represent memory, not a value type.
+Copy is explicit, with ability to preallocate size.</p>
+<section id="immutable-literals">
+<h3>Immutable literals<a class="headerlink" href="#immutable-literals" title="Link to this heading"></a></h3>
+<p>String literals in source code are <strong>read-only</strong>. They live in static memory and cannot be modified:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot; world&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// error: string is read-only</span>
+</pre></div>
+</div>
+<p>Literals are deduplicated — equal literals always resolve to the same pointer, so <code class="docutils literal notranslate"><span class="pre">==</span></code> works for interned strings:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">s2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="w">   </span><span class="c1">// even if loaded from another file</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">s1</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">s2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;is true&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// pointer identity, works for literals</span>
+<span class="p">}</span>
+
+<span class="kd">var</span><span class="w"> </span><span class="nx">mutable</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hel&quot;</span><span class="p">.</span><span class="nx">copy</span><span class="p">().</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot;lo&quot;</span><span class="p">)</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">s1</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">mutable</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;== compares by pointer, not byte content&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">string</span><span class="p">.</span><span class="nx">eq</span><span class="p">(</span><span class="nx">s1</span><span class="p">,</span><span class="w"> </span><span class="nx">mutable</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;equal&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// byte-value comparison</span>
+<span class="p">}</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">s2</span><span class="p">.</span><span class="nx">eq</span><span class="p">(</span><span class="nx">mutable</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;equal&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="mutable-strings-and-the-copy-pattern">
+<h3>Mutable strings and the copy pattern<a class="headerlink" href="#mutable-strings-and-the-copy-pattern" title="Link to this heading"></a></h3>
+<p>To get a mutable string from a literal, call <code class="docutils literal notranslate"><span class="pre">.copy()</span></code>. This allocates a new writable string with the same content:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">copy</span><span class="p">()</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot; world&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// ok — s is now &quot;hello world&quot;</span>
+</pre></div>
+</div>
+<p>Mutation methods return <code class="docutils literal notranslate"><span class="pre">self</span></code>, so they can be chained:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;  Hello  &quot;</span><span class="p">.</span><span class="nx">copy</span><span class="p">().</span><span class="nx">trim</span><span class="p">().</span><span class="nx">lower</span><span class="p">()</span><span class="w">   </span><span class="c1">// &quot;hello&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="creating-strings-from-scratch">
+<h3>Creating strings from scratch<a class="headerlink" href="#creating-strings-from-scratch" title="Link to this heading"></a></h3>
+<p>Use <code class="docutils literal notranslate"><span class="pre">string.new(size?)</span></code> to allocate an empty mutable string with preallocated capacity. The string starts empty but the buffer is immediately reserved — no reallocation will happen until you exceed <code class="docutils literal notranslate"><span class="pre">size</span></code> bytes. Default capacity is 64.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">string</span><span class="p">.</span><span class="ow">new</span><span class="p">(</span><span class="mf">64</span><span class="p">)</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot;host: &quot;</span><span class="p">).</span><span class="nx">append</span><span class="p">(</span><span class="nx">hostname</span><span class="p">).</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot;\r\n&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="slices">
+<h3>Slices<a class="headerlink" href="#slices" title="Link to this heading"></a></h3>
+<p>A slice is a zero-copy view into a parent string, created with <code class="docutils literal notranslate"><span class="pre">.__slice()</span></code>. Slices share memory with their parent and involve no allocation — useful for parsing. <code class="docutils literal notranslate"><span class="pre">.slice()</span></code> (without the <code class="docutils literal notranslate"><span class="pre">__</span></code>) always produces an independent copy.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="string-namespace">
+<h2><code class="docutils literal notranslate"><span class="pre">string</span></code> namespace<a class="headerlink" href="#string-namespace" title="Link to this heading"></a></h2>
+<section id="string-new-size">
+<h3><code class="docutils literal notranslate"><span class="pre">string.new(size?)</span></code><a class="headerlink" href="#string-new-size" title="Link to this heading"></a></h3>
+<p>Allocate a new empty mutable string. <code class="docutils literal notranslate"><span class="pre">size</span></code> bytes are immediately reserved — the buffer is preallocated upfront, not lazily. Default is 64. The string starts empty; use <code class="docutils literal notranslate"><span class="pre">.append()</span></code> to fill it.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">string</span><span class="p">.</span><span class="ow">new</span><span class="p">(</span><span class="mf">128</span><span class="p">)</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="string-format-fmt-args-string-printf">
+<h3><code class="docutils literal notranslate"><span class="pre">string.format(fmt,</span> <span class="pre">args...)</span></code> / <code class="docutils literal notranslate"><span class="pre">string.printf</span></code><a class="headerlink" href="#string-format-fmt-args-string-printf" title="Link to this heading"></a></h3>
+<p>Create a new formatted string. See <a class="reference internal" href="#format-strings">Format Strings</a> for specifiers.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">string</span><span class="p">.</span><span class="nx">format</span><span class="p">(</span><span class="s2">&quot;x = %d, y = %d&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="string-eq-a-b">
+<h3><code class="docutils literal notranslate"><span class="pre">string.eq(a,</span> <span class="pre">b)</span></code><a class="headerlink" href="#string-eq-a-b" title="Link to this heading"></a></h3>
+<p>Byte-value equality between two strings. Returns <code class="docutils literal notranslate"><span class="pre">null</span></code> if either argument is not a string.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">string</span><span class="p">.</span><span class="nx">eq</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// true</span>
+<span class="nx">string</span><span class="p">.</span><span class="nx">eq</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">42</span><span class="p">)</span><span class="w">        </span><span class="c1">// null</span>
+</pre></div>
+</div>
+</section>
+<section id="string-cmp-a-b">
+<h3><code class="docutils literal notranslate"><span class="pre">string.cmp(a,</span> <span class="pre">b)</span></code><a class="headerlink" href="#string-cmp-a-b" title="Link to this heading"></a></h3>
+<p>Lexicographic comparison. Returns <code class="docutils literal notranslate"><span class="pre">-1</span></code>, <code class="docutils literal notranslate"><span class="pre">0</span></code>, or <code class="docutils literal notranslate"><span class="pre">1</span></code>. Returns <code class="docutils literal notranslate"><span class="pre">null</span></code> if either argument is not a string.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">string</span><span class="p">.</span><span class="nx">cmp</span><span class="p">(</span><span class="s2">&quot;abc&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;abd&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// -1</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="object-methods">
+<h2>Object Methods<a class="headerlink" href="#object-methods" title="Link to this heading"></a></h2>
+<p>All string values share a built-in prototype. Methods are called with dot syntax. Mutation methods require a writable string and return <code class="docutils literal notranslate"><span class="pre">self</span></code> for chaining.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.len()</span></code></p></td>
+<td><p>Length in bytes</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.size()</span></code></p></td>
+<td><p>Allocated buffer capacity in bytes</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.size(n)</span></code></p></td>
+<td><p>Preallocate <code class="docutils literal notranslate"><span class="pre">n</span></code> additional bytes of tail space, return self</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.is_readonly()</span></code></p></td>
+<td><p>True if string is immutable</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.is_slice()</span></code></p></td>
+<td><p>True if string is a zero-copy slice view</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.at(idx)</span></code> / <code class="docutils literal notranslate"><span class="pre">.get(idx)</span></code></p></td>
+<td><p>Byte at index as int, <code class="docutils literal notranslate"><span class="pre">null</span></code> if out of bounds</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.set(idx,</span> <span class="pre">byte)</span></code></p></td>
+<td><p>Set byte at index, returns self</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.slice(start,</span> <span class="pre">end?)</span></code></p></td>
+<td><p>New copy of substring</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.__slice(start,</span> <span class="pre">end?)</span></code></p></td>
+<td><p>Zero-copy view into parent</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.slice_offset()</span></code></p></td>
+<td><p>Byte offset of slice within parent</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.parent()</span></code></p></td>
+<td><p>Owning string of a slice</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.ctx()</span></code></p></td>
+<td><p>Context pointer stored on a slice</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.find(needle,</span> <span class="pre">start?)</span></code></p></td>
+<td><p>Index of first match, or <code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.contains(needle)</span></code></p></td>
+<td><p>True if needle found anywhere</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.starts(prefix)</span></code></p></td>
+<td><p>True if string starts with prefix</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.ends(suffix)</span></code></p></td>
+<td><p>True if string ends with suffix</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.append(other)</span></code></p></td>
+<td><p>Append in place, return self</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.prepend(other)</span></code></p></td>
+<td><p>Prepend in place, return self</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.clear()</span></code></p></td>
+<td><p>Reset length to 0, return self</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.upper()</span></code></p></td>
+<td><p>ASCII uppercase in place, return self</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.lower()</span></code></p></td>
+<td><p>ASCII lowercase in place, return self</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.trim()</span></code></p></td>
+<td><p>Strip leading/trailing whitespace in place, return self</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.rev()</span></code></p></td>
+<td><p>Reverse in place, return self</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.copy()</span></code></p></td>
+<td><p>New independent mutable copy</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.repeat(n)</span></code></p></td>
+<td><p>New string repeated n times</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.replace(needle,</span> <span class="pre">repl)</span></code></p></td>
+<td><p>New string with all occurrences replaced</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.split(delim)</span></code></p></td>
+<td><p>Array of strings split on delimiter</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.bytes()</span></code></p></td>
+<td><p>Array of byte values as ints</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.eq(other)</span></code></p></td>
+<td><p>Byte-value equality, <code class="docutils literal notranslate"><span class="pre">null</span></code> if other is not a string</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.cmp(other)</span></code></p></td>
+<td><p>Lexicographic compare: <code class="docutils literal notranslate"><span class="pre">-1</span></code>/<code class="docutils literal notranslate"><span class="pre">0</span></code>/<code class="docutils literal notranslate"><span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">null</span></code> if not a string</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.hash()</span></code></p></td>
+<td><p>FNV-1a hash as int</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.format(fmt,</span> <span class="pre">args...)</span></code></p></td>
+<td><p>Append formatted content, return self</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.printf(fmt,</span> <span class="pre">args...)</span></code></p></td>
+<td><p>Alias for <code class="docutils literal notranslate"><span class="pre">.format()</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<hr class="docutils" />
+<section id="len">
+<h3><code class="docutils literal notranslate"><span class="pre">.len()</span></code><a class="headerlink" href="#len" title="Link to this heading"></a></h3>
+<p>Returns the length of the string in bytes.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">len</span><span class="p">()</span><span class="w">   </span><span class="c1">// 5</span>
+</pre></div>
+</div>
+</section>
+<section id="size-n">
+<h3><code class="docutils literal notranslate"><span class="pre">.size(n?)</span></code><a class="headerlink" href="#size-n" title="Link to this heading"></a></h3>
+<p>With no argument, returns the allocated buffer capacity in bytes (always <code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">.len()</span></code>).</p>
+<p>With an integer argument, preallocates <code class="docutils literal notranslate"><span class="pre">n</span></code> additional bytes of tail space and returns self. This is a forward declaration of intent — “I plan to append <code class="docutils literal notranslate"><span class="pre">n</span></code> more bytes” — and avoids reallocation during subsequent appends. The string length does not change.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">string</span><span class="p">.</span><span class="ow">new</span><span class="p">()</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">size</span><span class="p">(</span><span class="mf">4096</span><span class="p">)</span><span class="w">   </span><span class="c1">// reserve 4096 more bytes now</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="nx">big_chunk</span><span class="p">)</span><span class="w">   </span><span class="c1">// no realloc needed</span>
+</pre></div>
+</div>
+</section>
+<section id="is-readonly">
+<h3><code class="docutils literal notranslate"><span class="pre">.is_readonly()</span></code><a class="headerlink" href="#is-readonly" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if the string is immutable (e.g. a string literal). Mutation methods will error on read-only strings.</p>
+</section>
+<section id="is-slice">
+<h3><code class="docutils literal notranslate"><span class="pre">.is_slice()</span></code><a class="headerlink" href="#is-slice" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if this string is a zero-copy slice view into a parent string.</p>
+</section>
+<hr class="docutils" />
+<section id="at-idx-get-idx">
+<h3><code class="docutils literal notranslate"><span class="pre">.at(idx)</span></code> / <code class="docutils literal notranslate"><span class="pre">.get(idx)</span></code><a class="headerlink" href="#at-idx-get-idx" title="Link to this heading"></a></h3>
+<p>Returns the byte at <code class="docutils literal notranslate"><span class="pre">idx</span></code> as an integer. Negative indices wrap from the end. Returns <code class="docutils literal notranslate"><span class="pre">null</span></code> if out of bounds.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">at</span><span class="p">(</span><span class="mf">0</span><span class="p">)</span><span class="w">    </span><span class="c1">// 104  (&#39;h&#39;)</span>
+<span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">at</span><span class="p">(</span><span class="o">-</span><span class="mf">1</span><span class="p">)</span><span class="w">   </span><span class="c1">// 111  (&#39;o&#39;)</span>
+</pre></div>
+</div>
+<p>Strings also support index syntax: <code class="docutils literal notranslate"><span class="pre">s[i]</span></code> calls <code class="docutils literal notranslate"><span class="pre">.at(i)</span></code>.</p>
+</section>
+<section id="set-idx-byte">
+<h3><code class="docutils literal notranslate"><span class="pre">.set(idx,</span> <span class="pre">byte)</span></code><a class="headerlink" href="#set-idx-byte" title="Link to this heading"></a></h3>
+<p>Sets the byte at <code class="docutils literal notranslate"><span class="pre">idx</span></code> to <code class="docutils literal notranslate"><span class="pre">byte</span></code> (an integer). Negative indices wrap. Errors if out of bounds or string is read-only. Returns self.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">copy</span><span class="p">()</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">set</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="mf">72</span><span class="p">)</span><span class="w">   </span><span class="c1">// &#39;H&#39;</span>
+<span class="nx">s</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">72</span><span class="w">      </span><span class="c1">// same via index syntax</span>
+</pre></div>
+</div>
+</section>
+<section id="slice-start-end">
+<h3><code class="docutils literal notranslate"><span class="pre">.slice(start,</span> <span class="pre">end?)</span></code><a class="headerlink" href="#slice-start-end" title="Link to this heading"></a></h3>
+<p>Returns a new independent copy of the substring <code class="docutils literal notranslate"><span class="pre">[start,</span> <span class="pre">end)</span></code>. Negative indices wrap. If <code class="docutils literal notranslate"><span class="pre">end</span></code> is omitted, slices to the end of the string.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello world&quot;</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mf">6</span><span class="p">)</span><span class="w">     </span><span class="c1">// &quot;world&quot;</span>
+<span class="s2">&quot;hello world&quot;</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="w"> </span><span class="mf">5</span><span class="p">)</span><span class="w">  </span><span class="c1">// &quot;hello&quot;</span>
+<span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="o">-</span><span class="mf">3</span><span class="p">)</span><span class="w">           </span><span class="c1">// &quot;llo&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id1">
+<h3><code class="docutils literal notranslate"><span class="pre">.__slice(start,</span> <span class="pre">end?)</span></code><a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<p>Zero-copy view into the parent string. The returned string shares memory with its parent — no allocation, but the parent must outlive the slice. Useful for parsing.</p>
+</section>
+<section id="slice-offset">
+<h3><code class="docutils literal notranslate"><span class="pre">.slice_offset()</span></code><a class="headerlink" href="#slice-offset" title="Link to this heading"></a></h3>
+<p>For a slice, returns the byte offset of this slice’s start within the parent string’s buffer. Returns <code class="docutils literal notranslate"><span class="pre">null</span></code> if not a slice, <code class="docutils literal notranslate"><span class="pre">0</span></code> if parent is static memory.</p>
+</section>
+<section id="parent">
+<h3><code class="docutils literal notranslate"><span class="pre">.parent()</span></code><a class="headerlink" href="#parent" title="Link to this heading"></a></h3>
+<p>For a slice, returns the owning parent string. Returns <code class="docutils literal notranslate"><span class="pre">null</span></code> for non-slices.</p>
+</section>
+<section id="ctx">
+<h3><code class="docutils literal notranslate"><span class="pre">.ctx()</span></code><a class="headerlink" href="#ctx" title="Link to this heading"></a></h3>
+<p>For a slice, returns the arbitrary context pointer stored on it. Returns <code class="docutils literal notranslate"><span class="pre">null</span></code> for non-slices.</p>
+</section>
+<hr class="docutils" />
+<section id="find-needle-start">
+<h3><code class="docutils literal notranslate"><span class="pre">.find(needle,</span> <span class="pre">start?)</span></code><a class="headerlink" href="#find-needle-start" title="Link to this heading"></a></h3>
+<p>Returns the index of the first occurrence of <code class="docutils literal notranslate"><span class="pre">needle</span></code> starting from <code class="docutils literal notranslate"><span class="pre">start</span></code> (default 0). Negative <code class="docutils literal notranslate"><span class="pre">start</span></code> wraps. Returns <code class="docutils literal notranslate"><span class="pre">false</span></code> if not found.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello world&quot;</span><span class="p">.</span><span class="nx">find</span><span class="p">(</span><span class="s2">&quot;world&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// 6</span>
+<span class="s2">&quot;hello world&quot;</span><span class="p">.</span><span class="nx">find</span><span class="p">(</span><span class="s2">&quot;xyz&quot;</span><span class="p">)</span><span class="w">     </span><span class="c1">// false</span>
+<span class="s2">&quot;abcabc&quot;</span><span class="p">.</span><span class="nx">find</span><span class="p">(</span><span class="s2">&quot;bc&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span><span class="w">        </span><span class="c1">// 4</span>
+</pre></div>
+</div>
+</section>
+<section id="contains-needle">
+<h3><code class="docutils literal notranslate"><span class="pre">.contains(needle)</span></code><a class="headerlink" href="#contains-needle" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if <code class="docutils literal notranslate"><span class="pre">needle</span></code> occurs anywhere in the string.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello world&quot;</span><span class="p">.</span><span class="nx">contains</span><span class="p">(</span><span class="s2">&quot;world&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// true</span>
+</pre></div>
+</div>
+</section>
+<section id="starts-prefix">
+<h3><code class="docutils literal notranslate"><span class="pre">.starts(prefix)</span></code><a class="headerlink" href="#starts-prefix" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if the string starts with <code class="docutils literal notranslate"><span class="pre">prefix</span></code>.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">starts</span><span class="p">(</span><span class="s2">&quot;he&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// true</span>
+</pre></div>
+</div>
+</section>
+<section id="ends-suffix">
+<h3><code class="docutils literal notranslate"><span class="pre">.ends(suffix)</span></code><a class="headerlink" href="#ends-suffix" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if the string ends with <code class="docutils literal notranslate"><span class="pre">suffix</span></code>.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">ends</span><span class="p">(</span><span class="s2">&quot;lo&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// true</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="append-other">
+<h3><code class="docutils literal notranslate"><span class="pre">.append(other)</span></code><a class="headerlink" href="#append-other" title="Link to this heading"></a></h3>
+<p>Appends <code class="docutils literal notranslate"><span class="pre">other</span></code> to the end of the string. Returns self.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">string</span><span class="p">.</span><span class="ow">new</span><span class="p">()</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">).</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot; world&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="prepend-other">
+<h3><code class="docutils literal notranslate"><span class="pre">.prepend(other)</span></code><a class="headerlink" href="#prepend-other" title="Link to this heading"></a></h3>
+<p>Prepends <code class="docutils literal notranslate"><span class="pre">other</span></code> to the beginning of the string. Returns self.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;world&quot;</span><span class="p">.</span><span class="nx">copy</span><span class="p">()</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">prepend</span><span class="p">(</span><span class="s2">&quot;hello &quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// &quot;hello world&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="clear">
+<h3><code class="docutils literal notranslate"><span class="pre">.clear()</span></code><a class="headerlink" href="#clear" title="Link to this heading"></a></h3>
+<p>Removes all content, resetting length to 0. Capacity is retained. Returns self.</p>
+</section>
+<section id="upper">
+<h3><code class="docutils literal notranslate"><span class="pre">.upper()</span></code><a class="headerlink" href="#upper" title="Link to this heading"></a></h3>
+<p>Converts all ASCII letters to uppercase in place. Returns self.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">copy</span><span class="p">().</span><span class="nx">upper</span><span class="p">()</span><span class="w">   </span><span class="c1">// &quot;HELLO&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="lower">
+<h3><code class="docutils literal notranslate"><span class="pre">.lower()</span></code><a class="headerlink" href="#lower" title="Link to this heading"></a></h3>
+<p>Converts all ASCII letters to lowercase in place. Returns self.</p>
+</section>
+<section id="trim">
+<h3><code class="docutils literal notranslate"><span class="pre">.trim()</span></code><a class="headerlink" href="#trim" title="Link to this heading"></a></h3>
+<p>Removes leading and trailing whitespace (<code class="docutils literal notranslate"><span class="pre">'</span> <span class="pre">'</span></code>, <code class="docutils literal notranslate"><span class="pre">'\t'</span></code>, <code class="docutils literal notranslate"><span class="pre">'\n'</span></code>, <code class="docutils literal notranslate"><span class="pre">'\r'</span></code>) in place. Returns self.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;  hello  &quot;</span><span class="p">.</span><span class="nx">copy</span><span class="p">().</span><span class="nx">trim</span><span class="p">()</span><span class="w">   </span><span class="c1">// &quot;hello&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="rev">
+<h3><code class="docutils literal notranslate"><span class="pre">.rev()</span></code><a class="headerlink" href="#rev" title="Link to this heading"></a></h3>
+<p>Reverses the string in place. Returns self.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">copy</span><span class="p">().</span><span class="nx">rev</span><span class="p">()</span><span class="w">   </span><span class="c1">// &quot;olleh&quot;</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="copy">
+<h3><code class="docutils literal notranslate"><span class="pre">.copy()</span></code><a class="headerlink" href="#copy" title="Link to this heading"></a></h3>
+<p>Returns a new independent mutable copy of the string.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">copy</span><span class="p">()</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot; world&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="repeat-n">
+<h3><code class="docutils literal notranslate"><span class="pre">.repeat(n)</span></code><a class="headerlink" href="#repeat-n" title="Link to this heading"></a></h3>
+<p>Returns a new string with the content repeated <code class="docutils literal notranslate"><span class="pre">n</span></code> times. Returns <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> if <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">&lt;=</span> <span class="pre">0</span></code>.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;ab&quot;</span><span class="p">.</span><span class="nx">repeat</span><span class="p">(</span><span class="mf">3</span><span class="p">)</span><span class="w">   </span><span class="c1">// &quot;ababab&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="replace-needle-replacement">
+<h3><code class="docutils literal notranslate"><span class="pre">.replace(needle,</span> <span class="pre">replacement)</span></code><a class="headerlink" href="#replace-needle-replacement" title="Link to this heading"></a></h3>
+<p>Returns a new string with all occurrences of <code class="docutils literal notranslate"><span class="pre">needle</span></code> replaced by <code class="docutils literal notranslate"><span class="pre">replacement</span></code>. The original is not modified.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello world&quot;</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="s2">&quot;world&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;there&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// &quot;hello there&quot;</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="split-delim">
+<h3><code class="docutils literal notranslate"><span class="pre">.split(delim)</span></code><a class="headerlink" href="#split-delim" title="Link to this heading"></a></h3>
+<p>Splits the string on <code class="docutils literal notranslate"><span class="pre">delim</span></code> and returns an array of strings. If <code class="docutils literal notranslate"><span class="pre">delim</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code>, splits into individual bytes as single-character strings.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;a,b,c&quot;</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;]</span>
+<span class="s2">&quot;hi&quot;</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="w">        </span><span class="c1">// [&quot;h&quot;, &quot;i&quot;]</span>
+</pre></div>
+</div>
+</section>
+<section id="bytes">
+<h3><code class="docutils literal notranslate"><span class="pre">.bytes()</span></code><a class="headerlink" href="#bytes" title="Link to this heading"></a></h3>
+<p>Returns an array of integers, one per byte.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hi&quot;</span><span class="p">.</span><span class="nx">bytes</span><span class="p">()</span><span class="w">   </span><span class="c1">// [104, 105]</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="eq-other">
+<h3><code class="docutils literal notranslate"><span class="pre">.eq(other)</span></code><a class="headerlink" href="#eq-other" title="Link to this heading"></a></h3>
+<p>Byte-value string equality. Returns <code class="docutils literal notranslate"><span class="pre">null</span></code> if either argument is not a string (does not throw).</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">eq</span><span class="p">(</span><span class="s2">&quot;hello&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// true</span>
+<span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">eq</span><span class="p">(</span><span class="s2">&quot;world&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// false</span>
+<span class="s2">&quot;hello&quot;</span><span class="p">.</span><span class="nx">eq</span><span class="p">(</span><span class="mf">42</span><span class="p">)</span><span class="w">        </span><span class="c1">// null</span>
+</pre></div>
+</div>
+</section>
+<section id="cmp-other">
+<h3><code class="docutils literal notranslate"><span class="pre">.cmp(other)</span></code><a class="headerlink" href="#cmp-other" title="Link to this heading"></a></h3>
+<p>Lexicographic comparison. Returns <code class="docutils literal notranslate"><span class="pre">-1</span></code>, <code class="docutils literal notranslate"><span class="pre">0</span></code>, or <code class="docutils literal notranslate"><span class="pre">1</span></code>. Returns <code class="docutils literal notranslate"><span class="pre">null</span></code> if either argument is not a string.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;abc&quot;</span><span class="p">.</span><span class="nx">cmp</span><span class="p">(</span><span class="s2">&quot;abd&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// -1</span>
+<span class="s2">&quot;abc&quot;</span><span class="p">.</span><span class="nx">cmp</span><span class="p">(</span><span class="s2">&quot;abc&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// 0</span>
+<span class="s2">&quot;abd&quot;</span><span class="p">.</span><span class="nx">cmp</span><span class="p">(</span><span class="s2">&quot;abc&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// 1</span>
+</pre></div>
+</div>
+</section>
+<section id="hash">
+<h3><code class="docutils literal notranslate"><span class="pre">.hash()</span></code><a class="headerlink" href="#hash" title="Link to this heading"></a></h3>
+<p>Returns the FNV-1a hash of the string as an integer.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="format-strings">
+<h2>Format Strings<a class="headerlink" href="#format-strings" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">.format(fmt,</span> <span class="pre">args...)</span></code> appends formatted output to the string in place and returns self. When called as <code class="docutils literal notranslate"><span class="pre">string.format(...)</span></code>, a new string is created instead. <code class="docutils literal notranslate"><span class="pre">.printf</span></code> is an alias for <code class="docutils literal notranslate"><span class="pre">.format</span></code>.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="c1">// method style — appends to existing string</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">string</span><span class="p">.</span><span class="ow">new</span><span class="p">()</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">format</span><span class="p">(</span><span class="s2">&quot;x=%d, name=%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">42</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bob&quot;</span><span class="p">)</span>
+
+<span class="c1">// namespace style — creates new string</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">string</span><span class="p">.</span><span class="nx">format</span><span class="p">(</span><span class="s2">&quot;x=%d, name=%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">42</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bob&quot;</span><span class="p">)</span>
+
+<span class="c1">// chaining</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">string</span><span class="p">.</span><span class="ow">new</span><span class="p">(</span><span class="mf">64</span><span class="p">)</span>
+<span class="nx">s</span><span class="p">.</span><span class="nx">format</span><span class="p">(</span><span class="s2">&quot;[%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;start&quot;</span><span class="p">).</span><span class="nx">format</span><span class="p">(</span><span class="s2">&quot;|%d&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">42</span><span class="p">).</span><span class="nx">format</span><span class="p">(</span><span class="s2">&quot;|%x]&quot;</span><span class="p">,</span><span class="w"> </span><span class="mh">0xFF</span><span class="p">)</span>
+<span class="c1">// &quot;[start|42|ff]&quot;</span>
+</pre></div>
+</div>
+<section id="specifiers">
+<h3>Specifiers<a class="headerlink" href="#specifiers" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Specifier</p></th>
+<th class="head"><p>Argument</p></th>
+<th class="head"><p>Output</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">%d</span></code> / <code class="docutils literal notranslate"><span class="pre">%i</span></code></p></td>
+<td><p>int or float (truncated)</p></td>
+<td><p>Decimal integer</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">%u</span></code></p></td>
+<td><p>int</p></td>
+<td><p>Unsigned decimal</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">%x</span></code></p></td>
+<td><p>int</p></td>
+<td><p>Hex lowercase (<code class="docutils literal notranslate"><span class="pre">ff</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">%X</span></code></p></td>
+<td><p>int</p></td>
+<td><p>Hex uppercase (<code class="docutils literal notranslate"><span class="pre">FF</span></code>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">%o</span></code></p></td>
+<td><p>int</p></td>
+<td><p>Octal</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">%b</span></code></p></td>
+<td><p>int</p></td>
+<td><p>Binary</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">%f</span></code></p></td>
+<td><p>float</p></td>
+<td><p>Decimal float (default 6 places)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">%e</span></code></p></td>
+<td><p>float</p></td>
+<td><p>Scientific notation (<code class="docutils literal notranslate"><span class="pre">1.5e10</span></code>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">%g</span></code></p></td>
+<td><p>float</p></td>
+<td><p>Shorter of decimal or scientific</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">%s</span></code></p></td>
+<td><p>string</p></td>
+<td><p>String value; int/float printed as number</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">%c</span></code></p></td>
+<td><p>int</p></td>
+<td><p>UTF-8 encoded codepoint</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">%%</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Literal <code class="docutils literal notranslate"><span class="pre">%</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Width, precision, alignment, and zero-padding are supported: <code class="docutils literal notranslate"><span class="pre">%10d</span></code>, <code class="docutils literal notranslate"><span class="pre">%-10s</span></code>, <code class="docutils literal notranslate"><span class="pre">%.4f</span></code>, <code class="docutils literal notranslate"><span class="pre">%08x</span></code>, <code class="docutils literal notranslate"><span class="pre">%020e</span></code>.</p>
+</section>
+<section id="type-mismatches">
+<h3>Type mismatches<a class="headerlink" href="#type-mismatches" title="Link to this heading"></a></h3>
+<p>The formatter never crashes on wrong types — it emits a placeholder instead:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Situation</p></th>
+<th class="head"><p>Output</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">%d</span></code>/<code class="docutils literal notranslate"><span class="pre">%x</span></code>/<code class="docutils literal notranslate"><span class="pre">%o</span></code>/<code class="docutils literal notranslate"><span class="pre">%b</span></code>/<code class="docutils literal notranslate"><span class="pre">%f</span></code>/<code class="docutils literal notranslate"><span class="pre">%e</span></code>/<code class="docutils literal notranslate"><span class="pre">%g</span></code> with non-number</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;!NUM&gt;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">%s</span></code> with non-string, non-number</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;!STR&gt;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">%c</span></code> with non-integer</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;!CHR&gt;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Missing argument</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;!ARG&gt;</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">string</span><span class="p">.</span><span class="nx">format</span><span class="p">(</span><span class="s2">&quot;%d&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// &quot;&lt;!NUM&gt;&quot;</span>
+<span class="nx">string</span><span class="p">.</span><span class="nx">format</span><span class="p">(</span><span class="s2">&quot;%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w">      </span><span class="c1">// &quot;&lt;!STR&gt;&quot;</span>
+<span class="nx">string</span><span class="p">.</span><span class="nx">format</span><span class="p">(</span><span class="s2">&quot;%d&quot;</span><span class="p">)</span><span class="w">            </span><span class="c1">// &quot;&lt;!ARG&gt;&quot;</span>
+<span class="nx">string</span><span class="p">.</span><span class="nx">format</span><span class="p">(</span><span class="s2">&quot;100%%&quot;</span><span class="p">)</span><span class="w">         </span><span class="c1">// &quot;100%&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="syntax.html" class="btn btn-neutral float-left" title="Syntax" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="stdlib.html" class="btn btn-neutral float-right" title="Standard Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Blueberry Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

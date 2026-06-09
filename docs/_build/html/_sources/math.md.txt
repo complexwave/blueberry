@@ -1,0 +1,159 @@
+# Math
+
+The `math` namespace provides mathematical functions and constants. All functions accept both integers and floats — integers are promoted to float for computation, and the result is always a float unless noted otherwise.
+
+## Constants
+
+| Name | Value |
+|------|-------|
+| `math.pi` | π ≈ 3.14159265358979 |
+| `math.e` | e ≈ 2.71828182845904 |
+| `math.inf` | Positive infinity |
+| `math.nan` | Not-a-number |
+| `math.huge` | Largest representable float (`HUGE_VAL`) |
+
+```javascript
+var area = math.pi * r * r
+```
+
+## Functions
+
+| Function | Description |
+|----------|-------------|
+| `math.sin(x)` | Sine (radians) |
+| `math.cos(x)` | Cosine (radians) |
+| `math.tan(x)` | Tangent (radians) |
+| `math.asin(x)` | Arc sine → radians |
+| `math.acos(x)` | Arc cosine → radians |
+| `math.atan(y, x?)` | Arc tangent of `y/x` → radians; `x` defaults to `1.0` |
+| `math.sqrt(x)` | Square root |
+| `math.cbrt(x)` | Cube root |
+| `math.pow(b, e)` | `b` raised to `e` |
+| `math.hypot(a, b)` | Hypotenuse: `sqrt(a²+b²)` |
+| `math.exp(x)` | `e^x` |
+| `math.exp2(x)` | `2^x` |
+| `math.log(x)` | Natural logarithm |
+| `math.log2(x)` | Base-2 logarithm |
+| `math.log10(x)` | Base-10 logarithm |
+| `math.floor(x)` | Round down |
+| `math.ceil(x)` | Round up |
+| `math.round(x)` | Round to nearest |
+| `math.trunc(x)` | Round toward zero |
+| `math.abs(x)` | Absolute value |
+| `math.sign(x)` | `-1`, `0`, or `1` (returns int) |
+| `math.fmod(x, y)` | Floating-point remainder |
+| `math.deg(x)` | Radians → degrees |
+| `math.rad(x)` | Degrees → radians |
+| `math.clamp(x, lo, hi)` | Clamp `x` to `[lo, hi]` |
+| `math.min(a, b, ...)` | Minimum of one or more values |
+| `math.max(a, b, ...)` | Maximum of one or more values |
+| `math.isnan(x)` | True if `x` is NaN |
+| `math.isinf(x)` | True if `x` is ±infinity |
+| `math.isfinite(x)` | True if `x` is finite |
+| `math.eq(a, b, eps?)` | True if `\|a−b\| ≤ eps` |
+| `math.cmp(a, b, eps?)` | `-1`/`0`/`1` with epsilon tolerance |
+| `math.precision(eps?)` | Get or set default epsilon for `eq`/`cmp` |
+| `math.type(x)` | `"int"` or `"float"`, `null` if not a number |
+| `math.boxed(x)` | True if `x` is a boxed number, false if tagged int |
+
+---
+
+### `math.atan(y, x?)`
+
+One-argument form returns `atan(y)`. Two-argument form returns `atan2(y, x)` — the angle of the vector `(x, y)` in radians, handling all quadrants correctly.
+
+```javascript
+math.atan(1)           // π/4
+math.atan(1, 0)        // π/2  (pointing straight up)
+math.atan(-1, -1)      // -3π/4
+```
+
+### `math.clamp(x, lo, hi)`
+
+Returns `x` clamped to the range `[lo, hi]`.
+
+```javascript
+math.clamp(1.5, 0, 1)    // 1
+math.clamp(-3, 0, 10)    // 0
+math.clamp(5, 0, 10)     // 5
+```
+
+### `math.min(a, b, ...)` / `math.max(a, b, ...)`
+
+Accept any number of arguments.
+
+```javascript
+math.min(3, 1, 4, 1, 5)   // 1
+math.max(3, 1, 4, 1, 5)   // 5
+```
+
+### `math.sign(x)`
+
+Returns `-1`, `0`, or `1` as an integer.
+
+```javascript
+math.sign(-5.0)   // -1
+math.sign(0.0)    // 0
+math.sign(3.0)    // 1
+```
+
+### `math.deg(x)` / `math.rad(x)`
+
+Convert between degrees and radians.
+
+```javascript
+math.deg(math.pi)    // 180.0
+math.rad(180)        // π
+```
+
+---
+
+## Floating-point comparison
+
+Integer `==` is exact. Float comparison is tricky — two floats that should be equal may differ by a small rounding error. `math.eq` and `math.cmp` use an epsilon tolerance for this.
+
+### `math.eq(a, b, eps?)`
+
+Returns `true` if `|a − b| ≤ eps`. Default `eps` is `1e-9` (configurable via `math.precision`).
+
+```javascript
+math.eq(0.1 + 0.2, 0.3)         // true
+math.eq(0.1 + 0.2, 0.3, 1e-15)  // may be false — tight tolerance
+```
+
+### `math.cmp(a, b, eps?)`
+
+Returns `-1`, `0`, or `1`. Values within `eps` of each other compare as equal (`0`).
+
+```javascript
+math.cmp(1.0, 2.0)   // -1
+math.cmp(1.0, 1.0)   // 0
+math.cmp(2.0, 1.0)   // 1
+```
+
+### `math.precision(eps?)`
+
+With no argument, returns the current default epsilon. With an argument, sets it and returns the previous value.
+
+```javascript
+var old = math.precision(1e-6)   // set new, get old
+math.precision()                  // 1e-6
+```
+
+---
+
+## Type inspection
+
+### `math.type(x)`
+
+Returns `"int"` or `"float"` for numbers, `null` for anything else.
+
+```javascript
+math.type(42)     // "int"
+math.type(3.14)   // "float"
+math.type("hi")   // null
+```
+
+### `math.boxed(x)`
+
+Returns `true` if `x` is a boxed `ci_number` (heap-allocated float or large int), `false` if it is a tagged integer, `null` if not a number at all. Mostly useful for debugging and low-level optimisation.

@@ -1,0 +1,50 @@
+/* Blueberry docs — larger base font */
+
+body,
+.wy-body-for-nav {
+    font-size: 17px;
+}
+
+/* Main content area */
+.wy-nav-content {
+    font-size: 17px;
+}
+
+.rst-content p,
+.rst-content li,
+.rst-content td,
+.rst-content th,
+.rst-content dd {
+    font-size: 17px;
+}
+
+/* Nav/sidebar menu */
+.wy-menu-vertical a,
+.wy-menu-vertical li,
+.wy-menu-vertical span,
+.wy-menu-vertical .caption-text {
+    font-size: 16px !important;
+}
+
+.wy-nav-side {
+    font-size: 16px;
+}
+
+/* Code blocks — keep slightly smaller but readable */
+.rst-content code,
+.rst-content pre,
+.highlight pre {
+    font-size: 15px;
+}
+
+/* Table */
+.rst-content table.docutils td,
+.rst-content table.docutils th {
+    font-size: 16px;
+}
+
+/* Headings — scale up proportionally */
+.rst-content h1 { font-size: 2em; }
+.rst-content h2 { font-size: 1.6em; }
+.rst-content h3 { font-size: 1.3em; }
+.rst-content h4 { font-size: 1.1em; }

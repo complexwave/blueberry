@@ -1,0 +1,404 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Syntax &mdash; Blueberry  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=8bde7d8b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Strings" href="strings.html" />
+    <link rel="prev" title="Getting Started" href="getting-started.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Blueberry
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#building">Building</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#hello-world">Hello World</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Syntax</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#variables">Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#types">Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#strings">Strings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#arrays">Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#maps">Maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#operators">Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#arithmetic">Arithmetic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#comparison">Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#logical">Logical</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#control-flow">Control Flow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#if-else">if / else</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#for-in">for-in</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#while">while</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#break">break</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#functions">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#prototype-oop">Prototype OOP</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="strings.html">Strings</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#introduction">Introduction</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#immutable-literals">Immutable literals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#mutable-strings-and-the-copy-pattern">Mutable strings and the copy pattern</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#creating-strings-from-scratch">Creating strings from scratch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#slices">Slices</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#string-namespace"><code class="docutils literal notranslate"><span class="pre">string</span></code> namespace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-new-size"><code class="docutils literal notranslate"><span class="pre">string.new(size?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-format-fmt-args-string-printf"><code class="docutils literal notranslate"><span class="pre">string.format(fmt,</span> <span class="pre">args...)</span></code> / <code class="docutils literal notranslate"><span class="pre">string.printf</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-eq-a-b"><code class="docutils literal notranslate"><span class="pre">string.eq(a,</span> <span class="pre">b)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-cmp-a-b"><code class="docutils literal notranslate"><span class="pre">string.cmp(a,</span> <span class="pre">b)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#object-methods">Object Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#len"><code class="docutils literal notranslate"><span class="pre">.len()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#size"><code class="docutils literal notranslate"><span class="pre">.size()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#is-readonly"><code class="docutils literal notranslate"><span class="pre">.is_readonly()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#is-slice"><code class="docutils literal notranslate"><span class="pre">.is_slice()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#at-idx-get-idx"><code class="docutils literal notranslate"><span class="pre">.at(idx)</span></code> / <code class="docutils literal notranslate"><span class="pre">.get(idx)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#set-idx-byte"><code class="docutils literal notranslate"><span class="pre">.set(idx,</span> <span class="pre">byte)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#slice-start-end"><code class="docutils literal notranslate"><span class="pre">.slice(start,</span> <span class="pre">end?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#id1"><code class="docutils literal notranslate"><span class="pre">.__slice(start,</span> <span class="pre">end?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#slice-offset"><code class="docutils literal notranslate"><span class="pre">.slice_offset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#parent"><code class="docutils literal notranslate"><span class="pre">.parent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#ctx"><code class="docutils literal notranslate"><span class="pre">.ctx()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#find-needle-start"><code class="docutils literal notranslate"><span class="pre">.find(needle,</span> <span class="pre">start?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#contains-needle"><code class="docutils literal notranslate"><span class="pre">.contains(needle)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#starts-prefix"><code class="docutils literal notranslate"><span class="pre">.starts(prefix)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#ends-suffix"><code class="docutils literal notranslate"><span class="pre">.ends(suffix)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#append-other"><code class="docutils literal notranslate"><span class="pre">.append(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#prepend-other"><code class="docutils literal notranslate"><span class="pre">.prepend(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#clear"><code class="docutils literal notranslate"><span class="pre">.clear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#upper"><code class="docutils literal notranslate"><span class="pre">.upper()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#lower"><code class="docutils literal notranslate"><span class="pre">.lower()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#trim"><code class="docutils literal notranslate"><span class="pre">.trim()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#rev"><code class="docutils literal notranslate"><span class="pre">.rev()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#copy"><code class="docutils literal notranslate"><span class="pre">.copy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#repeat-n"><code class="docutils literal notranslate"><span class="pre">.repeat(n)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#replace-needle-replacement"><code class="docutils literal notranslate"><span class="pre">.replace(needle,</span> <span class="pre">replacement)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#split-delim"><code class="docutils literal notranslate"><span class="pre">.split(delim)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#bytes"><code class="docutils literal notranslate"><span class="pre">.bytes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#eq-other"><code class="docutils literal notranslate"><span class="pre">.eq(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#cmp-other"><code class="docutils literal notranslate"><span class="pre">.cmp(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#hash"><code class="docutils literal notranslate"><span class="pre">.hash()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#format-strings">Format Strings</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#specifiers">Specifiers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#type-mismatches">Type mismatches</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="stdlib.html">Standard Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#builtins">Builtins</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="stdlib.html#print">print(…)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#string-methods">String Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#array-methods">Array Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#map-operations">Map Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#proto">Proto</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="design.html#philosophy">Philosophy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#implementation">Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#performance">Performance</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Blueberry</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Syntax</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/syntax.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="syntax">
+<h1>Syntax<a class="headerlink" href="#syntax" title="Link to this heading"></a></h1>
+<p>Blueberry syntax is familiar if you know JS or Lua. No inventions — just the existing scripting paradigm done better.</p>
+<section id="variables">
+<h2>Variables<a class="headerlink" href="#variables" title="Link to this heading"></a></h2>
+<p>Variables are declared with <code class="docutils literal notranslate"><span class="pre">var</span></code>. Uninitialized variables default to <code class="docutils literal notranslate"><span class="pre">nil</span></code>.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Blueberry&quot;</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">42</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">pi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3.14</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">unset</span><span class="w">  </span><span class="c1">// nil</span>
+</pre></div>
+</div>
+<p>Globals are assigned without <code class="docutils literal notranslate"><span class="pre">var</span></code>:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">MyGlobal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">100</span>
+</pre></div>
+</div>
+</section>
+<section id="types">
+<h2>Types<a class="headerlink" href="#types" title="Link to this heading"></a></h2>
+<p>Blueberry is dynamically typed with no implicit type coercion (except integer widening in arithmetic, like C).</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Type</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>nil</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">nil</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>bool</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code>, <code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>int</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">42</span></code>, <code class="docutils literal notranslate"><span class="pre">0xFF</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>double</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">3.14</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>string</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;hello&quot;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>array</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>map</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{</span> <span class="pre">key:</span> <span class="pre">&quot;value&quot;</span> <span class="pre">}</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>function</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fn(x)</span> <span class="pre">{</span> <span class="pre">return</span> <span class="pre">x</span> <span class="pre">}</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Integers are native-width (up to <code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">-</span> <span class="pre">1</span></code>), with transparent boxing to double or int128 when needed.</p>
+</section>
+<section id="strings">
+<h2>Strings<a class="headerlink" href="#strings" title="Link to this heading"></a></h2>
+<p>Strings are <strong>mutable</strong>. Concatenation must be explicit — there is no <code class="docutils literal notranslate"><span class="pre">+</span></code> overload for strings.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">greeting</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">copy</span><span class="p">().</span><span class="nx">append</span><span class="p">(</span><span class="s2">&quot; world&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Use <code class="docutils literal notranslate"><span class="pre">.copy()</span></code> when you need a separate copy. Without it, you’re mutating in place.</p>
+</section>
+<section id="arrays">
+<h2>Arrays<a class="headerlink" href="#arrays" title="Link to this heading"></a></h2>
+<p>Arrays are <strong>0-indexed</strong>. No Lua 1-based nonsense.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">nums</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="mf">10</span><span class="p">,</span><span class="w"> </span><span class="mf">20</span><span class="p">,</span><span class="w"> </span><span class="mf">30</span><span class="p">]</span>
+<span class="nx">nums</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="mf">40</span><span class="p">)</span>
+
+<span class="nx">print</span><span class="p">(</span><span class="nx">nums</span><span class="p">[</span><span class="mf">0</span><span class="p">])</span><span class="w">    </span><span class="c1">// 10</span>
+<span class="nx">print</span><span class="p">(</span><span class="nx">nums</span><span class="p">.</span><span class="nx">len</span><span class="p">())</span><span class="w"> </span><span class="c1">// 4</span>
+</pre></div>
+</div>
+</section>
+<section id="maps">
+<h2>Maps<a class="headerlink" href="#maps" title="Link to this heading"></a></h2>
+<p>Maps use <code class="docutils literal notranslate"><span class="pre">{}</span></code> with JS-like shorthand keys.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">host</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;localhost&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">port</span><span class="o">:</span><span class="w"> </span><span class="mf">8080</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">config</span><span class="p">.</span><span class="nx">debug</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="nx">print</span><span class="p">(</span><span class="nx">config</span><span class="p">.</span><span class="nx">host</span><span class="p">)</span>
+<span class="nx">print</span><span class="p">(</span><span class="nx">config</span><span class="p">[</span><span class="s2">&quot;port&quot;</span><span class="p">])</span><span class="w">  </span><span class="c1">// bracket access also works</span>
+</pre></div>
+</div>
+</section>
+<section id="operators">
+<h2>Operators<a class="headerlink" href="#operators" title="Link to this heading"></a></h2>
+<section id="arithmetic">
+<h3>Arithmetic<a class="headerlink" href="#arithmetic" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">+</span></code>, <code class="docutils literal notranslate"><span class="pre">-</span></code>, <code class="docutils literal notranslate"><span class="pre">*</span></code>, <code class="docutils literal notranslate"><span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">%</span></code> — standard arithmetic. Integer arithmetic stays integer; mixing with doubles promotes to double.</p>
+</section>
+<section id="comparison">
+<h3>Comparison<a class="headerlink" href="#comparison" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">==</span></code>, <code class="docutils literal notranslate"><span class="pre">!=</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;=</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code></p>
+</section>
+<section id="logical">
+<h3>Logical<a class="headerlink" href="#logical" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">and</span></code>, <code class="docutils literal notranslate"><span class="pre">or</span></code>, <code class="docutils literal notranslate"><span class="pre">not</span></code> — short-circuit evaluation.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="w"> </span><span class="nx">x</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="nx">and</span><span class="w"> </span><span class="nx">x</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mf">100</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;in range&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="control-flow">
+<h2>Control Flow<a class="headerlink" href="#control-flow" title="Link to this heading"></a></h2>
+<section id="if-else">
+<h3>if / else<a class="headerlink" href="#if-else" title="Link to this heading"></a></h3>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="w"> </span><span class="nx">x</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">10</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;big&quot;</span><span class="p">)</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nx">x</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">5</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;medium&quot;</span><span class="p">)</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">print</span><span class="p">(</span><span class="s2">&quot;small&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="for-in">
+<h3>for-in<a class="headerlink" href="#for-in" title="Link to this heading"></a></h3>
+<p>Iterate over arrays with index and value:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="p">,</span><span class="w"> </span><span class="nx">v</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nx">nums</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">print</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span><span class="w"> </span><span class="nx">v</span><span class="p">)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="while">
+<h3>while<a class="headerlink" href="#while" title="Link to this heading"></a></h3>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span>
+<span class="k">while</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mf">10</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">print</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="break">
+<h3>break<a class="headerlink" href="#break" title="Link to this heading"></a></h3>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">while</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">done</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">break</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h2>
+<p>Declared with <code class="docutils literal notranslate"><span class="pre">fn</span></code>. First-class values.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">fn</span><span class="w"> </span><span class="nx">add</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span><span class="w"> </span><span class="nx">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">b</span>
+<span class="p">}</span>
+
+<span class="nx">print</span><span class="p">(</span><span class="nx">add</span><span class="p">(</span><span class="mf">2</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">))</span><span class="w">  </span><span class="c1">// 5</span>
+</pre></div>
+</div>
+<p>Methods on objects receive <code class="docutils literal notranslate"><span class="pre">self</span></code> implicitly:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">fn</span><span class="w"> </span><span class="nx">Vec.len2</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">self</span><span class="p">.</span><span class="nx">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">self</span><span class="p">.</span><span class="nx">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">self</span><span class="p">.</span><span class="nx">y</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">self</span><span class="p">.</span><span class="nx">y</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="prototype-oop">
+<h2>Prototype OOP<a class="headerlink" href="#prototype-oop" title="Link to this heading"></a></h2>
+<p>Objects use prototype-based inheritance. Set a prototype with <code class="docutils literal notranslate"><span class="pre">proto.set()</span></code>, method calls resolve up the chain via <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">Vec</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{}</span>
+
+<span class="nx">fn</span><span class="w"> </span><span class="nx">Vec</span><span class="p">.</span><span class="ow">new</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="nx">proto</span><span class="p">.</span><span class="nx">set</span><span class="p">(</span><span class="nx">v</span><span class="p">,</span><span class="w"> </span><span class="nx">self</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">v</span><span class="p">.</span><span class="nx">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">x</span>
+<span class="w">    </span><span class="nx">v</span><span class="p">.</span><span class="nx">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">y</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">v</span>
+<span class="p">}</span>
+
+<span class="nx">fn</span><span class="w"> </span><span class="nx">Vec.len2</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">self</span><span class="p">.</span><span class="nx">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">self</span><span class="p">.</span><span class="nx">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">self</span><span class="p">.</span><span class="nx">y</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">self</span><span class="p">.</span><span class="nx">y</span>
+<span class="p">}</span>
+
+<span class="nx">fn</span><span class="w"> </span><span class="nx">Vec</span><span class="p">.</span><span class="nx">add</span><span class="p">(</span><span class="nx">other</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">Vec</span><span class="p">.</span><span class="ow">new</span><span class="p">(</span><span class="nx">self</span><span class="p">.</span><span class="nx">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">other</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">self</span><span class="p">.</span><span class="nx">y</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">other</span><span class="p">.</span><span class="nx">y</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">var</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">Vec</span><span class="p">.</span><span class="ow">new</span><span class="p">(</span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">4</span><span class="p">)</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">Vec</span><span class="p">.</span><span class="ow">new</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">a</span><span class="p">.</span><span class="nx">add</span><span class="p">(</span><span class="nx">b</span><span class="p">)</span>
+<span class="nx">print</span><span class="p">(</span><span class="s2">&quot;vec:&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">y</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;len2:&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">len2</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="getting-started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="strings.html" class="btn btn-neutral float-right" title="Strings" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Blueberry Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,484 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maps &mdash; Blueberry  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=8bde7d8b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Prototypes" href="proto.html" />
+    <link rel="prev" title="Arrays" href="arrays.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Blueberry
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#building">Building</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#running-tests">Running Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#hello-world">Hello World</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="syntax.html">Syntax</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#variables">Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#types">Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#strings">Strings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#arrays">Arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#maps">Maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#operators">Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#arithmetic">Arithmetic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#comparison">Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#logical">Logical</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#control-flow">Control Flow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#if-else">if / else</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#for-in">for-in</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#while">while</a></li>
+<li class="toctree-l3"><a class="reference internal" href="syntax.html#break">break</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#functions">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#prototype-oop">Prototype OOP</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="control-flow.html">Control Flow</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="control-flow.html#if-else">if / else</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="control-flow.html#truthy-falsy">Truthy / falsy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="control-flow.html#while">while</a></li>
+<li class="toctree-l2"><a class="reference internal" href="control-flow.html#do-while">do-while</a></li>
+<li class="toctree-l2"><a class="reference internal" href="control-flow.html#for-in">for-in</a></li>
+<li class="toctree-l2"><a class="reference internal" href="control-flow.html#goto">goto</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="strings.html">Strings</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#introduction">Introduction</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#immutable-literals">Immutable literals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#mutable-strings-and-the-copy-pattern">Mutable strings and the copy pattern</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#creating-strings-from-scratch">Creating strings from scratch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#slices">Slices</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#string-namespace"><code class="docutils literal notranslate"><span class="pre">string</span></code> namespace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-new-size"><code class="docutils literal notranslate"><span class="pre">string.new(size?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-format-fmt-args-string-printf"><code class="docutils literal notranslate"><span class="pre">string.format(fmt,</span> <span class="pre">args...)</span></code> / <code class="docutils literal notranslate"><span class="pre">string.printf</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-eq-a-b"><code class="docutils literal notranslate"><span class="pre">string.eq(a,</span> <span class="pre">b)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#string-cmp-a-b"><code class="docutils literal notranslate"><span class="pre">string.cmp(a,</span> <span class="pre">b)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#object-methods">Object Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#len"><code class="docutils literal notranslate"><span class="pre">.len()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#size-n"><code class="docutils literal notranslate"><span class="pre">.size(n?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#is-readonly"><code class="docutils literal notranslate"><span class="pre">.is_readonly()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#is-slice"><code class="docutils literal notranslate"><span class="pre">.is_slice()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#at-idx-get-idx"><code class="docutils literal notranslate"><span class="pre">.at(idx)</span></code> / <code class="docutils literal notranslate"><span class="pre">.get(idx)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#set-idx-byte"><code class="docutils literal notranslate"><span class="pre">.set(idx,</span> <span class="pre">byte)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#slice-start-end"><code class="docutils literal notranslate"><span class="pre">.slice(start,</span> <span class="pre">end?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#id1"><code class="docutils literal notranslate"><span class="pre">.__slice(start,</span> <span class="pre">end?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#slice-offset"><code class="docutils literal notranslate"><span class="pre">.slice_offset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#parent"><code class="docutils literal notranslate"><span class="pre">.parent()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#ctx"><code class="docutils literal notranslate"><span class="pre">.ctx()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#find-needle-start"><code class="docutils literal notranslate"><span class="pre">.find(needle,</span> <span class="pre">start?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#contains-needle"><code class="docutils literal notranslate"><span class="pre">.contains(needle)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#starts-prefix"><code class="docutils literal notranslate"><span class="pre">.starts(prefix)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#ends-suffix"><code class="docutils literal notranslate"><span class="pre">.ends(suffix)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#append-other"><code class="docutils literal notranslate"><span class="pre">.append(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#prepend-other"><code class="docutils literal notranslate"><span class="pre">.prepend(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#clear"><code class="docutils literal notranslate"><span class="pre">.clear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#upper"><code class="docutils literal notranslate"><span class="pre">.upper()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#lower"><code class="docutils literal notranslate"><span class="pre">.lower()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#trim"><code class="docutils literal notranslate"><span class="pre">.trim()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#rev"><code class="docutils literal notranslate"><span class="pre">.rev()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#copy"><code class="docutils literal notranslate"><span class="pre">.copy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#repeat-n"><code class="docutils literal notranslate"><span class="pre">.repeat(n)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#replace-needle-replacement"><code class="docutils literal notranslate"><span class="pre">.replace(needle,</span> <span class="pre">replacement)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#split-delim"><code class="docutils literal notranslate"><span class="pre">.split(delim)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#bytes"><code class="docutils literal notranslate"><span class="pre">.bytes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#eq-other"><code class="docutils literal notranslate"><span class="pre">.eq(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#cmp-other"><code class="docutils literal notranslate"><span class="pre">.cmp(other)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#hash"><code class="docutils literal notranslate"><span class="pre">.hash()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="strings.html#format-strings">Format Strings</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#specifiers">Specifiers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="strings.html#type-mismatches">Type mismatches</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="numbers.html">Numbers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="numbers.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="numbers.html#global-constructors">Global constructors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#number-x"><code class="docutils literal notranslate"><span class="pre">number(x)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#float-x"><code class="docutils literal notranslate"><span class="pre">float(x)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="numbers.html#math-namespace"><code class="docutils literal notranslate"><span class="pre">math</span></code> namespace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="numbers.html#constants">Constants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="numbers.html#functions">Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-atan-y-x"><code class="docutils literal notranslate"><span class="pre">math.atan(y,</span> <span class="pre">x?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-clamp-x-lo-hi"><code class="docutils literal notranslate"><span class="pre">math.clamp(x,</span> <span class="pre">lo,</span> <span class="pre">hi)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-min-a-b-math-max-a-b"><code class="docutils literal notranslate"><span class="pre">math.min(a,</span> <span class="pre">b,</span> <span class="pre">...)</span></code> / <code class="docutils literal notranslate"><span class="pre">math.max(a,</span> <span class="pre">b,</span> <span class="pre">...)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-sign-x"><code class="docutils literal notranslate"><span class="pre">math.sign(x)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-deg-x-math-rad-x"><code class="docutils literal notranslate"><span class="pre">math.deg(x)</span></code> / <code class="docutils literal notranslate"><span class="pre">math.rad(x)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="numbers.html#floating-point-comparison">Floating-point comparison</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-eq-a-b-eps"><code class="docutils literal notranslate"><span class="pre">math.eq(a,</span> <span class="pre">b,</span> <span class="pre">eps?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-cmp-a-b-eps"><code class="docutils literal notranslate"><span class="pre">math.cmp(a,</span> <span class="pre">b,</span> <span class="pre">eps?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-precision-eps"><code class="docutils literal notranslate"><span class="pre">math.precision(eps?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-dividebyzero-val"><code class="docutils literal notranslate"><span class="pre">math.dividebyzero(val?)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="numbers.html#type-inspection">Type inspection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-type-x"><code class="docutils literal notranslate"><span class="pre">math.type(x)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#math-boxed-x"><code class="docutils literal notranslate"><span class="pre">math.boxed(x)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="numbers.html#operators">Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#arithmetic">Arithmetic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#bitwise">Bitwise</a></li>
+<li class="toctree-l3"><a class="reference internal" href="numbers.html#comparison">Comparison</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="arrays.html">Arrays</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#array-namespace"><code class="docutils literal notranslate"><span class="pre">array</span></code> namespace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#array-new-size"><code class="docutils literal notranslate"><span class="pre">array.new(size?)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="arrays.html#object-methods">Object methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#len"><code class="docutils literal notranslate"><span class="pre">.len()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#size-n"><code class="docutils literal notranslate"><span class="pre">.size(n?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#push-val-pop"><code class="docutils literal notranslate"><span class="pre">.push(val)</span></code> / <code class="docutils literal notranslate"><span class="pre">.pop()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#unshift-val-shift"><code class="docutils literal notranslate"><span class="pre">.unshift(val)</span></code> / <code class="docutils literal notranslate"><span class="pre">.shift()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#get-idx-set-idx-val"><code class="docutils literal notranslate"><span class="pre">.get(idx)</span></code> / <code class="docutils literal notranslate"><span class="pre">.set(idx,</span> <span class="pre">val)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#find-val-start"><code class="docutils literal notranslate"><span class="pre">.find(val,</span> <span class="pre">start?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#contains-val"><code class="docutils literal notranslate"><span class="pre">.contains(val)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#slice-from-to"><code class="docutils literal notranslate"><span class="pre">.slice(from,</span> <span class="pre">to?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#copy"><code class="docutils literal notranslate"><span class="pre">.copy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#clear"><code class="docutils literal notranslate"><span class="pre">.clear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#reverse"><code class="docutils literal notranslate"><span class="pre">.reverse()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#merge-arr"><code class="docutils literal notranslate"><span class="pre">.merge(arr,</span> <span class="pre">...)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#splice-start-count-inserts"><code class="docutils literal notranslate"><span class="pre">.splice(start,</span> <span class="pre">count,</span> <span class="pre">...inserts)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="arrays.html#splice-arr-start-count-insertarray"><code class="docutils literal notranslate"><span class="pre">.splice_arr(start,</span> <span class="pre">count,</span> <span class="pre">insertArray)</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Maps</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#map-namespace"><code class="docutils literal notranslate"><span class="pre">map</span></code> namespace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#map-new-size"><code class="docutils literal notranslate"><span class="pre">map.new(size?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#map-len-m"><code class="docutils literal notranslate"><span class="pre">map.len(m)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#map-keys-m"><code class="docutils literal notranslate"><span class="pre">map.keys(m)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#map-values-m"><code class="docutils literal notranslate"><span class="pre">map.values(m)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#map-delete-m-key"><code class="docutils literal notranslate"><span class="pre">map.delete(m,</span> <span class="pre">key)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#map-exists-m-key"><code class="docutils literal notranslate"><span class="pre">map.exists(m,</span> <span class="pre">key)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#map-size-m-newsize"><code class="docutils literal notranslate"><span class="pre">map.size(m,</span> <span class="pre">newsize?)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#map-merge-dst-src"><code class="docutils literal notranslate"><span class="pre">map._merge(dst,</span> <span class="pre">src)</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#ordered-maps-trees">Ordered maps (trees)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tree-new"><code class="docutils literal notranslate"><span class="pre">tree.new()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#ordered-map-methods">Ordered map methods</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="proto.html">Prototypes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="proto.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="proto.html#proto-namespace"><code class="docutils literal notranslate"><span class="pre">proto</span></code> namespace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-set-obj-proto"><code class="docutils literal notranslate"><span class="pre">proto.set(obj,</span> <span class="pre">proto)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-register-name-map"><code class="docutils literal notranslate"><span class="pre">proto.register(name,</span> <span class="pre">map)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-get-obj"><code class="docutils literal notranslate"><span class="pre">proto.get(obj)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-of-obj"><code class="docutils literal notranslate"><span class="pre">proto.of(obj)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-typeof-obj-type-obj"><code class="docutils literal notranslate"><span class="pre">proto.typeof(obj)</span></code> / <code class="docutils literal notranslate"><span class="pre">type(obj)</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#proto-all"><code class="docutils literal notranslate"><span class="pre">proto.all()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="proto.html#patterns">Patterns</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#defining-a-type">Defining a type</a></li>
+<li class="toctree-l3"><a class="reference internal" href="proto.html#prototype-inheritance">Prototype inheritance</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="proto.html#limitations">Limitations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="stdlib.html">Standard Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#builtins">Builtins</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="stdlib.html#print">print(…)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#string-methods">String Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#array-methods">Array Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#map-operations">Map Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stdlib.html#proto">Proto</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="design.html#philosophy">Philosophy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#implementation">Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#performance">Performance</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Blueberry</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Maps</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/maps.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="maps">
+<h1>Maps<a class="headerlink" href="#maps" title="Link to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>Blueberry has two map types:</p>
+<ul class="simple">
+<li><p><strong>Map</strong> — unordered hash map. Keys compared by pointer identity. Fast O(1) average lookups.</p></li>
+<li><p><strong>Ordered map (tree)</strong> — sorted B-tree. Keys compared by value. Iteration is always in key order. See <a class="reference internal" href="#ordered-maps-trees">Ordered Maps</a>.</p></li>
+</ul>
+<p>The two types are drop-in interchangeable. All <code class="docutils literal notranslate"><span class="pre">map.*</span></code> namespace functions (<code class="docutils literal notranslate"><span class="pre">map.len</span></code>, <code class="docutils literal notranslate"><span class="pre">map.keys</span></code>, <code class="docutils literal notranslate"><span class="pre">map.delete</span></code>, etc.) accept either type. Index syntax (<code class="docutils literal notranslate"><span class="pre">m[k]</span></code>, <code class="docutils literal notranslate"><span class="pre">m[k]</span> <span class="pre">=</span> <span class="pre">v</span></code>) works on both. Code written against one type works with the other — swap <code class="docutils literal notranslate"><span class="pre">map.new()</span></code> for <code class="docutils literal notranslate"><span class="pre">tree.new()</span></code> to get sorted iteration, or vice versa for raw speed.</p>
+<p>Map literals use <code class="docutils literal notranslate"><span class="pre">{}</span></code> syntax and create regular maps:</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="mf">2</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">m</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span><span class="w">       </span><span class="c1">// 1</span>
+<span class="nx">m</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">99</span><span class="w">  </span><span class="c1">// set</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">m[key]</span></code> and <code class="docutils literal notranslate"><span class="pre">m[key]</span> <span class="pre">=</span> <span class="pre">val</span></code> work for both map types.</p>
+<p><strong>Keys use pointer identity</strong> — string literals are interned and compare equal by pointer, so they work as keys. Mutable strings, boxed numbers, and arrays are matched by object identity only, not value. Use string literals or interned strings as keys in practice.</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">map.exists(m,</span> <span class="pre">key)</span></code> vs. <code class="docutils literal notranslate"><span class="pre">m[key]</span> <span class="pre">==</span> <span class="pre">null</span></code></strong> — a key can exist with a <code class="docutils literal notranslate"><span class="pre">null</span></code> value. <code class="docutils literal notranslate"><span class="pre">exists</span></code> distinguishes the two cases.</p>
+</section>
+<hr class="docutils" />
+<section id="map-namespace">
+<h2><code class="docutils literal notranslate"><span class="pre">map</span></code> namespace<a class="headerlink" href="#map-namespace" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">map</span></code> namespace functions work on both regular maps and ordered maps.</p>
+<section id="map-new-size">
+<h3><code class="docutils literal notranslate"><span class="pre">map.new(size?)</span></code><a class="headerlink" href="#map-new-size" title="Link to this heading"></a></h3>
+<p>Creates a new empty map. <code class="docutils literal notranslate"><span class="pre">size</span></code> pre-reserves bucket space. Default is 16.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">map</span><span class="p">.</span><span class="ow">new</span><span class="p">()</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">map</span><span class="p">.</span><span class="ow">new</span><span class="p">(</span><span class="mf">64</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="map-len-m">
+<h3><code class="docutils literal notranslate"><span class="pre">map.len(m)</span></code><a class="headerlink" href="#map-len-m" title="Link to this heading"></a></h3>
+<p>Returns the number of key-value pairs.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">map</span><span class="p">.</span><span class="nx">len</span><span class="p">({</span><span class="w"> </span><span class="nx">a</span><span class="o">:</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="nx">b</span><span class="o">:</span><span class="w"> </span><span class="mf">2</span><span class="w"> </span><span class="p">})</span><span class="w">   </span><span class="c1">// 2</span>
+</pre></div>
+</div>
+</section>
+<section id="map-keys-m">
+<h3><code class="docutils literal notranslate"><span class="pre">map.keys(m)</span></code><a class="headerlink" href="#map-keys-m" title="Link to this heading"></a></h3>
+<p>Returns an array of all keys. Order is unspecified for regular maps; sorted for ordered maps.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">map</span><span class="p">.</span><span class="nx">keys</span><span class="p">({</span><span class="w"> </span><span class="nx">a</span><span class="o">:</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="nx">b</span><span class="o">:</span><span class="w"> </span><span class="mf">2</span><span class="w"> </span><span class="p">})</span><span class="w">   </span><span class="c1">// [&quot;a&quot;, &quot;b&quot;] (any order)</span>
+</pre></div>
+</div>
+</section>
+<section id="map-values-m">
+<h3><code class="docutils literal notranslate"><span class="pre">map.values(m)</span></code><a class="headerlink" href="#map-values-m" title="Link to this heading"></a></h3>
+<p>Returns an array of all values. Order matches <code class="docutils literal notranslate"><span class="pre">map.keys</span></code>.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">map</span><span class="p">.</span><span class="nx">values</span><span class="p">({</span><span class="w"> </span><span class="nx">a</span><span class="o">:</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="nx">b</span><span class="o">:</span><span class="w"> </span><span class="mf">2</span><span class="w"> </span><span class="p">})</span><span class="w">   </span><span class="c1">// [1, 2] (matching key order)</span>
+</pre></div>
+</div>
+</section>
+<section id="map-delete-m-key">
+<h3><code class="docutils literal notranslate"><span class="pre">map.delete(m,</span> <span class="pre">key)</span></code><a class="headerlink" href="#map-delete-m-key" title="Link to this heading"></a></h3>
+<p>Removes <code class="docutils literal notranslate"><span class="pre">key</span></code> from the map. Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if the key existed, <code class="docutils literal notranslate"><span class="pre">false</span></code> otherwise.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">a</span><span class="o">:</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="nx">b</span><span class="o">:</span><span class="w"> </span><span class="mf">2</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">map</span><span class="p">.</span><span class="ow">delete</span><span class="p">(</span><span class="nx">m</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;a&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// true</span>
+<span class="nx">map</span><span class="p">.</span><span class="ow">delete</span><span class="p">(</span><span class="nx">m</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;z&quot;</span><span class="p">)</span><span class="w">   </span><span class="c1">// false</span>
+</pre></div>
+</div>
+</section>
+<section id="map-exists-m-key">
+<h3><code class="docutils literal notranslate"><span class="pre">map.exists(m,</span> <span class="pre">key)</span></code><a class="headerlink" href="#map-exists-m-key" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if <code class="docutils literal notranslate"><span class="pre">key</span></code> is present, even if its value is <code class="docutils literal notranslate"><span class="pre">null</span></code>. Use this to distinguish a missing key from a key set to <code class="docutils literal notranslate"><span class="pre">null</span></code>.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">a</span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">m</span><span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">null</span><span class="w">        </span><span class="c1">// true  — but is it missing?</span>
+<span class="nx">map</span><span class="p">.</span><span class="nx">exists</span><span class="p">(</span><span class="nx">m</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;a&quot;</span><span class="p">)</span><span class="w">    </span><span class="c1">// true  — no, it&#39;s there</span>
+<span class="nx">map</span><span class="p">.</span><span class="nx">exists</span><span class="p">(</span><span class="nx">m</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;b&quot;</span><span class="p">)</span><span class="w">    </span><span class="c1">// false — this one is missing</span>
+</pre></div>
+</div>
+</section>
+<section id="map-size-m-newsize">
+<h3><code class="docutils literal notranslate"><span class="pre">map.size(m,</span> <span class="pre">newsize?)</span></code><a class="headerlink" href="#map-size-m-newsize" title="Link to this heading"></a></h3>
+<p>For regular maps: with no argument returns the allocated bucket count. With an integer argument, ensures at least that many buckets are allocated and returns the new bucket count.</p>
+<p>For ordered maps: returns the entry count (setter is ignored).</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">map</span><span class="p">.</span><span class="ow">new</span><span class="p">()</span>
+<span class="nx">map</span><span class="p">.</span><span class="nx">size</span><span class="p">(</span><span class="nx">m</span><span class="p">,</span><span class="w"> </span><span class="mf">1024</span><span class="p">)</span><span class="w">   </span><span class="c1">// pre-expand hash table</span>
+</pre></div>
+</div>
+</section>
+<section id="map-merge-dst-src">
+<h3><code class="docutils literal notranslate"><span class="pre">map._merge(dst,</span> <span class="pre">src)</span></code><a class="headerlink" href="#map-merge-dst-src" title="Link to this heading"></a></h3>
+<p>Shallow-merges all entries from <code class="docutils literal notranslate"><span class="pre">src</span></code> into <code class="docutils literal notranslate"><span class="pre">dst</span></code>. Keys in <code class="docutils literal notranslate"><span class="pre">src</span></code> overwrite matching keys in <code class="docutils literal notranslate"><span class="pre">dst</span></code>. Both must be regular maps (not ordered maps). Returns <code class="docutils literal notranslate"><span class="pre">dst</span></code>.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="mf">2</span><span class="w"> </span><span class="p">}</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="mf">99</span><span class="p">,</span><span class="w"> </span><span class="nx">z</span><span class="o">:</span><span class="w"> </span><span class="mf">3</span><span class="w"> </span><span class="p">}</span>
+<span class="nx">map</span><span class="p">.</span><span class="nx">_merge</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span><span class="w"> </span><span class="nx">b</span><span class="p">)</span><span class="w">   </span><span class="c1">// a is now { x: 1, y: 99, z: 3 }</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="ordered-maps-trees">
+<h2>Ordered maps (trees)<a class="headerlink" href="#ordered-maps-trees" title="Link to this heading"></a></h2>
+<p>An ordered map keeps keys sorted and supports iteration in key order. Created with <code class="docutils literal notranslate"><span class="pre">tree.new()</span></code>.</p>
+<p>Keys are compared by value: strings sort lexicographically, numbers sort numerically. Mixed key types follow the VM’s comparison rules.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">tree</span><span class="p">.</span><span class="ow">new</span><span class="p">()</span>
+<span class="nx">t</span><span class="p">[</span><span class="s2">&quot;banana&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2</span>
+<span class="nx">t</span><span class="p">[</span><span class="s2">&quot;apple&quot;</span><span class="p">]</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="mf">1</span>
+<span class="nx">t</span><span class="p">[</span><span class="s2">&quot;cherry&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3</span>
+
+<span class="nx">map</span><span class="p">.</span><span class="nx">keys</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span><span class="w">     </span><span class="c1">// [&quot;apple&quot;, &quot;banana&quot;, &quot;cherry&quot;] — always sorted</span>
+</pre></div>
+</div>
+<section id="tree-new">
+<h3><code class="docutils literal notranslate"><span class="pre">tree.new()</span></code><a class="headerlink" href="#tree-new" title="Link to this heading"></a></h3>
+<p>Creates a new empty ordered map.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">tree</span><span class="p">.</span><span class="ow">new</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="ordered-map-methods">
+<h2>Ordered map methods<a class="headerlink" href="#ordered-map-methods" title="Link to this heading"></a></h2>
+<p>Ordered maps have object methods in addition to accepting <code class="docutils literal notranslate"><span class="pre">map.*</span></code> namespace calls.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.set(key,</span> <span class="pre">val)</span></code></p></td>
+<td><p>Insert or update a key</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get(key)</span></code></p></td>
+<td><p>Retrieve value; <code class="docutils literal notranslate"><span class="pre">null</span></code> if not found</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.delete(key)</span></code></p></td>
+<td><p>Remove key; returns <code class="docutils literal notranslate"><span class="pre">true</span></code> if it existed</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.exists(key)</span></code></p></td>
+<td><p>True if key is present (distinguishes null from missing)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.len()</span></code> / <code class="docutils literal notranslate"><span class="pre">.size()</span></code></p></td>
+<td><p>Number of entries</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.keys()</span></code></p></td>
+<td><p>Array of keys in sorted order</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.values()</span></code></p></td>
+<td><p>Array of values in key-sorted order</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.clear()</span></code></p></td>
+<td><p>Remove all entries</p></td>
+</tr>
+</tbody>
+</table>
+<p>Index syntax (<code class="docutils literal notranslate"><span class="pre">t[k]</span></code>, <code class="docutils literal notranslate"><span class="pre">t[k]</span> <span class="pre">=</span> <span class="pre">v</span></code>) also works and calls <code class="docutils literal notranslate"><span class="pre">.get</span></code>/<code class="docutils literal notranslate"><span class="pre">.set</span></code>.</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">tree</span><span class="p">.</span><span class="ow">new</span><span class="p">()</span>
+<span class="nx">t</span><span class="p">.</span><span class="nx">set</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span>
+<span class="nx">t</span><span class="p">.</span><span class="nx">set</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">1</span><span class="p">)</span>
+<span class="nx">t</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span><span class="w">       </span><span class="c1">// 1</span>
+<span class="nx">t</span><span class="p">[</span><span class="s2">&quot;c&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3</span>
+<span class="nx">t</span><span class="p">.</span><span class="nx">len</span><span class="p">()</span><span class="w">          </span><span class="c1">// 3</span>
+<span class="nx">t</span><span class="p">.</span><span class="nx">keys</span><span class="p">()</span><span class="w">         </span><span class="c1">// [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;]</span>
+<span class="nx">t</span><span class="p">.</span><span class="nx">exists</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span><span class="w">    </span><span class="c1">// true</span>
+<span class="nx">t</span><span class="p">.</span><span class="ow">delete</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span><span class="w">    </span><span class="c1">// true</span>
+<span class="nx">t</span><span class="p">.</span><span class="nx">exists</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">)</span><span class="w">    </span><span class="c1">// false</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="arrays.html" class="btn btn-neutral float-left" title="Arrays" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="proto.html" class="btn btn-neutral float-right" title="Prototypes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Blueberry Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

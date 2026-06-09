@@ -1,0 +1,445 @@
+# Strings
+
+## Introduction
+
+Strings in Blueberry are mutable byte arrays. Not UTF-8 codepoints — individual bytes are plain integers.
+General philosophy is, unlike in many scripting languages, strings represent memory, not a value type.
+Copy is explicit, with ability to preallocate size.
+
+### Immutable literals
+
+String literals in source code are **read-only**. They live in static memory and cannot be modified:
+
+```javascript
+var s = "hello"
+s.append(" world")   // error: string is read-only
+```
+
+Literals are deduplicated — equal literals always resolve to the same pointer, so `==` works for interned strings:
+
+```javascript
+var s1 = "hello"
+var s2 = "hello"   // even if loaded from another file
+
+if (s1 == s2) {
+    print("is true")   // pointer identity, works for literals
+}
+
+var mutable = "hel".copy().append("lo")
+
+if (s1 != mutable) {
+    print("== compares by pointer, not byte content")
+}
+
+if (string.eq(s1, mutable)) {
+    print("equal")   // byte-value comparison
+}
+
+if (s2.eq(mutable)) {
+    print("equal")
+}
+```
+
+### Mutable strings and the copy pattern
+
+To get a mutable string from a literal, call `.copy()`. This allocates a new writable string with the same content:
+
+```javascript
+var s = "hello".copy()
+s.append(" world")   // ok — s is now "hello world"
+```
+
+Mutation methods return `self`, so they can be chained:
+
+```javascript
+var s = "  Hello  ".copy().trim().lower()   // "hello"
+```
+
+### Creating strings from scratch
+
+Use `string.new(size?)` to allocate an empty mutable string with preallocated capacity. The string starts empty but the buffer is immediately reserved — no reallocation will happen until you exceed `size` bytes. Default capacity is 64.
+
+```javascript
+var s = string.new(64)
+s.append("host: ").append(hostname).append("\r\n")
+```
+
+### Slices
+
+A slice is a zero-copy view into a parent string, created with `.__slice()`. Slices share memory with their parent and involve no allocation — useful for parsing. `.slice()` (without the `__`) always produces an independent copy.
+
+---
+
+## `string` namespace
+
+### `string.new(size?)`
+
+Allocate a new empty mutable string. `size` bytes are immediately reserved — the buffer is preallocated upfront, not lazily. Default is 64. The string starts empty; use `.append()` to fill it.
+
+```javascript
+var s = string.new(128)
+s.append("hello")
+```
+
+### `string.format(fmt, args...)` / `string.printf`
+
+Create a new formatted string. See [Format Strings](#format-strings) for specifiers.
+
+```javascript
+var s = string.format("x = %d, y = %d", x, y)
+```
+
+### `string.eq(a, b)`
+
+Byte-value equality between two strings. Returns `null` if either argument is not a string.
+
+```javascript
+string.eq("hello", "hello")   // true
+string.eq("hello", 42)        // null
+```
+
+### `string.cmp(a, b)`
+
+Lexicographic comparison. Returns `-1`, `0`, or `1`. Returns `null` if either argument is not a string.
+
+```javascript
+string.cmp("abc", "abd")   // -1
+```
+
+---
+
+## Object Methods
+
+All string values share a built-in prototype. Methods are called with dot syntax. Mutation methods require a writable string and return `self` for chaining.
+
+| Method | Description |
+|--------|-------------|
+| `.len()` | Length in bytes |
+| `.size()` | Allocated buffer capacity in bytes |
+| `.size(n)` | Preallocate `n` additional bytes of tail space, return self |
+| `.is_readonly()` | True if string is immutable |
+| `.is_slice()` | True if string is a zero-copy slice view |
+| `.at(idx)` / `.get(idx)` | Byte at index as int, `null` if out of bounds |
+| `.set(idx, byte)` | Set byte at index, returns self |
+| `.slice(start, end?)` | New copy of substring |
+| `.__slice(start, end?)` | Zero-copy view into parent |
+| `.slice_offset()` | Byte offset of slice within parent |
+| `.parent()` | Owning string of a slice |
+| `.ctx()` | Context pointer stored on a slice |
+| `.find(needle, start?)` | Index of first match, or `false` |
+| `.contains(needle)` | True if needle found anywhere |
+| `.starts(prefix)` | True if string starts with prefix |
+| `.ends(suffix)` | True if string ends with suffix |
+| `.append(other)` | Append in place, return self |
+| `.prepend(other)` | Prepend in place, return self |
+| `.clear()` | Reset length to 0, return self |
+| `.upper()` | ASCII uppercase in place, return self |
+| `.lower()` | ASCII lowercase in place, return self |
+| `.trim()` | Strip leading/trailing whitespace in place, return self |
+| `.rev()` | Reverse in place, return self |
+| `.copy()` | New independent mutable copy |
+| `.repeat(n)` | New string repeated n times |
+| `.replace(needle, repl)` | New string with all occurrences replaced |
+| `.split(delim)` | Array of strings split on delimiter |
+| `.bytes()` | Array of byte values as ints |
+| `.eq(other)` | Byte-value equality, `null` if other is not a string |
+| `.cmp(other)` | Lexicographic compare: `-1`/`0`/`1`, `null` if not a string |
+| `.hash()` | FNV-1a hash as int |
+| `.format(fmt, args...)` | Append formatted content, return self |
+| `.printf(fmt, args...)` | Alias for `.format()` |
+
+---
+
+### `.len()`
+
+Returns the length of the string in bytes.
+
+```javascript
+"hello".len()   // 5
+```
+
+### `.size(n?)`
+
+With no argument, returns the allocated buffer capacity in bytes (always `>= .len()`).
+
+With an integer argument, preallocates `n` additional bytes of tail space and returns self. This is a forward declaration of intent — "I plan to append `n` more bytes" — and avoids reallocation during subsequent appends. The string length does not change.
+
+```javascript
+var s = string.new()
+s.size(4096)   // reserve 4096 more bytes now
+s.append(big_chunk)   // no realloc needed
+```
+
+### `.is_readonly()`
+
+Returns `true` if the string is immutable (e.g. a string literal). Mutation methods will error on read-only strings.
+
+### `.is_slice()`
+
+Returns `true` if this string is a zero-copy slice view into a parent string.
+
+---
+
+### `.at(idx)` / `.get(idx)`
+
+Returns the byte at `idx` as an integer. Negative indices wrap from the end. Returns `null` if out of bounds.
+
+```javascript
+"hello".at(0)    // 104  ('h')
+"hello".at(-1)   // 111  ('o')
+```
+
+Strings also support index syntax: `s[i]` calls `.at(i)`.
+
+### `.set(idx, byte)`
+
+Sets the byte at `idx` to `byte` (an integer). Negative indices wrap. Errors if out of bounds or string is read-only. Returns self.
+
+```javascript
+var s = "hello".copy()
+s.set(0, 72)   // 'H'
+s[0] = 72      // same via index syntax
+```
+
+### `.slice(start, end?)`
+
+Returns a new independent copy of the substring `[start, end)`. Negative indices wrap. If `end` is omitted, slices to the end of the string.
+
+```javascript
+"hello world".slice(6)     // "world"
+"hello world".slice(0, 5)  // "hello"
+"hello".slice(-3)           // "llo"
+```
+
+### `.__slice(start, end?)`
+
+Zero-copy view into the parent string. The returned string shares memory with its parent — no allocation, but the parent must outlive the slice. Useful for parsing.
+
+### `.slice_offset()`
+
+For a slice, returns the byte offset of this slice's start within the parent string's buffer. Returns `null` if not a slice, `0` if parent is static memory.
+
+### `.parent()`
+
+For a slice, returns the owning parent string. Returns `null` for non-slices.
+
+### `.ctx()`
+
+For a slice, returns the arbitrary context pointer stored on it. Returns `null` for non-slices.
+
+---
+
+### `.find(needle, start?)`
+
+Returns the index of the first occurrence of `needle` starting from `start` (default 0). Negative `start` wraps. Returns `false` if not found.
+
+```javascript
+"hello world".find("world")   // 6
+"hello world".find("xyz")     // false
+"abcabc".find("bc", 2)        // 4
+```
+
+### `.contains(needle)`
+
+Returns `true` if `needle` occurs anywhere in the string.
+
+```javascript
+"hello world".contains("world")   // true
+```
+
+### `.starts(prefix)`
+
+Returns `true` if the string starts with `prefix`.
+
+```javascript
+"hello".starts("he")   // true
+```
+
+### `.ends(suffix)`
+
+Returns `true` if the string ends with `suffix`.
+
+```javascript
+"hello".ends("lo")   // true
+```
+
+---
+
+### `.append(other)`
+
+Appends `other` to the end of the string. Returns self.
+
+```javascript
+var s = string.new()
+s.append("hello").append(" world")
+```
+
+### `.prepend(other)`
+
+Prepends `other` to the beginning of the string. Returns self.
+
+```javascript
+var s = "world".copy()
+s.prepend("hello ")   // "hello world"
+```
+
+### `.clear()`
+
+Removes all content, resetting length to 0. Capacity is retained. Returns self.
+
+### `.upper()`
+
+Converts all ASCII letters to uppercase in place. Returns self.
+
+```javascript
+"hello".copy().upper()   // "HELLO"
+```
+
+### `.lower()`
+
+Converts all ASCII letters to lowercase in place. Returns self.
+
+### `.trim()`
+
+Removes leading and trailing whitespace (`' '`, `'\t'`, `'\n'`, `'\r'`) in place. Returns self.
+
+```javascript
+"  hello  ".copy().trim()   // "hello"
+```
+
+### `.rev()`
+
+Reverses the string in place. Returns self.
+
+```javascript
+"hello".copy().rev()   // "olleh"
+```
+
+---
+
+### `.copy()`
+
+Returns a new independent mutable copy of the string.
+
+```javascript
+var s = "hello".copy()
+s.append(" world")
+```
+
+### `.repeat(n)`
+
+Returns a new string with the content repeated `n` times. Returns `""` if `n <= 0`.
+
+```javascript
+"ab".repeat(3)   // "ababab"
+```
+
+### `.replace(needle, replacement)`
+
+Returns a new string with all occurrences of `needle` replaced by `replacement`. The original is not modified.
+
+```javascript
+"hello world".replace("world", "there")   // "hello there"
+```
+
+---
+
+### `.split(delim)`
+
+Splits the string on `delim` and returns an array of strings. If `delim` is `""`, splits into individual bytes as single-character strings.
+
+```javascript
+"a,b,c".split(",")   // ["a", "b", "c"]
+"hi".split("")        // ["h", "i"]
+```
+
+### `.bytes()`
+
+Returns an array of integers, one per byte.
+
+```javascript
+"hi".bytes()   // [104, 105]
+```
+
+---
+
+### `.eq(other)`
+
+Byte-value string equality. Returns `null` if either argument is not a string (does not throw).
+
+```javascript
+"hello".eq("hello")   // true
+"hello".eq("world")   // false
+"hello".eq(42)        // null
+```
+
+### `.cmp(other)`
+
+Lexicographic comparison. Returns `-1`, `0`, or `1`. Returns `null` if either argument is not a string.
+
+```javascript
+"abc".cmp("abd")   // -1
+"abc".cmp("abc")   // 0
+"abd".cmp("abc")   // 1
+```
+
+### `.hash()`
+
+Returns the FNV-1a hash of the string as an integer.
+
+---
+
+## Format Strings
+
+`.format(fmt, args...)` appends formatted output to the string in place and returns self. When called as `string.format(...)`, a new string is created instead. `.printf` is an alias for `.format`.
+
+```javascript
+// method style — appends to existing string
+var s = string.new()
+s.format("x=%d, name=%s", 42, "bob")
+
+// namespace style — creates new string
+var s = string.format("x=%d, name=%s", 42, "bob")
+
+// chaining
+var s = string.new(64)
+s.format("[%s", "start").format("|%d", 42).format("|%x]", 0xFF)
+// "[start|42|ff]"
+```
+
+### Specifiers
+
+| Specifier | Argument | Output |
+|-----------|----------|--------|
+| `%d` / `%i` | int or float (truncated) | Decimal integer |
+| `%u` | int | Unsigned decimal |
+| `%x` | int | Hex lowercase (`ff`) |
+| `%X` | int | Hex uppercase (`FF`) |
+| `%o` | int | Octal |
+| `%b` | int | Binary |
+| `%f` | float | Decimal float (default 6 places) |
+| `%e` | float | Scientific notation (`1.5e10`) |
+| `%g` | float | Shorter of decimal or scientific |
+| `%s` | string | String value; int/float printed as number |
+| `%c` | int | UTF-8 encoded codepoint |
+| `%%` | — | Literal `%` |
+
+Width, precision, alignment, and zero-padding are supported: `%10d`, `%-10s`, `%.4f`, `%08x`, `%020e`.
+
+### Type mismatches
+
+The formatter never crashes on wrong types — it emits a placeholder instead:
+
+| Situation | Output |
+|-----------|--------|
+| `%d`/`%x`/`%o`/`%b`/`%f`/`%e`/`%g` with non-number | `<!NUM>` |
+| `%s` with non-string, non-number | `<!STR>` |
+| `%c` with non-integer | `<!CHR>` |
+| Missing argument | `<!ARG>` |
+
+```javascript
+string.format("%d", "hello")   // "<!NUM>"
+string.format("%s", null)      // "<!STR>"
+string.format("%d")            // "<!ARG>"
+string.format("100%%")         // "100%"
+```
