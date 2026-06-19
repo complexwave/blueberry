@@ -1,0 +1,32 @@
+
+
+var tokenstream = require("lexer.ci")()
+var ast = require("parser.ci")()
+
+
+fn printf(a,b,c,d,e,f){
+	print(string.format(a,b,c,d,e,f))
+}
+
+var filename = argv[0]
+
+if(!filename){
+	print("usage: blueberry lexer_test.ci <file.ci>")
+	exit(1)
+}
+print(3)
+var data = file_read(filename)
+if(!data){
+	printf("failed opening %:red:s", filename)
+	exit(1)
+}
+
+// lexer dump
+var tokens = tokenstream.new(data, filename)
+tokens.dump()
+
+// parse — tokenstream needs fresh position
+var tokens2 = tokenstream.new(data, filename)
+print("\n=== AST ===")
+var tree = ast.parse(tokens2)
+tree.dump(0)

@@ -1,0 +1,6 @@
+var ast = require("parser.ci")
+print("loaded, OPS:", OPS.len())
+
+var tree = ast.parse("1 + 2", "<test>")
+print("parsed")
+tree.dump(0)

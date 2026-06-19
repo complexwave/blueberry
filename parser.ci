@@ -1,0 +1,854 @@
+// parser.ci — Blueberry self-hosted parser
+// Pratt parser, produces AST from tokenstream
+
+// ================================================================
+//  AST Node — blueberry.ast.node
+// ================================================================
+//
+//  struct ast_node {
+//      kind     — string: "NUMBER", "IF", "CALL", etc. (interned, pointer-equal)
+//      subtype  — string or null: "INT", "HEX", "DOUBLE", "BIN", "DO"
+//      token    — source token from lexer
+//      is_list  — bool: variable-length children mode
+//      children — array (when is_list)
+//      args     — array (fixed children: args[0]=left/cond, args[1]=right/body, ...)
+//
+//      // named aliases for structured nodes:
+//      // IF:       condition, body, else_body
+//      // LOOP:     init, condition, step, body
+//      // FOR_LOOP: iterator_vars, condition(unused), init(iterable), body
+//      // FUNCTION: name, fn_args, fn_body
+//  }
+
+node = {}
+proto.register("blueberry.ast.node", node)
+
+fn node.new(kind, token) {
+	var n = {}
+	proto.set(n, self)
+	n.kind = kind
+	n.token = token
+	n.subtype = null
+	n.is_list = false
+	n.children = null
+	n.args = []
+	n.dont_stringify = false
+	return n
+}
+
+fn node.new_list(kind, token) {
+	var n = self.new(kind, token)
+	n.is_list = true
+	n.children = []
+	return n
+}
+
+fn node.push(child) {
+	self.children.push(child)
+}
+
+fn node.dump(indent) {
+	if self == null { return }
+	var pad = ""
+	var i = 0
+	while i < indent {
+		pad = pad.copy().append("  ")
+		i++
+	}
+
+	var out = string.new(256)
+	out.append(pad)
+
+	var kind = self.kind
+
+	// node kind in color
+	if kind == "NUMBER" || kind == "STRING" || kind == "IDENTIFIER" {
+		out.format("%:cyan:s", kind)
+	} else if kind == "IF" || kind == "LOOP" || kind == "FOR_LOOP" || kind == "FUNCTION" || kind == "RETURN" {
+		out.format("%:yellow:s", kind)
+	} else {
+		out.format("%:green:s", kind)
+	}
+
+	if self.subtype {
+		out.format(" %:dim:s", self.subtype)
+	}
+
+	// value display
+	if kind == "NUMBER" {
+		if self.subtype == "DOUBLE" {
+			out.format(" %s", self.num_value)
+		} else if self.subtype == "HEX" {
+			out.format(" 0x%x", self.num_value)
+		} else {
+			out.format(" %d", self.num_value)
+		}
+	} else if kind == "STRING" || kind == "IDENTIFIER" || kind == "LABEL" {
+		out.format(" %s", self.token)
+	}
+
+	if self.is_list {
+		out.format(" %:dim:s", string.format("[%d]", self.children.len()))
+	}
+
+	print(out)
+
+	// structured nodes with named fields
+	if kind == "IF" {
+		_dump_field(pad, "cond", self.condition, indent)
+		_dump_field(pad, "body", self.body, indent)
+		_dump_field(pad, "else", self.else_body, indent)
+		return
+	}
+	if kind == "FUNCTION" {
+		_dump_field(pad, "name", self.name, indent)
+		_dump_field(pad, "args", self.fn_args, indent)
+		_dump_field(pad, "body", self.fn_body, indent)
+		return
+	}
+	if kind == "LOOP" || kind == "FOR_LOOP" {
+		_dump_field(pad, "init", self.init, indent)
+		_dump_field(pad, "cond", self.condition, indent)
+		_dump_field(pad, "step", self.step, indent)
+		_dump_field(pad, "body", self.body, indent)
+		return
+	}
+
+	// list children
+	if self.is_list {
+		for i, child in self.children {
+			child.dump(indent + 1)
+		}
+		return
+	}
+
+	// fixed args
+	for i, arg in self.args {
+		if arg != null {
+			arg.dump(indent + 1)
+		}
+	}
+}
+
+fn _dump_field(pad, label, field_node, indent) {
+	if field_node == null {
+		return
+	}
+	var out = string.new(64)
+	out.append(pad)
+	out.format("  %:dim:s ", label.copy().append(":"))
+	print(out)
+	field_node.dump(indent + 2)
+}
+
+
+// ================================================================
+//  AST — blueberry.ast
+// ================================================================
+//
+//  struct ast {
+//      ts      — tokenstream
+//      debug   — bool
+//  }
+
+ast = {}
+proto.register("blueberry.ast", ast)
+
+
+// ================================================================
+//  Op table — compact [prio, token, prefix, pfx_type, infix, ifx_type, close]
+// ================================================================
+
+fn _op(raw) {
+	return {
+		prio:     raw[0],
+		token:    raw[1],
+		prefix:   raw[2],
+		pfx_type: raw[3],
+		infix:    raw[4],
+		ifx_type: raw[5],
+		close:    raw[6]
+	}
+}
+
+fn _build(table) {
+	var ops = []
+	for i, raw in table {
+		ops.push(_op(raw))
+	}
+	return ops
+}
+
+//  prio   token              prefix                pfx_type       infix             ifx_type         close
+
+fn _ops_atoms() { return [
+	[10,  "T_HEX",          "prefix_number",    null,          null,                  null,            null],
+	[10,  "T_BIN",          "prefix_number",    null,          null,                  null,            null],
+	[10,  "T_DOUBLE",       "prefix_number",    null,          null,                  null,            null],
+	[10,  "T_INT",          "prefix_number",    null,          null,                  null,            null],
+	[10,  "T_STRING",       "prefix_string",    null,          null,                  null,            null],
+	[10,  "T_IDENTIFIER",   "prefix_ident",     null,          null,                  null,            null],
+	[10,  "T_TRUE",         "prefix_keyword",   "TRUE",        null,                  null,            null],
+	[10,  "T_FALSE",        "prefix_keyword",   "FALSE",       null,                  null,            null],
+	[10,  "T_NULL",         "prefix_keyword",   "NULL_LIT",    null,                  null,            null],
+	[10,  "T_BREAK",        "prefix_keyword",   "BREAK",       null,                  null,            null],
+	[10,  "T_NEXT",         "prefix_keyword",   "NEXT",        null,                  null,            null],
+	[10,  "T_LABEL",        "prefix_keyword",   "LABEL",       null,                  null,            null]
+]}
+
+fn _ops_access() { return [
+	[101, "T_DOT",          null,               null,          "infix_hash_access",   "HASHACCESS",    null],
+	[101, "T_MAP_ACCESS",   null,               null,          "infix_strkey",        "MAPACCESS",     null],
+	[101, "T_METHOD_REF",   null,               null,          "infix_strkey",        "METHOD_REF",    null],
+
+	[110, "T_CURLY_OPEN",   "wrapping_prefix",  "MAP_INIT",    null,                  null,            "T_CURLY_CLOSE"],
+	[110, "T_PAREN_OPEN",   "wrapping_prefix",  null,          "wrapping_infix_empty","CALL",          "T_PAREN_CLOSE"],
+	[110, "T_BRACKET_OPEN", "wrapping_prefix",  "ARRAY_INIT",  "wrapping_infix",      "ARRACCESS",     "T_BRACKET_CLOSE"]
+]}
+
+fn _ops_prefix_unary() { return [
+	[112, "T_SUB",          "simple_prefix",    "MINUS",       null,                  null,            null],
+	[112, "T_NOT",          "simple_prefix",    "NOT",         null,                  null,            null],
+	[112, "T_BIN_INV",      "simple_prefix",    "BIN_INV",     null,                  null,            null],
+	[112, "T_INCR",         "simple_prefix",    "INC",         "simple_postfix",      "POST_INC",      null],
+	[112, "T_DECR",         "simple_prefix",    "DEC",         "simple_postfix",      "POST_DEC",      null]
+]}
+
+fn _ops_arithmetic() { return [
+	[115, "T_MUL",          null,               null,          "simple_infix",        "MUL",           null],
+	[115, "T_DIV",          null,               null,          "simple_infix",        "DIV",           null],
+	[115, "T_MOD",          null,               null,          "simple_infix",        "MOD",           null],
+	[120, "T_ADD",          null,               null,          "simple_infix",        "ADD",           null],
+	[120, "T_SUB",          null,               null,          "simple_infix",        "SUB",           null],
+	[125, "T_LSHIFT",       null,               null,          "simple_infix",        "BIN_LSHIFT",    null],
+	[125, "T_RSHIFT",       null,               null,          "simple_infix",        "BIN_RSHIFT",    null],
+	[130, "T_GT",           null,               null,          "simple_infix",        "GT",            null],
+	[130, "T_LT",           null,               null,          "simple_infix",        "LT",            null],
+	[130, "T_GT_EQ",        null,               null,          "simple_infix",        "GT_EQ",         null],
+	[130, "T_LT_EQ",        null,               null,          "simple_infix",        "LT_EQ",         null],
+	[140, "T_BIN_AND",      null,               null,          "simple_infix",        "BIN_AND",       null],
+	[145, "T_BIN_XOR",      null,               null,          "simple_infix",        "BIN_XOR",       null],
+	[150, "T_BIN_OR",       null,               null,          "simple_infix",        "BIN_OR",        null],
+	[155, "T_EQ",           null,               null,          "simple_infix",        "EQ",            null],
+	[155, "T_NEQ",          null,               null,          "simple_infix",        "NEQ",           null],
+	[160, "T_AND",          null,               null,          "simple_infix",        "AND",           null],
+	[165, "T_OR",           null,               null,          "simple_infix",        "OR",            null],
+	[170, "T_NOTNULL",      null,               null,          "simple_infix",        "NOTNULL",       null]
+]}
+
+fn _ops_assigns() { return [
+	[200, "T_FUNCTION",     "statement_function", null,        null,                  null,            null],
+	[250, "T_ADD_ASSIGN",   null,               null,          "simple_infix",        "ASSIGN_ADD",    null],
+	[250, "T_SUB_ASSIGN",   null,               null,          "simple_infix",        "ASSIGN_SUB",    null],
+	[250, "T_MUL_ASSIGN",   null,               null,          "simple_infix",        "ASSIGN_MUL",    null],
+	[250, "T_DIV_ASSIGN",   null,               null,          "simple_infix",        "ASSIGN_DIV",    null],
+	[250, "T_MOD_ASSIGN",   null,               null,          "simple_infix",        "ASSIGN_MOD",    null],
+	[250, "T_POW_ASSIGN",   null,               null,          "simple_infix",        "ASSIGN_POW",    null],
+	[250, "T_OR_ASSIGN",    null,               null,          "simple_infix",        "ASSIGN_OR",     null],
+	[250, "T_AND_ASSIGN",   null,               null,          "simple_infix",        "ASSIGN_AND",    null],
+	[250, "T_NOTNULL_ASSIGN",null,              null,          "simple_infix",        "ASSIGN_NOTNULL",null],
+	[250, "T_BIN_OR_ASSIGN",null,               null,          "simple_infix",        "ASSIGN_BIN_OR", null],
+	[250, "T_BIN_AND_ASSIGN",null,              null,          "simple_infix",        "ASSIGN_BIN_AND",null],
+	[250, "T_BIN_XOR_ASSIGN",null,              null,          "simple_infix",        "ASSIGN_BIN_XOR",null],
+	[250, "T_LSHIFT_ASSIGN",null,               null,          "simple_infix",        "ASSIGN_LSHIFT", null],
+	[250, "T_RSHIFT_ASSIGN",null,               null,          "simple_infix",        "ASSIGN_RSHIFT", null]
+]}
+
+fn _ops_statements() { return [
+	[300, "T_COMMA",        null,               null,          "comma_list",          null,            null],
+	[300, "T_HASHCOMMA",    null,               null,          "comma_list",          null,            null],
+	[300, "T_COLON",        null,               null,          "comma_list",          null,            null],
+	[500, "T_IF",           "statement_if",     null,          null,                  null,            null],
+	[500, "T_WHILE",        "statement_while",  null,          null,                  null,            null],
+	[500, "T_DO",           "statement_do",     null,          null,                  null,            null],
+	[500, "T_FOR",          "statement_for",    null,          null,                  null,            null],
+	[500, "T_RETURN",       "statement_return", "RETURN",      null,                  null,            null],
+	[500, "T_VAR",          "simple_prefix",    "VAR",         null,                  null,            null],
+	[500, "T_GOTO",         "simple_prefix",    "GOTO",        null,                  null,            null],
+	[500, "T_ASSIGN",       null,               null,          "simple_infix",        "ASSIGN",        null]
+]}
+
+ast.OPS = []
+ast.OPS.merge(_build(_ops_atoms()))
+ast.OPS.merge(_build(_ops_access()))
+ast.OPS.merge(_build(_ops_prefix_unary()))
+ast.OPS.merge(_build(_ops_arithmetic()))
+ast.OPS.merge(_build(_ops_assigns()))
+ast.OPS.merge(_build(_ops_statements()))
+
+// priority sentinels (match C parser)
+ast.prio = {}
+ast.prio.MAX       = 999999
+ast.prio.VALUE     = 100
+ast.prio.FN_NAME   = 106
+ast.prio.EXPR      = 200
+ast.prio.EXPR_LIST = 301
+ast.prio.STATEMENT = 1000
+
+
+// ================================================================
+//  AST constructor + error
+// ================================================================
+
+fn ast.new(ts) {
+	var a = {}
+	proto.set(a, self)
+	a.ts = ts
+	a._debug = true
+	return a
+}
+
+fn ast.dbg(msg, a, b, c, d, e) {
+	if !self._debug { return }
+	var out = string.new(128)
+	out.format("%:dim:s ", "ast")
+	out.append(string.format(msg, a, b, c, d, e))
+	print(out)
+}
+
+fn ast.error(msg, a, b, c, d, e) {
+	var tok = self.ts.peek()
+	if tok == null {
+		var out = string.new(128)
+		out.format("%:r:s", "error: ")
+		out.append(string.format(msg, a, b, c, d, e))
+		out.append(" at end of input\n")
+		print(out)
+		exit(1)
+	}
+
+	self.ts.error(string.format(msg, a, b, c, d, e))
+}
+
+fn ast.expect(token_type) {
+	var tok = self.ts.try_next(token_type)
+	if tok == null {
+		self.error("expected %s", token_type)
+	}
+	return tok
+}
+
+
+// ================================================================
+//  Core — Pratt parser loop
+// ================================================================
+
+fn ast.find_prefix(max_prio) {
+	var tok = self.ts.peek()
+	if tok == null { return null }
+	var tt = tok.ctx()
+
+	for i, entry in ast.OPS {
+		if entry.prefix == null { next }
+		if entry.prio > max_prio { next }
+		if tt == entry.token { return entry }
+	}
+	return null
+}
+
+fn ast.find_infix(max_prio) {
+	var tok = self.ts.peek()
+	if tok == null { return null }
+	var tt = tok.ctx()
+
+	for i, entry in ast.OPS {
+		if entry.infix == null { next }
+		if entry.prio >= max_prio { next }
+		if tt == entry.token { return entry }
+	}
+	return null
+}
+
+fn ast.expr_bp(max_prio) {
+	if max_prio == ast.prio.MAX {
+		self.dbg("%:bold:s pos=%d", "expr_bp(MAX)", self.ts.pos)
+	}
+
+	var pre = self.find_prefix(max_prio)
+	if pre == null { return null }
+
+	self.dbg("%:cyan:s %s  %:dim:s", "prefix", pre.prefix, string.format("tok=%s prio<=%d pos=%d", pre.token, max_prio, self.ts.pos))
+	var left = self.(pre.prefix)(pre)
+	if left == null { return null }
+
+	while true {
+		self.dbg("%:dim:s pos=%d", "infix?", self.ts.pos)
+		var entry = self.find_infix(max_prio)
+		if entry == null {
+			var pk = self.ts.peek()
+			if pk != null {
+				self.dbg("%:dim:s %s (no infix match)", "infix?", pk.ctx())
+			}
+			break
+		}
+
+		self.dbg("%:green:s %s  %:dim:s", "infix ", entry.infix, string.format("tok=%s prio<%d pos=%d", entry.token, max_prio, self.ts.pos))
+		var combined = self.(entry.infix)(left, entry)
+		if combined == null { break }
+		left = combined
+	}
+
+	return left
+}
+
+fn ast.consume_expression() {
+	return self.expr_bp(ast.prio.EXPR)
+}
+
+fn ast.consume_expression_list() {
+	return self.expr_bp(ast.prio.EXPR_LIST)
+}
+
+fn ast.consume_function_name() {
+	return self.expr_bp(ast.prio.FN_NAME)
+}
+
+fn ast.consume_single_expression(prio) {
+	var tok = self.ts.peek()
+	if tok == null { return null }
+
+	if tok.ctx() == "T_PAREN_OPEN" {
+		// find paren prefix entry and call it directly
+		for i, entry in ast.OPS {
+			if entry.token == "T_PAREN_OPEN" && entry.prefix != null {
+				return self[entry.prefix](entry)
+			}
+		}
+		return null
+	}
+
+	return self.expr_bp(prio)
+}
+
+
+// ================================================================
+//  Prefix callbacks
+// ================================================================
+
+fn ast.prefix_number(entry) {
+	self.dbg("  %:dim:s pos=%d", "num_enter", self.ts.pos)
+	var tok = self.ts.pop()
+	self.dbg("  %:dim:s pos=%d", "num_after_pop", self.ts.pos)
+	var n = node.new("NUMBER", tok)
+	var tt = tok.ctx()
+	var s = str(tok)
+
+	if tt == "T_HEX" {
+		n.subtype = "HEX"
+		n.num_value = number(s)
+	} else if tt == "T_BIN" {
+		n.subtype = "BIN"
+		n.num_value = number(s)
+	} else if tt == "T_DOUBLE" {
+		n.subtype = "DOUBLE"
+		n.num_value = number(s)
+	} else {
+		n.subtype = "INT"
+		n.num_value = number(s)
+	}
+
+	self.dbg("  %:dim:s %s = %s", "number", tt, s)
+	return n
+}
+
+fn ast.prefix_string(entry) {
+	var tok = self.ts.pop()
+	return node.new("STRING", tok)
+}
+
+fn ast.prefix_ident(entry) {
+	var tok = self.ts.pop()
+	return node.new("IDENTIFIER", tok)
+}
+
+fn ast.prefix_keyword(entry) {
+	var tok = self.ts.try_next(entry.token)
+	if tok == null { return null }
+	return node.new(entry.pfx_type, tok)
+}
+
+fn ast.simple_prefix(entry) {
+	var tok = self.ts.try_next(entry.token)
+	if tok == null { return null }
+
+	var operand = self.expr_bp(entry.prio)
+	if operand == null { return null }
+
+	var kind = entry.pfx_type
+	if kind == null { kind = "PREFIX_OP" }
+
+	var n = node.new(kind, tok)
+	n.args.push(operand)
+	return n
+}
+
+fn ast.statement_return(entry) {
+	var tok = self.ts.try_next(entry.token)
+	if tok == null { return null }
+
+	// return accepts no operand (bare return)
+	var operand = self.expr_bp(entry.prio)
+
+	var kind = entry.pfx_type
+	if kind == null { kind = "PREFIX_OP" }
+
+	var n = node.new(kind, tok)
+	n.args.push(operand)
+	return n
+}
+
+
+// ================================================================
+//  Wrapping prefix/infix — (), [], {}
+// ================================================================
+
+fn ast.wrapping_prefix(entry) {
+	var opening = self.ts.try_next(entry.token)
+	if opening == null { return null }
+	self.dbg("  %:dim:s %s close=%s", "wrap(", entry.token, entry.close)
+
+	var inner = self.expr_bp(ast.prio.MAX)
+
+	var closing = self.expect(entry.close)
+
+	// typed literal: [] or {} — wrap in list node
+	if entry.pfx_type != null {
+		var n = node.new_list(entry.pfx_type, opening)
+		if inner != null {
+			if inner.kind == "EXPRLIST" && inner.is_list {
+				for i, child in inner.children {
+					n.push(child)
+				}
+			} else {
+				n.push(inner)
+			}
+		}
+		self.dbg("  %:dim:s %s [%d]", "wrap)", entry.pfx_type, n.children.len())
+		return n
+	}
+
+	// paren grouping — return inner as-is
+	if inner == null {
+		return node.new_list("EXPRLIST", opening)
+	}
+
+	inner.dont_stringify = true
+	return inner
+}
+
+fn ast._wrapping_infix(left, entry, accept_empty) {
+	var op = self.ts.try_next(entry.token)
+	if op == null { return null }
+
+	var index = self.expr_bp(ast.prio.MAX)
+	if !accept_empty && index == null { return null }
+
+	var closing = self.expect(entry.close)
+
+	var kind = entry.ifx_type
+	if kind == null { kind = "INFIX_OP" }
+
+	var n = node.new(kind, op)
+	n.args.push(left)
+	n.args.push(index)
+	return n
+}
+
+fn ast.wrapping_infix(left, entry) {
+	return self._wrapping_infix(left, entry, false)
+}
+
+fn ast.wrapping_infix_empty(left, entry) {
+	return self._wrapping_infix(left, entry, true)
+}
+
+
+// ================================================================
+//  Infix callbacks
+// ================================================================
+
+fn ast.simple_infix(left, entry) {
+	var op = self.ts.try_next(entry.token)
+	if op == null { return null }
+
+	var right = self.expr_bp(entry.prio)
+	if right == null { return null }
+
+	var kind = entry.ifx_type
+	if kind == null { kind = "INFIX_OP" }
+
+	var n = node.new(kind, op)
+	n.args.push(left)
+	n.args.push(right)
+	return n
+}
+
+fn ast.simple_postfix(left, entry) {
+	var op = self.ts.try_next(entry.token)
+	if op == null { return null }
+
+	var kind = entry.ifx_type
+	if kind == null { kind = "POSTFIX_OP" }
+
+	var n = node.new(kind, op)
+	n.args.push(left)
+	return n
+}
+
+fn ast.infix_strkey(left, entry) {
+	var op = self.ts.try_next(entry.token)
+	if op == null { return null }
+
+	var right = self.consume_single_expression(entry.prio)
+	if right == null { return null }
+
+	var kind = entry.ifx_type
+	if kind == null { kind = "INFIX_OP" }
+
+	var n = node.new(kind, op)
+	n.args.push(left)
+	n.args.push(_ident2str(right))
+	return n
+}
+
+fn ast.infix_hash_access(left, entry) {
+	var op = self.ts.try_next(entry.token)
+	if op == null { return null }
+
+	var right = self.consume_single_expression(entry.prio)
+	if right == null {
+		self.error("hash access with no key")
+		return null
+	}
+
+	var n = node.new_list("HASHACCESS", op)
+	n.push(left)
+
+	while true {
+		n.push(_ident2str(right))
+
+		var next_dot = self.ts.try_next(entry.token)
+		if next_dot == null { break }
+
+		right = self.consume_single_expression(entry.prio)
+		if right == null { break }
+	}
+
+	return n
+}
+
+fn ast.comma_list(left, entry) {
+	self.dbg("  %:dim:s", "comma_list")
+	var n = node.new_list("EXPRLIST", left.token)
+	var expr = left
+
+	while true {
+		// try =>, then :, then ,
+		var sep = self.ts.try_next("T_HASHCOMMA")
+		
+		if sep != null {
+			_ident2str(expr)
+		} else {
+			sep = self.ts.try_next("T_COLON")
+			
+			if sep != null {
+				_ident2str(expr)
+			}
+		}
+
+		if sep == null {
+			sep = self.ts.try_next("T_COMMA")
+			
+			if sep == null { break }
+		}
+
+		n.push(expr)
+
+		expr = self.expr_bp(entry.prio)
+		
+		if expr == null { break }
+	}
+
+	// trailing comma — expr may be null
+	if expr != null {
+		n.push(expr)
+	}
+
+	return n
+}
+
+
+// ================================================================
+//  Statement parsers
+// ================================================================
+
+fn ast.codeblock() {
+	var op = self.ts.try_next("T_CURLY_OPEN")
+	if op == null { return null }
+
+	var n = self.codelist()
+
+	self.expect("T_CURLY_CLOSE")
+	return n
+}
+
+fn ast.codelist() {
+	var n = node.new_list("CODEBLOCK", null)
+
+	while true {
+		var code = self.expr_bp(ast.prio.MAX)
+		if code == null { break }
+		n.push(code)
+		self.ts.try_next("T_SEMICOLON")
+	}
+
+	return n
+}
+
+fn ast.statement_if(entry) {
+	var op = self.ts.try_next("T_IF")
+	if op == null { return null }
+	self.dbg("  %:yellow:s", "if")
+
+	var n = node.new("IF", op)
+
+	n.condition = self.consume_expression()
+	if n.condition == null {
+		self.error("expected condition after 'if'")
+	}
+
+	n.body = self.codeblock()
+	if n.body == null {
+		self.error("expected code block after 'if' condition")
+	}
+
+	var else_tok = self.ts.try_next("T_ELSE")
+	if else_tok == null {
+		return n
+	}
+
+	// try chained else if
+	n.else_body = self.statement_if(entry)
+	if n.else_body != null {
+		return n
+	}
+
+	n.else_body = self.codeblock()
+	if n.else_body == null {
+		self.error("expected code block after 'else'")
+	}
+
+	return n
+}
+
+fn ast.statement_while(entry) {
+	self.expect("T_WHILE")
+	self.dbg("  %:yellow:s", "while")
+
+	var n = node.new("LOOP", self.ts.peek())
+
+	n.condition = self.consume_expression()
+	if n.condition == null {
+		self.error("expected condition after 'while'")
+	}
+
+	n.body = self.codeblock()
+	if n.body == null {
+		self.error("expected code block after 'while' condition")
+	}
+
+	return n
+}
+
+fn ast.statement_for(entry) {
+	var op = self.expect("T_FOR")
+	self.dbg("  %:yellow:s", "for")
+
+	var n = node.new("FOR_LOOP", op)
+
+	n.iterator_vars = self.consume_expression_list()
+	if n.iterator_vars == null {
+		self.error("expected iterator vars after 'for'")
+	}
+
+	self.expect("T_IN")
+
+	n.init = self.consume_expression_list()
+	if n.init == null {
+		self.error("expected iterable after 'for in'")
+	}
+
+	n.body = self.codeblock()
+	if n.body == null {
+		self.error("expected code block after 'for'")
+	}
+
+	return n
+}
+
+fn ast.statement_do(entry) {
+	self.expect("T_DO")
+
+	var n = node.new("LOOP", null)
+	n.subtype = "DO"
+
+	n.body = self.codeblock()
+	if n.body == null {
+		self.error("expected code block after 'do'")
+	}
+
+	self.expect("T_WHILE")
+
+	n.condition = self.consume_expression()
+	if n.condition == null {
+		self.error("expected condition after 'do ... while'")
+	}
+
+	return n
+}
+
+fn ast.statement_function(entry) {
+	self.expect("T_FUNCTION")
+	self.dbg("  %:yellow:s", "function")
+
+	var n = node.new("FUNCTION", null)
+
+	n.name = self.consume_function_name()
+
+	n.fn_args = self.consume_expression_list()
+	if n.fn_args == null {
+		self.error("expected arguments after function declaration")
+	}
+
+	n.fn_body = self.codeblock()
+	if n.fn_body == null {
+		self.error("expected code block after function declaration")
+	}
+
+	return n
+}
+
+
+// ================================================================
+//  Helpers
+// ================================================================
+
+fn _ident2str(n) {
+	if n.kind == "IDENTIFIER" && !n.dont_stringify {
+		n.kind = "STRING"
+	}
+	return n
+}
+
+
+// ================================================================
+//  Public API
+// ================================================================
+
+fn ast.parse(ts) {
+	var a = self.new(ts)
+	var tree = a.codelist()
+	return tree
+}
+
+return ast

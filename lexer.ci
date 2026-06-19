@@ -1,0 +1,360 @@
+// lexer.ci — Blueberry self-hosted tokenizer
+// PEG grammar via cma, produces tokenstream object
+
+seq = cma<-seq
+alt = cma<-alt
+P = cma<-P
+Pi = cma<-Pi
+R = cma<-R
+S = cma<-S
+rep = cma<-rep
+neg = cma<-neg
+cap = cma<-cap
+any = cma<-any
+endl = cma<-endl
+match = cma<-match
+
+
+// ================================================================
+//  Grammar helpers
+// ================================================================
+
+fn kw(str, id) {
+	var ident_char = R("A-Za-z_0-9")
+	return cap(seq(neg(seq(ident_char, Pi(str))), Pi(str), neg(ident_char)), id)
+}
+
+fn op(str, id) {
+	return cap(P(str), id)
+}
+
+// ================================================================
+//  TokenStream
+// ================================================================
+
+var tstream = {
+	token_proto : ttoken
+}
+
+
+proto.register("blueberry.tokenstream", tstream)
+
+fn tstream._keywords() {
+	return [
+		kw("function", "T_FUNCTION"),
+		kw("fun", "T_FUNCTION"),
+		kw("fn", "T_FUNCTION"),
+		kw("var", "T_VAR"),
+		kw("if", "T_IF"),
+		kw("else", "T_ELSE"),
+		kw("while", "T_WHILE"),
+		kw("for", "T_FOR"),
+		kw("do", "T_DO"),
+		kw("true", "T_TRUE"),
+		kw("false", "T_FALSE"),
+		kw("undef", "T_UNDEF"),
+		kw("null", "T_NULL"),
+		kw("return", "T_RETURN"),
+		kw("break", "T_BREAK"),
+		kw("next", "T_NEXT"),
+		kw("continue", "T_NEXT"),
+		kw("goto", "T_GOTO"),
+		kw("in", "T_IN")
+	]
+}
+
+fn tstream._skip() {
+	var line_comment = seq([P("//"), rep(0, true, S("\n"))])
+	var hash_comment = seq([P("#"), rep(0, true, S("\n"))])
+	var ws_flat = rep(1, true, R(" \t\r"))
+	var newline = cap(P("\n"), "T_NEWLINE")
+	return [alt([ws_flat, newline, line_comment, hash_comment])]
+}
+
+fn tstream._strings() {
+	var dq_char = alt([seq([P("\\"), any(1)]), seq([neg(S("\"\\\n")), any(1)])])
+	var sq_char = alt([seq([P("\\"), any(1)]), seq([neg(S("'\\\n")), any(1)])])
+	var dq_string = seq([P("\""), cap(rep(0, true, dq_char), "T_STRING"), P("\"")])
+	var sq_string = seq([P("'"), cap(rep(0, true, sq_char), "T_STRING"), P("'")])
+	return [dq_string, sq_string]
+}
+
+fn tstream._numbers() {
+	var hex_num = cap(seq([P("0x"), rep(1, true, R("0-9A-Fa-f"))]), "T_HEX")
+	var bin_num = cap(seq([P("0b"), rep(1, true, R("01"))]), "T_BIN")
+	var dbl_num = cap(seq([rep(1, true, R("0-9")), P("."), rep(1, true, R("0-9"))]), "T_DOUBLE")
+	var int_num = cap(rep(1, true, R("0-9")), "T_INT")
+	return [hex_num, bin_num, dbl_num, int_num]
+}
+
+fn tstream._ops3() {
+	return [
+		op("**=", "T_POW_ASSIGN"),
+		op("<<=", "T_LSHIFT_ASSIGN"),
+		op(">>=", "T_RSHIFT_ASSIGN"),
+		op("||=", "T_OR_ASSIGN"),
+		op("&&=", "T_AND_ASSIGN"),
+		op("?\?=", "T_NOTNULL_ASSIGN")
+	]
+}
+
+fn tstream._ops2() {
+	return [
+		op("->", "T_MAP_ACCESS"),
+		op("<-", "T_METHOD_REF"),
+		op("=>", "T_HASHCOMMA"),
+		op("==", "T_EQ"),
+		op("!=", "T_NEQ"),
+		op(">=", "T_GT_EQ"),
+		op("<=", "T_LT_EQ"),
+		op("<<", "T_LSHIFT"),
+		op(">>", "T_RSHIFT"),
+		op("++", "T_INCR"),
+		op("--", "T_DECR"),
+		op("**", "T_POW"),
+		op("?\?", "T_NOTNULL"),
+		op("?=", "T_NOTNULL_ASSIGN"),
+		op("||", "T_OR"),
+		op("&&", "T_AND"),
+		op("+=", "T_ADD_ASSIGN"),
+		op("-=", "T_SUB_ASSIGN"),
+		op("*=", "T_MUL_ASSIGN"),
+		op("/=", "T_DIV_ASSIGN"),
+		op("%=", "T_MOD_ASSIGN"),
+		op("|=", "T_BIN_OR_ASSIGN"),
+		op("&=", "T_BIN_AND_ASSIGN"),
+		op("^=", "T_BIN_XOR_ASSIGN")
+	]
+}
+
+fn tstream._ops1() {
+	var ident = cap(seq([R("A-Za-z_"), rep(0, true, R("A-Za-z_0-9"))]), "T_IDENTIFIER")
+	var label = seq([P(":"), cap(seq([R("A-Za-z_"), rep(0, true, R("A-Za-z_0-9"))]), "T_LABEL"), P(":")])
+
+	return [
+		label,
+		op(";", "T_SEMICOLON"),
+		op(",", "T_COMMA"),
+		op(":", "T_COLON"),
+		op("{", "T_CURLY_OPEN"),
+		op("}", "T_CURLY_CLOSE"),
+		op("(", "T_PAREN_OPEN"),
+		op(")", "T_PAREN_CLOSE"),
+		op("[", "T_BRACKET_OPEN"),
+		op("]", "T_BRACKET_CLOSE"),
+		op(".", "T_DOT"),
+		op("=", "T_ASSIGN"),
+		op("+", "T_ADD"),
+		op("-", "T_SUB"),
+		op("*", "T_MUL"),
+		op("/", "T_DIV"),
+		op("%", "T_MOD"),
+		op("!", "T_NOT"),
+		op(">", "T_GT"),
+		op("<", "T_LT"),
+		op("|", "T_BIN_OR"),
+		op("&", "T_BIN_AND"),
+		op("~", "T_BIN_INV"),
+		op("^", "T_BIN_XOR"),
+		ident,
+		cap(any(1), "T_ERR")
+	]
+}
+
+fn tstream._build_grammar() {
+	var tokens = array.new(256)
+
+	tokens.merge(self._strings())
+	tokens.merge(self._keywords())
+	tokens.merge(self._numbers())
+	
+	tokens.merge(self._skip())
+	
+	// 3 char ops
+	tokens.merge(self._ops3())
+	tokens.merge(self._ops2())
+	tokens.merge(self._ops1())
+	
+	return seq(rep(0, true, alt(tokens)), endl())
+}
+
+fn tstream.new(source, filename) {
+	var grammar = self._build_grammar()
+	var caps = match(grammar, source)
+
+	if caps == false {
+		print(string.format("%:r:s", "fatal: lexer failed to match input"))
+		exit(1)
+	}
+	
+	var ts = {}
+	proto.set(ts, self)
+	ts.caps = caps
+	ts.pos = 0
+	ts.source = source
+	ts.filename = filename ?? "<input>"
+	return ts
+}
+
+fn tstream.peek() {
+	var i = self.pos
+	var caps = self.caps
+	var len = caps.len()
+
+	while i < len {
+		var tok = caps[i]
+		if tok.ctx() != "T_NEWLINE" {
+			return tok
+		}
+		i++
+	}
+	return null
+}
+
+// next conflicts with "next" keyword
+fn tstream.pop() {
+	var caps = self.caps
+	var len = caps.len()
+
+	while self.pos < len {
+		var tok = caps[self.pos]
+		self.pos += 1
+		
+		if tok.ctx() != "T_NEWLINE" {
+			return tok
+		}
+	}
+	return null
+}
+
+fn tstream.try_next(type) {
+	var i = self.pos
+	var caps = self.caps
+	var len = caps.len()
+
+	while i < len {
+		var tok = caps[i]
+		if tok.ctx() != "T_NEWLINE" {
+			if tok.ctx() != type {
+				return null
+			}
+			self.pos = i + 1
+			return tok
+		}
+		i++
+	}
+	return null
+}
+
+fn tstream.line_of(tok) {
+	var line = 1
+	var caps = self.caps
+
+	for i, c in caps {
+		if c.ctx() != "T_NEWLINE" {
+			next;
+		}
+		if c.slice_offset(0) >= tok.slice_offset(0) {
+			break
+		}
+		line++
+	}
+	return line
+}
+
+
+fn tstream.dump(){
+	var out = string.new(16*1024)
+	
+	var line_start = 0
+	var line_n = 1
+	
+	var tokens_buffer = string.new(1024)
+	
+	for i, tok in self.caps {
+		
+		if tok.ctx() == "T_NEWLINE" {
+			var line_end = tok.slice_offset(0)
+			
+			var line = self.source.slice(line_start, line_end)
+			line_start = line_end+1 // skip \n
+			
+			out.format("%:yellow:s: %s\n", line_n, line)
+			
+			if tokens_buffer.len() > 0 {
+				out.format("    %s\n", tokens_buffer)
+			}
+			
+			tokens_buffer.clear()
+			
+			line_n++
+			
+			next;
+		}
+		
+		tokens_buffer.format("%:green:s[%s] ", tok.ctx(), tok)
+	}
+	
+	print(out)
+}
+
+
+fn tstream.error(msg) {
+	var tok = self.peek()
+	if tok == null {
+		print(string.format("%[r:error:] %s %s at end of input", msg))
+		exit(1)
+	}
+
+	var line = self.line_of(tok)
+	var text = str(tok)
+
+	// find line start/end in source for context display
+	var src = self.source
+	var tok_offset = tok.slice_offset(0)
+
+	var line_start = tok_offset
+	while line_start > 0 && src.at(line_start - 1) != 10 {
+		line_start--
+	}
+
+	var line_end = tok_offset
+	while line_end < src.len() && src.at(line_end) != 10 {
+		line_end++
+	}
+
+	var source_line = src.slice(line_start, line_end)
+	var col = tok_offset - line_start
+
+	// format output
+	var out = string.new(256)
+	out.format("%:r:s", "error: ")
+	out.append(msg)
+	out.append("\n")
+
+	out.format("  %:dim:s", "--> ")
+	out.format("%:bold:s", self.filename)
+	out.format(":%d:%d\n", line, col + 1)
+
+	out.format("  %:dim:s", " | ")
+	out.append("\n")
+
+	out.format("  %:dim:s", str(line))
+	out.format(" %:dim:s", "| ")
+	out.append(source_line)
+	out.append("\n")
+
+	out.format("  %:dim:s", " | ")
+	var i = 0
+	while i < col {
+		out.append(" ")
+		i++
+	}
+	out.format("%:r:s", "^")
+	out.append("\n")
+
+	print(out)
+	exit(1)
+}
+
+return tstream;
