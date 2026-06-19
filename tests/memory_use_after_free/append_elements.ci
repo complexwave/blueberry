@@ -1,0 +1,10 @@
+// Regression test: merge previously copied without ci_inc (now fixed)
+// Source array dies, appended elements in dst must survive
+var src = [[1], [2], [3]]
+var dst = [[0]]
+dst.merge(src)
+src = null
+
+for k, v in dst {
+    print(k, v)
+}

@@ -1,0 +1,11 @@
+print("start")
+var obj = {}
+obj.name = "test"
+obj.get_name = fn() {
+	return self.name
+}
+print("1")
+print(obj.get_name())
+print("2")
+print(obj.("get_name")())
+print("done")

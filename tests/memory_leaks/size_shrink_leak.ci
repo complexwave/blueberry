@@ -1,0 +1,5 @@
+// bb_arr_size shrink pops elements without ci_dec
+// Popped elements are leaked
+var a = [[1], [2], [3], [4], [5]]
+a.size(2)
+print("shrunk to", a.len())

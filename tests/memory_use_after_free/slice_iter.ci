@@ -1,0 +1,9 @@
+// Slice copies elements without ci_inc
+// Original array dies, sliced elements become dangling
+var a = [[1], [2], [3], [4], [5]]
+var b = a.slice(1, 4)
+a = null
+
+for k, v in b {
+    print(k, v)
+}

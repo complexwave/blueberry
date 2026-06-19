@@ -1,0 +1,148 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+// += -= *= /= %= on locals
+
+print("running local_add_assign")
+var a = 10
+a += 5
+test.equal(a, 15, "local_add_assign")
+
+print("running local_sub_assign")
+var b = 10
+b -= 3
+test.equal(b, 7, "local_sub_assign")
+
+print("running local_mul_assign")
+var c = 4
+c *= 3
+test.equal(c, 12, "local_mul_assign")
+
+print("running local_div_assign")
+var d = 20
+d /= 4
+test.equal(d, 5, "local_div_assign")
+
+print("running local_mod_assign")
+var e = 17
+e %= 5
+test.equal(e, 2, "local_mod_assign")
+
+// compound assign on map fields (dot)
+
+print("running map_dot_add_assign")
+var m = {}
+m.x = 10
+m.x += 5
+test.equal(m.x, 15, "map_dot_add_assign")
+
+print("running map_dot_sub_assign")
+var m2 = {}
+m2.val = 20
+m2.val -= 8
+test.equal(m2.val, 12, "map_dot_sub_assign")
+
+print("running map_dot_mul_assign")
+var m3 = {}
+m3.n = 3
+m3.n *= 7
+test.equal(m3.n, 21, "map_dot_mul_assign")
+
+// compound assign on self fields
+
+print("running self_add_assign")
+var obj = {}
+obj.score = 0
+obj.add = fn(pts) {
+	self.score += pts
+	return self.score
+}
+var s1 = obj.add(10)
+test.equal(s1, 10, "self_add_assign")
+var s2 = obj.add(25)
+test.equal(s2, 35, "self_add_assign_twice")
+
+// compound assign on subscript
+
+print("running map_subscript_add_assign")
+var m4 = {}
+m4["total"] = 100
+m4["total"] += 50
+test.equal(m4["total"], 150, "map_subscript_add_assign")
+
+// compound assign on array element
+
+print("running array_add_assign")
+var arr = [10, 20, 30]
+arr[0] += 5
+test.equal(arr[0], 15, "array_add_assign")
+
+arr[2] -= 10
+test.equal(arr[2], 20, "array_sub_assign")
+
+// bitwise compound assigns
+
+print("running local_or_assign")
+var f = 0b1010
+f |= 0b0101
+test.equal(f, 0b1111, "local_or_assign")
+
+print("running local_and_assign")
+var g = 0b1111
+g &= 0b1010
+test.equal(g, 0b1010, "local_and_assign")
+
+print("running local_xor_assign")
+var i = 0b1100
+i ^= 0b1010
+test.equal(i, 0b0110, "local_xor_assign")
+
+print("running local_lshift_assign")
+var j = 1
+j <<= 4
+test.equal(j, 16, "local_lshift_assign")
+
+print("running local_rshift_assign")
+var k = 32
+k >>= 2
+test.equal(k, 8, "local_rshift_assign")
+
+// logical compound assigns
+
+print("running local_or_logic_assign")
+var p = null
+p ||= 42
+test.equal(p, 42, "local_or_logic_assign")
+
+print("running local_or_logic_assign_noop")
+var q = 10
+q ||= 99
+test.equal(q, 10, "local_or_logic_assign_noop")
+
+print("running local_and_logic_assign")
+var r = 1
+r &&= 42
+test.equal(r, 42, "local_and_logic_assign")
+
+print("running local_and_logic_assign_falsy")
+var s = 0
+s &&= 99
+test.equal(s, 0, "local_and_logic_assign_falsy")
+
+// map dot bitwise compound
+
+print("running map_dot_or_assign")
+var m5 = {}
+m5.flags = 0b1000
+m5.flags |= 0b0010
+test.equal(m5.flags, 0b1010, "map_dot_or_assign")
+
+// ??= null coalesce assign
+
+// print("running local_notnull_assign")
+// var t = null
+// t ??= 77
+// test.equal(t, 77, "local_notnull_assign")
+test.skip("local_notnull_assign")
+
+test.done()

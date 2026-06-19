@@ -1,0 +1,9 @@
+// Copy uses slice internally, same missing ci_inc
+// Original dies, copied elements become dangling
+var a = [[10], [20], [30]]
+var b = a.copy()
+a = null
+
+for k, v in b {
+    print(k, v)
+}

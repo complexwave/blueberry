@@ -1,0 +1,43 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running chained_method_self")
+var o3 = {}
+o3.val = 99
+o3.get_self = fn() {
+	return self
+}
+
+var o2 = {}
+o2.o3 = o3
+
+var o1 = {}
+o1.o2 = o2
+
+// o1.o2.o3.get_self() — self inside get_self should be o3
+var result = o1.o2.o3.get_self()
+test.equal(result == o3, true, "chained_self: self is o3")
+test.equal(result.val, 99, "chained_self: self.val")
+
+print("running chained_method_mutate")
+var inner = {}
+inner.count = 0
+inner.inc = fn() {
+	self.count = self.count + 1
+	return self.count
+}
+
+var mid = {}
+mid.inner = inner
+
+var top = {}
+top.mid = mid
+
+var r1 = top.mid.inner.inc()
+test.equal(r1, 1, "chained_mutate: first inc")
+test.equal(inner.count, 1, "chained_mutate: count after inc")
+
+var r2 = top.mid.inner.inc()
+test.equal(r2, 2, "chained_mutate: second inc")
+
+test.done()

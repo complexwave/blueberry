@@ -1,0 +1,43 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+var obj = {}
+obj.name = "test"
+obj.get_name = fn() { return type(self) }
+
+print("running dot_method_call")
+test.equal(obj.get_name(), "map", "dot_method_call")
+
+print("running dot_paren_method_call")
+test.equal(obj.("get_name")(), "map", "dot_paren_method_call")
+
+print("running dot_paren_var_method_call")
+var method = "get_name"
+test.equal(obj.(method)(), "map", "dot_paren_var_method_call")
+
+// rawget doesnt bind self
+
+print("running rawget_method_call")
+test.equal(obj->get_name(), "function", "rawget_method_call")
+
+print("running rawget_paren_method_call")
+test.equal(obj->("get_name")(), "function", "rawget_paren_method_call")
+
+print("running rawget_paren_var_method_call")
+test.equal(obj->(method)(), "function", "rawget_paren_var_method_call")
+
+print("running bind_method")
+var bound = obj<-get_name
+test.equal(bound(), "map", "bind_method")
+
+print("running bind_paren_method")
+bound = obj<-(method)
+test.equal(bound(), "map", "bind_paren_method")
+
+print("running dot_paren_no_consume_after")
+obj.num = fn() { return 10 }
+var r = obj.("num")() + 5
+// should not misparse as obj.( "num"() + 5 )
+test.equal(r, 15, "dot_paren_no_consume_after")
+
+test.done()

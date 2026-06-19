@@ -1,0 +1,11 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+print("running dot_method_call")
+var obj = {}
+obj.name = "test"
+obj.get_name = fn() {
+	return self.name
+}
+test.equal(obj.get_name(), "test", "dot_method_call")
+test.done()

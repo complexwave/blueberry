@@ -1,0 +1,5 @@
+// ci_arr_clear drops references without ci_dec
+// Elements are leaked when array is cleared
+var a = [[1], [2], [3], [4], [5]]
+a.clear()
+print("cleared")

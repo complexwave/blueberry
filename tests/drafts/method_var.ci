@@ -1,0 +1,9 @@
+print("start")
+var obj = {}
+obj.name = "test"
+obj.get_name = fn() { return self.name }
+
+var method = "get_name"
+print("before call")
+print(obj.(method)())
+print("done")

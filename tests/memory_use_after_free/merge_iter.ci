@@ -1,0 +1,10 @@
+// Merge two arrays of heap-allocated objects then iterate
+// Reproduces use-after-poison: merged elements get freed during iteration
+var a = [[1], [2], [3]]
+var b = [[4], [5], [6]]
+
+a.merge(b)
+
+for k, v in a {
+    print(k, v)
+}

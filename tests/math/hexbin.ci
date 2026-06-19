@@ -1,0 +1,67 @@
+// hex and binary number() parsing tests
+
+var h = require("tests/test_helpers.ci")
+h()
+
+fn eq(a, b, name) {
+	test.assert(math.cmp(a, b) == 0, name)
+}
+
+// === hex basics ===
+
+eq(number("0x0"), 0, "hex_zero")
+eq(number("0xFF"), 255, "hex_ff")
+eq(number("0xff"), 255, "hex_ff_lower")
+eq(number("0xA"), 10, "hex_a")
+eq(number("0x10"), 16, "hex_16")
+eq(number("0xDEAD"), 0xDEAD, "hex_dead")
+
+// === hex negative ===
+
+eq(number("-0xFF"), -255, "hex_neg")
+eq(number("-0x1"), -1, "hex_neg_one")
+
+// === hex large ===
+
+eq(number("0xFFFFFFFFFFFFFFFF"), number("18446744073709551615"), "hex_64bit")
+eq(number("0x10000000000000000"), number("18446744073709551616"), "hex_65bit")
+
+// === hex uppercase X ===
+
+eq(number("0XFF"), 255, "hex_upper_x")
+eq(number("0XAB"), 171, "hex_upper_x_ab")
+
+// === hex invalid ===
+
+test.equal(number("0x"), null, "hex_no_digits")
+test.equal(number("0xG"), null, "hex_invalid_digit")
+test.equal(number("0x "), null, "hex_space_after_prefix")
+
+// === binary basics ===
+
+eq(number("0b0"), 0, "bin_zero")
+eq(number("0b1"), 1, "bin_one")
+eq(number("0b10"), 2, "bin_two")
+eq(number("0b1111"), 15, "bin_fifteen")
+eq(number("0b11111111"), 255, "bin_255")
+
+// === binary negative ===
+
+eq(number("-0b1"), -1, "bin_neg_one")
+eq(number("-0b10"), -2, "bin_neg_two")
+
+// === binary large ===
+
+eq(number("0b100000000"), 256, "bin_256")
+
+// === binary uppercase B ===
+
+eq(number("0B10"), 2, "bin_upper_b")
+
+// === binary invalid ===
+
+test.equal(number("0b"), null, "bin_no_digits")
+test.equal(number("0b2"), null, "bin_invalid_digit")
+test.equal(number("0b "), null, "bin_space_after_prefix")
+
+test.done()

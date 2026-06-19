@@ -1,0 +1,65 @@
+var h = require("tests/test_helpers.ci")
+h()
+
+// ++ and -- on locals
+
+print("running local_postinc")
+var a = 5
+a++
+test.equal(a, 6, "local_postinc")
+
+print("running local_postdec")
+var b = 10
+b--
+test.equal(b, 9, "local_postdec")
+
+print("running local_postinc_twice")
+var c = 0
+c++
+c++
+test.equal(c, 2, "local_postinc_twice")
+
+// ++ and -- on map fields (dot access)
+
+print("running map_dot_postinc")
+var m = {}
+m.x = 5
+m.x++
+test.equal(m.x, 6, "map_dot_postinc")
+
+print("running map_dot_postdec")
+var m2 = {}
+m2.y = 10
+m2.y--
+test.equal(m2.y, 9, "map_dot_postdec")
+
+// ++ on self fields
+
+print("running self_field_postinc")
+var counter = {}
+counter.val = 0
+counter.inc = fn() {
+	self.val++
+	return self.val
+}
+var r1 = counter.inc()
+test.equal(r1, 1, "self_field_postinc")
+var r2 = counter.inc()
+test.equal(r2, 2, "self_field_postinc_twice")
+
+// ++ on subscript access
+
+print("running map_subscript_postinc")
+var m3 = {}
+m3["count"] = 0
+m3["count"]++
+test.equal(m3["count"], 1, "map_subscript_postinc")
+
+// ++ on array element
+
+print("running array_element_postinc")
+var arr = [10, 20, 30]
+arr[1]++
+test.equal(arr[1], 21, "array_element_postinc")
+
+test.done()
