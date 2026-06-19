@@ -90,6 +90,10 @@ static ci_ptr bb_native_type(bb_coro *c, ci_ptr_arg self, ci_ptr a0, ci_ptr_arg 
 static ci_ptr bb_proto_set(bb_coro_arg *c, ci_ptr_arg self, ci_ptr obj, ci_ptr proto_arg) {
 	ci_map* map_obj = ((ci_map *)obj);
 
+	if (!CI_IS_MAP(obj)){
+		bb_coro_error((bb_coro *)c, "proto.set: prototypes can only be set on maps and C objects");
+	}
+	
 	ci_dec(map_obj->prototype);
 
 	map_obj->prototype = (ci_ptr)bb_proto_name2map((bb_coro *)c, proto_arg);

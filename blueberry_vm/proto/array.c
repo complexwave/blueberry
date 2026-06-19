@@ -47,8 +47,10 @@ static ci_ptr bb_arr_size(bb_coro_arg *c, ci_ptr arr, ci_ptr newsize) {
 		if ((uint32_t)ns > oldlen) {
 			ci_arr_ensure_space(a, (uint32_t)ns - oldlen);
 		} else {
-			while (ci_arr_len(a) > (uint32_t)ns)
-				ci_arr_pop(a);
+			while (ci_arr_len(a) > (uint32_t)ns){
+				ci_ptr el = ci_arr_pop(a);
+				ci_dec(el);
+			}
 		}
 		return CI_PACKINT(a->size);
 	}
@@ -164,6 +166,9 @@ static bb_var_ret bb_arr_merge(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr
 
 	/* ensure space — may linearize dst (sets offset to 0) */
 	ci_arr_ensure_space(dst, total);
+	ci_arr_ensure_continuous(dst);
+	
+	uint32_t start = dst->length;
 
 	/* fastpath: dst offset==0 and all srcs contiguous → memcpy */
 	if (dst->offset == 0 && all_contiguous) {
@@ -194,7 +199,7 @@ static bb_var_ret bb_arr_merge(bb_coro_arg *c, ci_ptr self, size_t nargs, ci_ptr
 		}
 	}
 
-	/* TODO: ci_inc each copied element when refcounting */
+	ci_inc_multi(dst->data + start, dst->length - start);
 	BB_VAR_PUSH_RET_INC((ci_ptr)dst);
 	return nargs;
 }

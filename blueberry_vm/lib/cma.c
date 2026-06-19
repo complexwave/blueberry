@@ -256,35 +256,51 @@ static bb_cma_op *bb_cma_build_seq(bb_coro *c, uint16_t type, size_t n, ci_ptr *
 /* cma.seq / cma.and / cma.SEQ — sequence; accepts array arg or varargs */
 static bb_var_ret bb_cma_seq(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
 	(void)self; (void)nrets;
-	BB_VARARG_OR_ARRAY;
-	if (nargs == 0)
+	
+	BB_VARARG_OR_ARRAY(cma_nargs, cma_args);
+	
+	if (cma_nargs == 0)
 		bb_coro_error(c, "cma.seq: need at least one pattern");
-	if (nargs == 1) {
-		BB_CHECK_CMA_OP(args[0]);
-		ci_inc(args[0]);
-		BB_VAR_PUSH_RET_NOINC(args[0]);
-		return 1;
+	
+	for(size_t i = 0; i < cma_nargs; i++){
+		BB_CHECK_CMA_OP(cma_args[i]);
 	}
-	ci_ptr result = (ci_ptr)bb_cma_build_seq(c, CMA_AND, nargs, args);
+	
+	if (cma_nargs == 1) {
+		BB_VAR_PUSH_RET_INC(cma_args[0]);
+		return nargs;
+	}
+	
+	ci_ptr result = (ci_ptr)bb_cma_build_seq(c, CMA_AND, cma_nargs, cma_args);
+	
 	BB_VAR_PUSH_RET_NOINC(result);
-	return 1;
+	
+	return nargs;
 }
 
 /* cma.alt / cma.or / cma.ALT — ordered choice; accepts array arg or varargs */
 static bb_var_ret bb_cma_alt(bb_coro *c, ci_ptr self, size_t nargs, ci_ptr *args, size_t nrets) {
 	(void)self; (void)nrets;
-	BB_VARARG_OR_ARRAY;
-	if (nargs == 0)
+	
+	BB_VARARG_OR_ARRAY(cma_nargs, cma_args);
+	
+	if (cma_nargs == 0)
 		bb_coro_error(c, "cma.alt: need at least one pattern");
-	if (nargs == 1) {
-		BB_CHECK_CMA_OP(args[0]);
-		ci_inc(args[0]);
-		BB_VAR_PUSH_RET_NOINC(args[0]);
-		return 1;
+	
+	for(size_t i = 0; i < cma_nargs; i++){
+		BB_CHECK_CMA_OP(cma_args[i]);
 	}
-	ci_ptr result = (ci_ptr)bb_cma_build_seq(c, CMA_OR, nargs, args);
+	
+	if (cma_nargs == 1) {
+		BB_VAR_PUSH_RET_INC(cma_args[0]);
+		return nargs;
+	}
+	
+	ci_ptr result = (ci_ptr)bb_cma_build_seq(c, CMA_OR, cma_nargs, cma_args);
+	
 	BB_VAR_PUSH_RET_NOINC(result);
-	return 1;
+	
+	return nargs;
 }
 
 /* cma.neg(p) — negation, consumes nothing */

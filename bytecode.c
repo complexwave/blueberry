@@ -2092,19 +2092,63 @@ static b_reg b_emit_assign_infix(b_codeblock *cb, ast_node *n, uint32_t ctx) {
 }
 
 static b_reg b_emit_inc_dec(b_codeblock *cb, ast_node *n, uint32_t ctx) {
-	b_reg src_dst = b_consume_ast(cb, n->args[0]);
+	ast_node *operand = n->args[0];
 
-	b_emit_any(cb, (uint8_t)ctx, src_dst, src_dst, b_reg_imm(1));
+	/* fast path: local identifier */
+	if (A_TYPE(operand->type) == A_IDENTIFIER) {
+		b_reg local = b_codeblock_get_ident(cb, operand->token.data, operand->token.len);
+		if (local) {
+			b_emit_any(cb, (uint8_t)ctx, local, local, b_reg_imm(1));
+			return local;
+		}
+	}
 
-	return src_dst;
+	/* slow path: mutate to ASSIGN_ADD/ASSIGN_SUB, reuse assign_infix */
+	uint32_t akind = (ctx == B_ADD) ? A_ASSIGN_ADD : A_ASSIGN_SUB;
+	uint32_t bop   = (ctx == B_ADD) ? B_ADD : B_SUB;
+
+	ast_node *one = b_malloc(sizeof(ast_node));
+	memset(one, 0, sizeof(ast_node));
+	one->type = A_NUMBER | A_NUMBER_INT;
+	one->num_int = 1;
+
+	n->type = akind | A_ARG_2;
+	n->args[1] = one;
+
+	return b_emit_assign_infix(cb, n, bop);
 }
 
 static b_reg b_emit_post_inc_dec(b_codeblock *cb, ast_node *n, uint32_t ctx) {
-	b_reg src_dst = b_consume_ast(cb, n->args[0]);
+	ast_node *operand = n->args[0];
 
+	/* fast path: local identifier */
+	if (A_TYPE(operand->type) == A_IDENTIFIER) {
+		b_reg local = b_codeblock_get_ident(cb, operand->token.data, operand->token.len);
+		if (local) {
+			b_reg old = b_reg_tmp(cb);
+			b_emit_r(cb, B_MOVE, old, local);
+			b_emit_any(cb, (uint8_t)ctx, local, local, b_reg_imm(1));
+			return old;
+		}
+	}
+
+	/* slow path: evaluate current value, then mutate to assign_infix */
+	b_reg cur = b_consume_ast(cb, operand);
 	b_reg old = b_reg_tmp(cb);
-	b_emit_r(cb, B_MOVE, old, src_dst);
-	b_emit_any(cb, (uint8_t)ctx, src_dst, src_dst, b_reg_imm(1));
+	b_emit_r(cb, B_MOVE, old, cur);
+
+	uint32_t akind = (ctx == B_ADD) ? A_ASSIGN_ADD : A_ASSIGN_SUB;
+	uint32_t bop   = (ctx == B_ADD) ? B_ADD : B_SUB;
+
+	ast_node *one = b_malloc(sizeof(ast_node));
+	memset(one, 0, sizeof(ast_node));
+	one->type = A_NUMBER | A_NUMBER_INT;
+	one->num_int = 1;
+
+	n->type = akind | A_ARG_2;
+	n->args[1] = one;
+
+	b_emit_assign_infix(cb, n, bop);
 
 	return old;
 }

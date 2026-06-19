@@ -147,6 +147,7 @@ static const char *ast_kind_names[A_COUNT] = {
 
 
 struct ast_node {
+	CI_GC_HDR;
 	uint32_t   type;    /* A_TYPE | arg count | A_LIST | subtype */
 	ast       *parent;
 	b_tok      token;   /* source token for this node */
@@ -210,6 +211,7 @@ static ast_node *ast_newnode(ast *a, uint32_t type, b_tok token) {
 	ast_node *n = malloc(sz);
 	if (!n) return NULL;
 	memset(n, 0, sz);
+	ci_nocnt(n);
 	n->type   = type;
 	n->parent = a;
 	n->token  = token;
@@ -580,30 +582,32 @@ static ast_node *ast_hash_access(ast *a, ast_node *left, const ast_op_entry *ent
 	b_tok op = b_parser_try_next(a->p, entry->token_type);
 	if (!op.data) return NULL;
 
+	/* parse first key before claiming left, so failure leaves left owned by caller */
+	ast_node *right = ast_consume_single_expression(a, entry->prio);
+	if (!right) {
+		fprintf(stderr, "error: hash access with no key\n");
+		return NULL;
+	}
+
 	ast_node *n = ast_newnode(a, A_HASHACCESS | A_LIST, op);
-	if (!n) return NULL;
+	if (!n) {
+		ast_node_free(right);
+		return NULL;
+	}
 
 	ast_node_push(n, left);
 
 	for (;;) {
-		ast_node *right = NULL;
-		
-		right = ast_consume_single_expression(a, entry->prio);
-		if (!right) break;
-
 		// change type of identifier to string
 		right = ast_ident2str(right);
-		
+
 		ast_node_push(n, right);
 		/* try consume next dot in chained map.key.key2 */
 		b_tok next = b_parser_try_next(a->p, entry->token_type);
 		if (!next.data) break;
-	}
 
-	if (ast_node_list_length(n) < 2) {
-		fprintf(stderr, "error: hash access with no key\n");
-		ast_node_free(n);
-		return NULL;
+		right = ast_consume_single_expression(a, entry->prio);
+		if (!right) break;
 	}
 
 	return n;
@@ -636,11 +640,13 @@ static ast_node *ast_comma_list(ast *a, ast_node *left, const ast_op_entry *entr
 
 		expr = ast_expr_bp(a, entry->prio);
 		if (!expr) break;
-		
+
 	}
-	
-	ast_node_push(n, expr);
-	
+
+	/* trailing comma leaves expr NULL — allowed, just ignore */
+	if (expr)
+		ast_node_push(n, expr);
+
 	return n;
 }
 
@@ -773,7 +779,7 @@ static ast_node *ast_statement_for(ast *a, const ast_op_entry *entry) {
 	}
 	
 	n->op_loop.init = ast_consume_expression_list(a);
-	if (!n->op_loop.iterator_vars) {
+	if (!n->op_loop.init) {
 		ast_error(a, "expected iterable after 'for in'");
 		ast_node_free(n);
 		return NULL;

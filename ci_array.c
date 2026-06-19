@@ -151,15 +151,27 @@ static inline void ci_arr__zero_tail(ci_array *a, uint32_t from, uint32_t to) {
  * dst must hold at least a->length elements. Uses memmove for each
  * contiguous segment (1 call if not wrapped, 2 if wrapped).
  */
+#define CI_ARR_IS_WRAPPED(a) (((a)->length > 0) && (a)->offset + (a)->length > (a)->size)
+
+#define CI_ARR_UNWRAPPED_HEAD(a) ((a)->data + (a)->offset)
+#define CI_ARR_UNWRAPPED_LENGTH(a) ((a)->length)
+
+#define CI_ARR_WRAPPED_SEG1_HEAD(a)       ((a)->data + (a)->offset)
+#define CI_ARR_WRAPPED_SEG1_LENGTH(a)     ((a)->size - (a)->offset)
+
+#define CI_ARR_WRAPPED_SEG2_HEAD(a)       ((a)->data)
+#define CI_ARR_WRAPPED_SEG2_LENGTH(a)     ((a)->length - CI_ARR_WRAPPED_SEG1_LENGTH(a))
+
 static inline void ci_arr_rmoffset(const ci_array *a, ci_ptr *dst) {
 	if (a->length == 0) return;
-	if (a->offset + a->length <= a->size) {
-		memmove(dst, a->data + a->offset, a->length * sizeof(ci_ptr));
+	if (!CI_ARR_IS_WRAPPED(a)) {
+		memmove(dst, CI_ARR_UNWRAPPED_HEAD(a), CI_ARR_UNWRAPPED_LENGTH(a) * sizeof(ci_ptr));
 	} else {
-		uint32_t seg1 = a->size - a->offset;
-		uint32_t seg2 = a->length - seg1;
-		memmove(dst,        a->data + a->offset, seg1 * sizeof(ci_ptr));
-		memmove(dst + seg1, a->data,              seg2 * sizeof(ci_ptr));
+		uint32_t seg1_length = CI_ARR_WRAPPED_SEG1_LENGTH(a);
+		uint32_t seg2_length = a->length - seg1_length;
+		
+		memmove(dst,               CI_ARR_WRAPPED_SEG1_HEAD(a), seg1_length * sizeof(ci_ptr));
+		memmove(dst + seg1_length, CI_ARR_WRAPPED_SEG2_HEAD(a), seg2_length * sizeof(ci_ptr));
 	}
 }
 
@@ -182,11 +194,6 @@ static inline uint32_t ci_arr_wrapindex(const ci_array *a, intptr_t index) {
 }
 
 static ci_array *ci_arr_upgrade(ci_array *a);  /* defined below */
-
-/* true when the live elements wrap around the end of the backing buffer */
-static inline int ci_arr__is_wrapped(const ci_array *a) {
-	return a->length > 0 && a->offset + a->length > a->size;
-}
 
 /* Allocate a fresh buffer of newsize, linearize into it, replace a->data.
  * Zeros tail beyond length. Frees old a->data.
@@ -216,7 +223,7 @@ static int ci_arr_ensure_continuous(ci_array *a) {
 		if (!ci_arr_upgrade(a)) return 0;
 		return 1; /* upgrade always linearizes */
 	}
-	if (!ci_arr__is_wrapped(a)) return 1;
+	if (!CI_ARR_IS_WRAPPED(a)) return 1;
 	
 	return ci_arr__linearize(a, a->size);
 }
@@ -505,11 +512,14 @@ int ci_arr_append(ci_array *dst, const ci_array *src) {
 	uint32_t n = src->length; /* capture before possible self-append mutation */
 	if (n == 0) return 1;
 	if (!ci_arr_ensure_space(dst, n)) return 0;
-	/* TODO: ci_inc each element when refcounting */
+	
 	for (uint32_t i = 0; i < n; i++) {
-		dst->data[ci_arr__idx(dst, dst->length)] = ci_arr(src, i);
-		dst->length++;
+		ci_ptr el = ci_arr(src, i);
+		ci_inc(el);
+		dst->data[ci_arr__idx(dst, dst->length)] = el;
 	}
+	dst->length += n;
+	
 	return 1;
 }
 
@@ -519,7 +529,13 @@ int ci_arr_append(ci_array *dst, const ci_array *src) {
  * ============================================================ */
 
 void ci_arr_clear(ci_array *a) {
-	/* TODO: ci_dec all elements when refcounting */
+	if (!CI_ARR_IS_WRAPPED(a)) {
+		ci_dec_multi(CI_ARR_UNWRAPPED_HEAD(a), CI_ARR_UNWRAPPED_LENGTH(a));
+	} else {
+		ci_dec_multi(CI_ARR_WRAPPED_SEG1_HEAD(a), CI_ARR_WRAPPED_SEG1_LENGTH(a));
+		ci_dec_multi(CI_ARR_WRAPPED_SEG2_HEAD(a), CI_ARR_WRAPPED_SEG2_LENGTH(a));
+	}
+	
 	a->length = 0;
 	a->offset = 0;
 }
@@ -606,10 +622,11 @@ ci_array *ci_arr_slice(ci_array *a, int32_t from, int32_t to) {
 	if (!result) return NULL;
 
 	for (uint32_t i = 0; i < slice_len; i++) {
-		/* TODO: ci_inc(elem) when refcounting elements */
-		result->data[i] = a->data[ci_arr__idx(a, from_off + i)];
+		ci_ptr el = a->data[ci_arr__idx(a, from_off + i)];
+		ci_inc(el);
+		result->data[i] = el;
 	}
-
+		
 	result->length = slice_len;
 	return result;
 }

@@ -168,6 +168,10 @@ static cma_op *lexer_grammar(void) {
 	 * Keywords before identifier. Multi-char ops before single-char.
 	 */
 	cma_op *token = O(
+		/* strings */
+		dq_string,
+		sq_string,
+		
 		/* keywords */
 		KW("function", L_FUNCTION),
 		KW("fun",      L_FUNCTION),
@@ -190,9 +194,7 @@ static cma_op *lexer_grammar(void) {
 		KW("in",  L_IN),
 		skip,
 		
-		/* strings */
-		dq_string,
-		sq_string,
+		
 		
 		/* numbers (hex/bin before decimal, double before int) */
 		hex_num,
@@ -351,10 +353,7 @@ static int b_parser_load_buf(b_parser *p, ci_str *buf) {
 static int b_parser_load_file(b_parser *p, const char *filename) {
 	ci_str *buf = read_file_to_cistr(filename);
 	if (!buf) return 0;
-	int r = b_parser_load_buf(p, buf);
-	ci_dec(buf);
-	
-	return r;
+	return b_parser_load_buf(p, buf);
 }
 
 static b_tok b_parser_peek(b_parser *p) {

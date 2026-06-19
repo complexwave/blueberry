@@ -93,14 +93,22 @@
 } while(0)
 
 /* BB_VARARG_OR_ARRAY — if called with a single array arg, unpack it in-place.
- * Uses ci_arr_head() — valid for non-wrapped arrays (push-only, typical case). */
-#define BB_VARARG_OR_ARRAY do { \
+ * Uses ci_arr_head() — valid for non-wrapped arrays (push-only, typical case).
+ */
+
+#define BB_VARARG_OR_ARRAY(arr_nargs, arr_ptr) \
+	size_t arr_nargs; ci_ptr* arr_ptr; \
 	if (nargs == 1 && bb_is_array(args[0])) { \
 		ci_array *_voa = (ci_array *)args[0]; \
-		nargs = ci_arr_len(_voa); \
-		args  = ci_arr_head(_voa); \
+		ci_inc(_voa); \
+		arr_ptr  = ci_arr_head(_voa); \
+		arr_nargs = ci_arr_len(_voa); \
+	} else { \
+		arr_ptr = args; \
+		arr_nargs = nargs; \
 	} \
-} while(0)
+
+
 
 /* ---- metamethod dispatch ---- */
 

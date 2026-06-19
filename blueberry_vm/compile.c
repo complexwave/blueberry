@@ -15,6 +15,15 @@ static uint8_t *bb_compile_ci_file(const char *ci_path, uint32_t *out_len) {
 		return NULL;
 	}
 
+	/* codelist stops at first unparseable token — leftover input is a parse error */
+	if (b_parser_peek(p).data) {
+		ast_error(a, "unexpected token");
+		ast_node_free(block);
+		ast_free(a);
+		b_parser_free(p);
+		return NULL;
+	}
+
 	/* codegen */
 	b_unit *unit = b_unit_new();
 	char *main_name = b_malloc(5);

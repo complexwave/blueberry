@@ -744,6 +744,7 @@ int main(int argc, char **argv) {
 	const char *path = argv[file_start];
 	uint32_t len;
 	uint8_t *buf = NULL;
+	int exit_code = 0;
 
 	/* detect extension and handle accordingly */
 	const char *ext = strrchr(path, '.');
@@ -758,8 +759,10 @@ int main(int argc, char **argv) {
 #ifdef CI_DEBUG_NOFREE
 		ci_never_free = 0;
 #endif
-		if (!buf)
+		if (!buf) {
+			exit_code = 1;
 			goto shutdown;
+		}
 	} else
 #endif
 	{
@@ -767,6 +770,7 @@ int main(int argc, char **argv) {
 		buf = bb_read_file(path, &len);
 		if (!buf) {
 			fprintf(stderr, "error: cannot read '%s'\n", path);
+			exit_code = 1;
 			goto shutdown;
 		}
 	}
@@ -816,6 +820,7 @@ int main(int argc, char **argv) {
 
 	if (ci_arr_len(unit->functions) == 0) {
 		fprintf(stderr, "error: no functions in unit\n");
+		exit_code = 1;
 		goto shutdown;
 	}
 
@@ -837,7 +842,7 @@ int main(int argc, char **argv) {
 	ci_dec(c);
 	
 	shutdown:
-	exit(0);
+	exit(exit_code);
 	ci_dec(vm);
 	
 	ci_shutdown();

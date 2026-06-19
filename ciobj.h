@@ -349,6 +349,11 @@ static inline int ci_dec(void *ptr) {
 	while (_n--) { ci_dec(*_p); _p++; } \
 } while(0)
 
+#define ci_inc_multi(arr, n) do { \
+	ci_ptr *_p = (arr); size_t _n = (n); \
+	while (_n--) { ci_inc(*_p); _p++; } \
+} while(0)
+
 /* ---- query helpers ---- */
 
 static inline uint16_t ci_refcnt(void *ptr) {
