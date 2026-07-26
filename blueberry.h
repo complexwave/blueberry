@@ -159,6 +159,7 @@ struct bb_closure {
  * ================================================================ */
 
 #define CI_TAG_METAPROTO  CI_MAP_USER_FLAG1
+#define CI_BB_METAPROTO   ((uint16_t)(CI_FAMILY_ENTRY(CI_MAP_FAMILY, 3) | CI_REFCOUNTABLE))
 
 #define CI_IS_MAGIC_PROTO(proto) \
 	((proto) && ((ci_map *)(proto))->gc.flags & CI_TAG_METAPROTO)

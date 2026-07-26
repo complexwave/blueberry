@@ -19,6 +19,8 @@
 #include "tgmemlib_strategy_reserve.c"
 #endif
 
+#include "tgmemlib_canary.c"
+
 #ifdef TGMEMLIB_TRACKING
 /* global pointer so tg_free (which has no allocator arg) can bump the counter */
 tg_allocator_t *tg_track_allocator;
@@ -55,8 +57,8 @@ static void tg_arena_destroy(tg_allocator_t *alloc, tg_arena_t *ar) {
 static void *tg_arena_alloc(tg_arena_t *ar) {
 	void *obj;
 
-#ifdef TG_ASAN
-	/* ASan mode: bump only, never reuse freed slots */
+#ifdef TG_FREELIST_DISABLED
+	/* Pure ASan mode: bump only, never reuse freed slots */
 	if (ar->bump + ar->obj_size <= ar->end) {
 		obj       = ar->bump;
 		ar->bump += ar->obj_size;
@@ -66,6 +68,28 @@ static void *tg_arena_alloc(tg_arena_t *ar) {
 #else
 	if (ar->freelist) {
 		obj          = ar->freelist;
+		TG_ASAN_UNPOISON(obj, ar->obj_size);
+
+#ifdef TG_FREELIST_CANARY
+		if (ar->obj_size >= sizeof(void *) + sizeof(uint64_t)) {
+			uint64_t c = *(uint64_t *)((char *)obj + sizeof(void *));
+			assert(c == TG_FREELIST_CANARY_MAGIC &&
+			       "tgmemlib: freelist canary corrupted");
+		}
+#endif
+#ifdef TG_FREELIST_POISON
+		{
+			size_t from = sizeof(void *);
+#ifdef TG_FREELIST_CANARY
+			from += sizeof(uint64_t);
+#endif
+			size_t to = ar->obj_size - tg_canary_pad_size();
+			unsigned char *b = (unsigned char *)obj;
+			for (size_t i = from; i < to; i++)
+				assert(b[i] == 0xFD &&
+				       "tgmemlib: freed slot modified");
+		}
+#endif
 		ar->freelist = *(void **)obj;
 	} else if (ar->bump + ar->obj_size <= ar->end) {
 		obj       = ar->bump;
@@ -77,6 +101,7 @@ static void *tg_arena_alloc(tg_arena_t *ar) {
 
 	TG_ASAN_UNPOISON(obj, ar->obj_size);
 	ar->live_count++;
+	tg_canary_on_alloc(obj, ar);
 	return obj;
 }
 
@@ -158,15 +183,16 @@ static void *tg_arena_bubblesort_freelist(tg_arena_t *ar, int need) {
 static void *tg_arena_alloc_linked(tg_arena_t *ar, int count) {
 	size_t total = (size_t)count * ar->obj_size;
 
-#ifndef TG_ASAN
+#ifndef TG_FREELIST_DISABLED
 	void *ptr = tg_arena_bubblesort_freelist(ar, count);
 	if (ptr) {
 		TG_ASAN_UNPOISON(ptr, total);
+		tg_canary_on_alloc_linked(ptr, ar, count);
 		return ptr;
 	}
 #endif
 
-#ifdef TG_ASAN
+#ifdef TG_FREELIST_DISABLED
 	void *ptr;
 #endif
 	if (ar->bump + total <= ar->end) {
@@ -174,6 +200,7 @@ static void *tg_arena_alloc_linked(tg_arena_t *ar, int count) {
 		ar->bump += total;
 		ar->live_count += count;
 		TG_ASAN_UNPOISON(ptr, total);
+		tg_canary_on_alloc_linked(ptr, ar, count);
 		return ptr;
 	}
 
@@ -230,6 +257,7 @@ void tg_allocator_destroy(tg_allocator_t *alloc) {
 void tg_allocator_register_type(tg_allocator_t *alloc, uint16_t tag, uint16_t obj_size) {
 	assert(obj_size >= sizeof(void *));
 
+	obj_size += tg_canary_pad_size();
 	obj_size = (uint16_t)((obj_size + 7u) & ~7u);
 	alloc->obj_sizes[tag] = obj_size;
 	
@@ -247,6 +275,7 @@ void tg_allocator_register_type_ops(tg_allocator_t *alloc, uint16_t tag, uint16_
 	assert(obj_size >= sizeof(void *));
 	assert(ops);
 
+	obj_size += tg_canary_pad_size();
 	obj_size = (uint16_t)((obj_size + 7u) & ~7u);
 	alloc->obj_sizes[tag] = obj_size;
 	alloc->ops[tag] = *ops;
@@ -307,17 +336,47 @@ void *tg_alloc(tg_allocator_t *alloc, uint16_t tag) {
 void tg_free(void *ptr) {
 	tg_arena_t *ar = tg_ptr_arena(ptr);
 
+#ifdef TGMEMLIB_NEVER_FREE
+	if (ar->obj_size >= sizeof(uint64_t) &&
+	    *(uint64_t *)ptr == TG_FREED_SLOT_MAGIC) {
+		tgmemlib_dump_slot(ptr, ar, "DOUBLE FREE (tg_free)");
+		abort();
+	}
+#endif
+
+#ifdef TGMEMLIB_PRINT_FREE
+	printf("mem: freeing %p tag=0x%04x rc=%u\n", ptr, ar->type_tag,
+	       *(uint16_t *)ptr);
+#endif
+
 	if (ar->ops.destructor) {
 		ar->ops.destructor(ptr, ar);
 	}
 
-#ifdef TG_ASAN
-	/* poison the slot — any later access will trap */
-	TG_ASAN_POISON(ptr, ar->obj_size);
+	tg_canary_on_free(ptr, ar);
+
+	{
+		size_t tail = tg_canary_pad_size();
+#ifdef TGMEMLIB_NEVER_FREE
+		*(uint64_t *)ptr = TG_FREED_SLOT_MAGIC;
+		TG_ASAN_POISON(ptr, ar->obj_size);
+#elif defined(TG_FREELIST_DISABLED)
+		TG_ASAN_POISON(ptr, ar->obj_size - tail);
 #else
-	*(void **)ptr  = ar->freelist;
-	ar->freelist   = ptr;
+		*(void **)ptr  = ar->freelist;
+		ar->freelist   = ptr;
+#ifdef TG_FREELIST_POISON
+		memset((char *)ptr + sizeof(void *), 0xFD,
+		       ar->obj_size - sizeof(void *) - tail);
 #endif
+#ifdef TG_FREELIST_CANARY
+		if (ar->obj_size - tail >= sizeof(void *) + sizeof(uint64_t))
+			*(uint64_t *)((char *)ptr + sizeof(void *)) = TG_FREELIST_CANARY_MAGIC;
+#endif
+		TG_ASAN_POISON((char *)ptr + sizeof(void *),
+		               ar->obj_size - sizeof(void *) - tail);
+#endif
+	}
 	ar->live_count--;
 
 #ifdef TGMEMLIB_TRACKING
@@ -354,13 +413,24 @@ void tg_free_linked(void *ptr, size_t byte_size) {
 	tg_arena_t *ar = tg_ptr_arena(ptr);
 	int extra = TG_SLOT_COUNT(byte_size, ar->obj_size) - 1;
 	char *slot = (char *)ptr + ar->obj_size;
+	size_t tail = tg_canary_pad_size();
 
 	for (int i = 0; i < extra; i++) {
-#ifdef TG_ASAN
-		TG_ASAN_POISON(slot, ar->obj_size);
+#ifdef TG_FREELIST_DISABLED
+		TG_ASAN_POISON(slot, ar->obj_size - tail);
 #else
 		*(void **)slot = ar->freelist;
 		ar->freelist   = slot;
+#ifdef TG_FREELIST_POISON
+		memset(slot + sizeof(void *), 0xFD,
+		       ar->obj_size - sizeof(void *) - tail);
+#endif
+#ifdef TG_FREELIST_CANARY
+		if (ar->obj_size - tail >= sizeof(void *) + sizeof(uint64_t))
+			*(uint64_t *)(slot + sizeof(void *)) = TG_FREELIST_CANARY_MAGIC;
+#endif
+		TG_ASAN_POISON(slot + sizeof(void *),
+		               ar->obj_size - sizeof(void *) - tail);
 #endif
 		ar->live_count--;
 		slot += ar->obj_size;
@@ -420,4 +490,128 @@ int tg_cleanup(tg_allocator_t *alloc, uint16_t tag) {
 		freed++;
 	}
 	return freed;
+}
+
+/* ==== Aggressive memory check ==== */
+
+void tgmemlib_dump_slot(void *slot, tg_arena_t *ar, const char *reason) {
+	unsigned char *b = (unsigned char *)slot;
+	uint16_t obj_size = ar->obj_size;
+	size_t tail = tg_canary_pad_size();
+	uint16_t user_size = obj_size - tail;
+
+	fprintf(stderr,
+		"\n╔══════════════════════════════════════════════════════╗\n"
+		"║  MEMORY CHECK FAILED: %-30s ║\n"
+		"╠══════════════════════════════════════════════════════╣\n",
+		reason);
+	fprintf(stderr,
+		"║  slot:       %p\n"
+		"║  arena:      %p  tag=0x%04x\n"
+		"║  obj_size:   %u (user: %u, pad: %u)\n",
+		slot, (void *)ar, ar->type_tag, obj_size, user_size, (unsigned)tail);
+
+	/* interpret as ci_gchdr: refcnt(u16) + flags(u16) at offset 0 */
+	if (user_size >= 4) {
+		uint16_t refcnt = *(uint16_t *)b;
+		uint16_t flags  = *(uint16_t *)(b + 2);
+		fprintf(stderr,
+			"║  as object:  refcnt=%u  flags=0x%04x\n", refcnt, flags);
+	}
+
+	/* freelist next pointer */
+	fprintf(stderr, "║  next_ptr:   %p\n", *(void **)b);
+
+#ifdef TG_FREELIST_CANARY
+	if (user_size >= sizeof(void *) + sizeof(uint64_t)) {
+		uint64_t canary = *(uint64_t *)(b + sizeof(void *));
+		fprintf(stderr, "║  canary:     0x%016llx %s\n",
+			(unsigned long long)canary,
+			canary == TG_FREELIST_CANARY_MAGIC ? "(OK)" : "(CORRUPTED)");
+	}
+#endif
+
+	fprintf(stderr,
+		"╠══════════════════════════════════════════════════════╣\n"
+		"║  hexdump (%u bytes):\n║\n", obj_size);
+
+	for (uint16_t off = 0; off < obj_size; off += 16) {
+		fprintf(stderr, "║  %04x │ ", off);
+		/* hex */
+		for (int j = 0; j < 16 && off + j < obj_size; j++) {
+			/* mark boundaries */
+			if (off + j == sizeof(void *) ||
+			    off + j == sizeof(void *) + sizeof(uint64_t) ||
+			    off + j == user_size)
+				fprintf(stderr, "│%02x", b[off + j]);
+			else
+				fprintf(stderr, " %02x", b[off + j]);
+		}
+		/* pad if short */
+		for (int j = obj_size - off; j < 16; j++)
+			fprintf(stderr, "   ");
+		fprintf(stderr, "  │ ");
+		/* ascii */
+		for (int j = 0; j < 16 && off + j < obj_size; j++) {
+			unsigned char ch = b[off + j];
+			fprintf(stderr, "%c", (ch >= 0x20 && ch < 0x7f) ? ch : '.');
+		}
+		fprintf(stderr, "\n");
+	}
+
+	fprintf(stderr,
+		"║\n"
+		"║  legend: │ at offsets %zu(next_ptr) %zu(canary_end) %u(pad_start)\n"
+		"╚══════════════════════════════════════════════════════╝\n\n",
+		sizeof(void *), sizeof(void *) + sizeof(uint64_t), user_size);
+}
+
+void tgmemlib_check_mem(tg_allocator_t *alloc) {
+	for (int tag = 0; tag < MAX_TYPES; tag++) {
+		tg_arena_t *ar = alloc->heads[tag];
+		while (ar) {
+#ifndef TG_FREELIST_DISABLED
+			size_t tail = tg_canary_pad_size();
+			void *node = ar->freelist;
+			while (node) {
+				TG_ASAN_UNPOISON(node, ar->obj_size - tail);
+
+#ifdef TG_FREELIST_CANARY
+				if (ar->obj_size - tail >= sizeof(void *) + sizeof(uint64_t)) {
+					uint64_t c = *(uint64_t *)((char *)node + sizeof(void *));
+					if (c != TG_FREELIST_CANARY_MAGIC) {
+						tgmemlib_dump_slot(node, ar, "freelist canary");
+						abort();
+					}
+				}
+#endif
+#ifdef TG_FREELIST_POISON
+				{
+					size_t from = sizeof(void *);
+#ifdef TG_FREELIST_CANARY
+					from += sizeof(uint64_t);
+#endif
+					size_t to = ar->obj_size - tail;
+					unsigned char *b = (unsigned char *)node;
+					for (size_t i = from; i < to; i++) {
+						if (b[i] != 0xFD) {
+							tgmemlib_dump_slot(node, ar, "poison modified");
+							abort();
+						}
+					}
+				}
+#endif
+				void *next = *(void **)node;
+				TG_ASAN_POISON((char *)node + sizeof(void *),
+				               ar->obj_size - sizeof(void *) - tail);
+				node = next;
+			}
+#endif /* !TG_FREELIST_DISABLED */
+
+#ifdef TG_PAD_CANARY
+			tg_canary_validate_arena(ar);
+#endif
+			ar = ar->next;
+		}
+	}
 }

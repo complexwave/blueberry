@@ -72,20 +72,14 @@ static ci_map *bb_proto_new_map(bb_vm *vm, const char *name, uint32_t size) {
 }
 
 static bb_metaproto *bb_proto_register_meta(bb_vm *vm, const char *name) {
-	bb_metaproto *mp = tg_alloc_linked(ci_alloc, CI_MAP, sizeof(bb_metaproto));
+	bb_metaproto *mp = ci_new(CI_BB_METAPROTO);
 	if (!mp) return NULL;
+	memset(((char *)mp) + sizeof(ci_map), 0, sizeof(bb_metaproto) - sizeof(ci_map));
 
 	ci_map *m = &mp->map;
 	if (!ci_map_init(m, 16)) return NULL;
 	m->hashcmp = ci_hashcmp_identity;
 	m->gc.flags |= CI_TAG_METAPROTO;
-	//ci_nocnt(m);
-
-	mp->op_add = NULL;
-	mp->op_sub = NULL;
-	mp->op_mul = NULL;
-	mp->op_div = NULL;
-	mp->op_tostring = NULL;
 
 	ci_ptr n = bb_vm_istring(vm, name, (uint32_t)strlen(name));
 	bb_proto_register_cistr(vm, m, n);

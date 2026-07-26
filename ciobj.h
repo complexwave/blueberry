@@ -109,7 +109,8 @@ typedef void* ci_ptr;
 #define CI_OBJ_READONLY (1 << 8)
 
 // object header is not from tgmemlib allocator
-#define CI_OBJ_EXTERNAL (1 << 9) 
+#define CI_OBJ_EXTERNAL (1 << 9)
+#define CI_OBJ_FREED    (1 << 10)
 
 #define CI_IS_READONLY(p) (((const ci_gchdr *)(p))->flags & CI_OBJ_READONLY)
 
@@ -203,6 +204,24 @@ typedef struct {
 	tg_type_destructor_fn destructor;
 } ci_gchdr_ext;
 
+#ifdef CIOBJ_DETECT_FREED
+#define CI_CHECK_MEM(p) do { \
+	if (CI_IS_REFCOUNTABLE(p)) { \
+		ci_gchdr *_h = (ci_gchdr *)(p); \
+		if (_h->flags & CI_OBJ_FREED) { \
+			tg_arena_t *_ar = tg_ptr_arena(p); \
+			fprintf(stderr, \
+				"\n*** USE-AFTER-FREE: %p  tag=0x%04x  refcnt=%u  flags=0x%x\n", \
+				(void*)(p), _ar->type_tag, _h->refcnt, (unsigned)_h->flags); \
+			tgmemlib_dump_slot(p, _ar, "use-after-free"); \
+			abort(); \
+		} \
+	} \
+} while(0)
+#else
+#define CI_CHECK_MEM(p) ((void)0)
+#endif
+
 #define CI_MALLOC_OBJ(size) ({ \
 	ci_gchdr_ext *_o = malloc(size); \
 	memset(_o, 0, size); \
@@ -254,7 +273,28 @@ static inline void *ci_new(uint16_t tag) {
 /* manual free — for non-refcounted objects or forced cleanup */
 static inline void ci_free(void *ptr) {
 	ci_gchdr *o = (ci_gchdr *)ptr;
-	
+
+	CI_CHECK_MEM(ptr);
+
+#ifdef CIOBJ_DETECT_FREED
+	{
+	uint16_t _rc = o->refcnt;
+	o->refcnt = 0xFFFF;
+	o->flags |= CI_OBJ_FREED;
+	if (!(o->flags & CI_OBJ_EXTERNAL)) {
+		tg_arena_t *_ar = tg_ptr_arena(ptr);
+#ifdef TGMEMLIB_PRINT_FREE
+		printf("mem: freeing %p tag=0x%04x rc=%u\n", ptr, _ar->type_tag, _rc);
+#endif
+		if (_ar->ops.destructor) _ar->ops.destructor(ptr, _ar);
+	}
+#ifdef CI_ASAN_TRACER
+	free(o->asan_tracer);
+#endif
+	}
+	return;
+#endif
+
 #ifdef CI_DEBUG_NOFREE
 	if (ci_never_free) {
 		o->refcnt = 0xFFFF;
@@ -285,6 +325,12 @@ static inline void ci_nocnt(void *ptr) {
 	hdr->refcnt = 0xFFFF;
 }
 
+#ifdef INSANE_MEMCHECK
+#define INSANE_MEMCHECK_HOOK() tgmemlib_check_mem(ci_alloc)
+#else
+#define INSANE_MEMCHECK_HOOK() ((void)0)
+#endif
+
 #ifdef CI_DISABLE_REFCOUNTING
 
 #define ci_inc(x) ((void)(x))
@@ -292,9 +338,10 @@ static inline void ci_nocnt(void *ptr) {
 
 #else
 
-#ifdef CI_ASM_REFCNT
+#if defined(CI_ASM_REFCNT) && !defined(CIOBJ_DETECT_FREED)
 
 static inline void ci_inc(void *ptr) {
+	INSANE_MEMCHECK_HOOK();
 	__asm__ __volatile__ (
 		"sub $16, %%rsp\n\t"
 		"movl $0, (%%rsp)\n\t"
@@ -317,9 +364,13 @@ static inline void ci_inc(void *ptr) {
 #else
 
 static inline void ci_inc(void *ptr) {
+	INSANE_MEMCHECK_HOOK();
 	if (!CI_IS_REFCOUNTABLE(ptr)) return;
 
 	ci_gchdr *hdr = (ci_gchdr *)ptr;
+#ifdef CIOBJ_DETECT_FREED
+	if (hdr->flags & CI_OBJ_FREED) { CI_CHECK_MEM(ptr); return; }
+#endif
 	uint16_t rc = hdr->refcnt + 1;
 	rc |= -(uint16_t)(rc == 0);   /* overflow -> 0xFFFF (sticky) */
 	hdr->refcnt = rc;
@@ -329,9 +380,13 @@ static inline void ci_inc(void *ptr) {
 
 /* returns 1 if object was freed, 0 otherwise */
 static inline int ci_dec(void *ptr) {
+	INSANE_MEMCHECK_HOOK();
 	if (!CI_IS_REFCOUNTABLE(ptr)) return 0;
 
 	ci_gchdr *hdr = (ci_gchdr *)ptr;
+#ifdef CIOBJ_DETECT_FREED
+	if (hdr->flags & CI_OBJ_FREED) { CI_CHECK_MEM(ptr); return 0; }
+#endif
 	if (hdr->refcnt == 0xFFFF) return 0;  /* saturated, don't touch */
 
 	hdr->refcnt--;
@@ -348,6 +403,12 @@ static inline int ci_dec(void *ptr) {
 	ci_ptr *_p = (arr); size_t _n = (n); \
 	while (_n--) { ci_dec(*_p); _p++; } \
 } while(0)
+
+#define ci_decnull_multi(arr, n) do { \
+	ci_ptr *_p = (arr); size_t _n = (n); \
+	while (_n--) { ci_dec(*_p); *_p = NULL; _p++; } \
+} while(0)
+
 
 #define ci_inc_multi(arr, n) do { \
 	ci_ptr *_p = (arr); size_t _n = (n); \

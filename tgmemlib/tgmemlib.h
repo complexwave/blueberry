@@ -47,6 +47,24 @@
 #define TG_ASAN_UNPOISON(addr, size) ((void)0)
 #endif
 
+/* ---- freelist debug ---- */
+
+#ifdef TG_FREELIST_CANARY
+#define TG_FREELIST_CANARY_MAGIC 0xDEADCAFEBEEF1234ULL
+#endif
+
+/* when canary or poison is on, use freelist even under ASAN */
+#if defined(TG_ASAN) && !defined(TG_FREELIST_CANARY) && !defined(TG_FREELIST_POISON)
+#define TG_FREELIST_DISABLED 1
+#endif
+
+/* never reuse freed slots — full poison, catches any use-after-free */
+#ifdef TGMEMLIB_NEVER_FREE
+#undef TG_FREELIST_DISABLED
+#define TG_FREELIST_DISABLED 1
+#define TG_FREED_SLOT_MAGIC 0xDEAD5107DEAD5107ULL
+#endif
+
 /* ---- constants ---- */
 
 #define ARENA_SIZE	(64u * 1024u)		/* bytes per arena, must be power of 2 */
@@ -219,6 +237,13 @@ void tg_free_linked(void *ptr, size_t byte_size);
  * Always keeps at least one arena. Returns number of arenas freed.
  */
 int tg_cleanup(tg_allocator_t *alloc, uint16_t tag);
+
+/*
+ * tgmemlib_check_mem — validate all freelists across all arenas.
+ * Checks canary, poison, and pad canary integrity. Debug only.
+ */
+void tgmemlib_check_mem(tg_allocator_t *alloc);
+void tgmemlib_dump_slot(void *slot, tg_arena_t *ar, const char *reason);
 
 /* ---- newalloc stack ---- */
 

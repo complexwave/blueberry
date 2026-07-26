@@ -97,6 +97,7 @@ static void bb_vm_types_register(void) {
 	ci_register_ops(CI_BB_VM,      sizeof(bb_vm),      &vm_ops);
 	ci_register_ops(CI_BB_CORO,    sizeof(bb_coro),    &coro_ops);
 	ci_register_ops(CI_BB_CLOSURE, sizeof(bb_closure),  &cl_ops);
+	ci_register_ops(CI_BB_METAPROTO, sizeof(bb_metaproto), &(tg_arena_ops){ .destructor = ci_map_destructor });
 }
 
 static bb_vm *bb_vm_new(void) {
@@ -300,7 +301,14 @@ static inline ci_ptr bb_proto_find(bb_vm *vm, ci_ptr obj, ci_ptr key) {
 #define VM_OP_STACK(idx)         sk[idx]
 #define VM_OP_SET_STACK(idx, val) ci_dec(VM_OP_STACK(idx)); VM_OP_STACK(idx) = val;
 
+#ifdef DEBUG_AGGRESSIVE_MEMCHECK
+#define BB_MEMCHECK_HOOK() tgmemlib_check_mem(ci_alloc)
+#else
+#define BB_MEMCHECK_HOOK() ((void)0)
+#endif
+
 #define BB_DISPATCH_NEXT(c) \
+	BB_MEMCHECK_HOOK(); \
 	bb_cached_op *op = c->pc++;\
 	[[clang::musttail]] return op->fn(c, op->a, op->b, op->c);\
 

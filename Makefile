@@ -1,4 +1,4 @@
-.PHONY: parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim ci_number_test ci_printf_test bytecode-dbg asan clean
+.PHONY: parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim ci_number_test ci_printf_test bytecode-dbg asan memtrace clean
 
 .DEFAULT_GOAL := blueberry
 
@@ -41,7 +41,7 @@ bytecode-dbg:
 tracking:
 	$(CC) $(CFLAGS) -DTGMEMLIB_TRACKING -o blueberry blueberry.c cma/cma.c -lm
 
-ASAN_FLAGS = -O0 -g3 -fno-omit-frame-pointer -fno-inline -fno-pie -no-pie -fsanitize=address -DTGMEMLIB_TRACKING -DCI_LEXER -DCI_DEBUG_NOFREE -DCI_ASAN_TRACER -DCI_ASM_REFCNT -std=c11 -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -Wno-unused-function
+ASAN_FLAGS = -O0 -g3 -fno-omit-frame-pointer -fno-inline -fno-pie -no-pie -fsanitize=address -DTGMEMLIB_TRACKING -DCI_LEXER -DCI_DEBUG_NOFREE -DCI_ASAN_TRACER -DCI_ASM_REFCNT -DTG_FREELIST_CANARY -DTG_FREELIST_POISON -DTG_PAD_CANARY -DDEBUG_AGGRESSIVE_MEMCHECK -std=c11 -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -Wno-unused-function
 
 LSAN_SUPPRESS = LSAN_OPTIONS=suppressions=asan_suppress.txt
 
@@ -51,6 +51,14 @@ asan:
 
 asan-run:
 	$(LSAN_SUPPRESS) ./blueberry $(ARGS)
+
+gdb:
+	ASAN_OPTIONS=detect_leaks=0 gdb -ex run --args ./blueberry $(ARGS)
+
+MEMTRACE_FLAGS = -O0 -g3 -fno-omit-frame-pointer -fno-inline -std=c11 -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-missing-braces -Wno-unused-function -DCI_LEXER -DCI_DEBUG_NOFREE -DCI_ASM_REFCNT -DTGMEMLIB_TRACKING -DTGMEMLIB_NEVER_FREE -DTG_FREELIST_CANARY -DTG_FREELIST_POISON -DTG_PAD_CANARY -DDEBUG_AGGRESSIVE_MEMCHECK -DINSANE_MEMCHECK -DCIOBJ_DETECT_FREED -DTGMEMLIB_PRINT_FREE
+
+memtrace:
+	$(CC) $(MEMTRACE_FLAGS) -o blueberry blueberry.c cma/cma.c -lm
 
 clean:
 	rm -f parser bytecode encoder decoder blueberry ci_timer_test ci_timer_sim

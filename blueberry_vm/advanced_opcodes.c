@@ -24,6 +24,8 @@ VM_OP_INLINE void bb_op_hashstore(bb_coro *c, ci_ptr map, ci_ptr key, ci_ptr val
 
 static inline ci_ptr bb_op_move(bb_coro *c, ci_ptr a, ci_ptr b) {
 	(void)c; (void)b;
+	
+	ci_inc(a);
 	return a;
 }
 
@@ -295,7 +297,8 @@ static void bb_op_newmap_var(bb_coro *c, vm_dipatch_arg a, vm_dipatch_arg b, uin
 	uint32_t npairs  = (uint32_t)b;
 
 	ci_map *new_map = ci_map_new(16);
-
+	printf("alloc map %p ref:%d\n", new_map, new_map->gc.refcnt);
+	
 	for (uint32_t i = 0; i < npairs; i++) {
 		uint8_t type    = list[i * 4 + 0];
 		uint8_t val_reg = list[i * 4 + 1];

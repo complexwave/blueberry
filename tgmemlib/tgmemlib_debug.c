@@ -70,16 +70,22 @@ static int tg_debug_freelist_len(void *fl) {
 
 /* check if ptr is on the freelist (O(n) scan, debug only) */
 static int tg_debug_is_free(void *fl, void *ptr) {
-#ifdef TG_ASAN
+#ifdef TG_FREELIST_DISABLED
 	(void)fl;
+#if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
 	return __asan_address_is_poisoned(ptr);
+#else
+	(void)ptr;
+	return 1;
 #endif
+#else
 	void *p = fl;
 	while (p) {
 		if (p == ptr) return 1;
 		p = *(void **)p;
 	}
 	return 0;
+#endif
 }
 
 /* print a bar graph: filled/total, width chars */

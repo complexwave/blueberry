@@ -25,6 +25,7 @@ proto.register("blueberry.ast.node", node)
 
 fn node.new(kind, token) {
 	var n = {}
+	
 	proto.set(n, self)
 	n.kind = kind
 	n.token = token
@@ -379,6 +380,7 @@ fn ast.expr_bp(max_prio) {
 			if pk != null {
 				self.dbg("%:dim:s %s (no infix match)", "infix?", pk.ctx())
 			}
+			pk = false
 			break
 		}
 
@@ -388,6 +390,9 @@ fn ast.expr_bp(max_prio) {
 		left = combined
 	}
 
+	
+	pre = false
+	self = false
 	return left
 }
 
